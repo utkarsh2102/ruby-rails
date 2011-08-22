@@ -1,3 +1,3 @@
 #!/bin/sh
 
-exec ruby /usr/share/rails-ruby1.8/railties/bin/rails "$@"
+exec ruby /usr/lib/ruby/vendor_ruby/railties/bin/rails "$@"
