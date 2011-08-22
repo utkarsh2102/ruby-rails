@@ -1,3 +1,13 @@
+rails (2.3.14) unstable; urgency=low
+
+  * Switch to component based rails packaging to allow parallel
+    installation of rails 2.3 and 3.x (probably 3.1).
+  * Adopt package under Debian Ruby Extras group.
+  * Fix location of rails command under railties to
+    /usr/lib/ruby/vendor_ruby/railties/bin/rails
+
+ -- Ondřej Surý <ondrej@debian.org>  Mon, 22 Aug 2011 17:57:00 +0200
+
 rails (2.3.11-0.1) unstable; urgency=medium
 
   * Non-maintainer upload.
