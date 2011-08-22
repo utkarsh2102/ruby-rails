@@ -5,6 +5,7 @@ rails (2.3.14) unstable; urgency=low
   * Adopt package under Debian Ruby Extras group.
   * Fix location of rails command under railties to
     /usr/lib/ruby/vendor_ruby/railties/bin/rails
+  * Add NEWS.Debian to inform about change of rails directory
 
  -- Ondřej Surý <ondrej@debian.org>  Mon, 22 Aug 2011 17:57:00 +0200
 
