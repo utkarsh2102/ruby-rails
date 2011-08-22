@@ -1,0 +1,27 @@
+Source: rails
+Section: ruby
+Priority: optional
+Maintainer: Debian Ruby Extras Maintainers <pkg-ruby-extras-maintainers@lists.alioth.debian.org>
+Uploaders: Ondřej Surý <ondrej@debian.org>
+DM-Upload-Allowed: yes
+Standards-Version: 3.9.2
+Build-Depends: debhelper (>= 7.0.50~)
+Vcs-Browser: http://git.debian.org/?p=pkg-ruby-extras/ruby-rails-defaults.git
+Vcs-Git: git://git.debian.org/pkg-ruby-extras/ruby-rails-defaults.git
+
+Package: rails
+Architecture: all
+Depends: ruby-rails-2.3
+Description: MVC ruby based framework geared for web application development
+ Rails is a full-stack, open-source web framework in Ruby for writing
+ real-world applications.
+ .
+ Being a full-stack framework means that all layers are built to work
+ seamlessly together. That way you don't repeat yourself and you can
+ use a single language from top to bottom. Everything from templates to
+ control flow to business logic is written in Ruby.
+ .
+ This is (almost) empty dependency package which provide the rails
+ command which runs the defaults version of the rails.  If you need
+ a specific version of rails, you need to depend on ruby-rails-VERSION
+ package.
