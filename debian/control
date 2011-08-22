@@ -11,7 +11,7 @@ Vcs-Git: git://git.debian.org/pkg-ruby-extras/ruby-rails-defaults.git
 
 Package: rails
 Architecture: all
-Depends: ruby-rails-2.3
+Depends: ruby-rails-2.3, ${misc:Depends}
 Description: MVC ruby based framework geared for web application development
  Rails is a full-stack, open-source web framework in Ruby for writing
  real-world applications.
