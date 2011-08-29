@@ -6,8 +6,8 @@ Uploaders: Ondřej Surý <ondrej@debian.org>
 DM-Upload-Allowed: yes
 Standards-Version: 3.9.2
 Build-Depends: debhelper (>= 7.0.50~)
-Vcs-Browser: http://git.debian.org/?p=pkg-ruby-extras/ruby-rails-defaults.git
-Vcs-Git: git://git.debian.org/pkg-ruby-extras/ruby-rails-defaults.git
+Vcs-Browser: http://git.debian.org/?p=pkg-ruby-extras/rails.git
+Vcs-Git: git://git.debian.org/pkg-ruby-extras/rails.git
 
 Package: rails
 Architecture: all
