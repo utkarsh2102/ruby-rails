@@ -1,3 +1,11 @@
+rails (2:2.3.14.2) unstable; urgency=low
+
+  * Introduce epoch to fix mistake when ruby-activerecord-3.2 provided
+    ruby-activerecord with a higher version number (3.2...). The rightfull
+    ruby-activerecord is the one provided by this package (Closes: #674810).
+
+ -- Antonio Terceiro <terceiro@debian.org>  Thu, 14 Jun 2012 17:49:36 -0300
+
 rails (2.3.14.1) unstable; urgency=low
 
   * Add transitional packages from old rails package to the new
