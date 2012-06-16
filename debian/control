@@ -6,7 +6,7 @@ Uploaders:
  Ondřej Surý <ondrej@debian.org>,
  Antonio Terceiro <terceiro@debian.org>,
 DM-Upload-Allowed: yes
-Standards-Version: 3.9.2
+Standards-Version: 3.9.3
 Build-Depends: debhelper (>= 7.0.50~)
 Vcs-Browser: http://git.debian.org/?p=pkg-ruby-extras/rails.git
 Vcs-Git: git://git.debian.org/pkg-ruby-extras/rails.git
@@ -99,6 +99,7 @@ Description: Framework for generation of customized email messages
 # Transitional packages
 Package: rails-ruby1.8
 Section: oldlibs
+Priority: extra
 Architecture: all
 Depends: ${misc:Depends}, rails
 Description: Transitional package for rails
@@ -107,6 +108,7 @@ Description: Transitional package for rails
 
 Package: rails-doc
 Section: oldlibs
+Priority: extra
 Architecture: all
 Depends: ${misc:Depends}, rails
 Description: Transitional package for rails
@@ -115,6 +117,7 @@ Description: Transitional package for rails
 
 Package: libactiverecord-ruby
 Section: oldlibs
+Priority: extra
 Architecture: all
 Depends: ${misc:Depends}, ruby-activerecord
 Description: Transitional package for ruby-activerecord
@@ -123,6 +126,7 @@ Description: Transitional package for ruby-activerecord
 
 Package: libactiverecord-ruby1.8
 Section: oldlibs
+Priority: extra
 Architecture: all
 Depends: ${misc:Depends}, ruby-activerecord
 Description: Transitional package for ruby-activerecord
@@ -131,6 +135,7 @@ Description: Transitional package for ruby-activerecord
 
 Package: libactiverecord-ruby1.9.1
 Section: oldlibs
+Priority: extra
 Architecture: all
 Depends: ${misc:Depends}, ruby-activerecord
 Description: Transitional package for ruby-activerecord
@@ -139,6 +144,7 @@ Description: Transitional package for ruby-activerecord
 
 Package: libactivesupport-ruby
 Section: oldlibs
+Priority: extra
 Architecture: all
 Depends: ${misc:Depends}, ruby-activesupport
 Description: Transitional package for ruby-activesupport
@@ -147,6 +153,7 @@ Description: Transitional package for ruby-activesupport
 
 Package: libactivesupport-ruby1.8
 Section: oldlibs
+Priority: extra
 Architecture: all
 Depends: ${misc:Depends}, ruby-activesupport
 Description: Transitional package for ruby-activesupport
@@ -155,6 +162,7 @@ Description: Transitional package for ruby-activesupport
 
 Package: libactivesupport-ruby1.9.1
 Section: oldlibs
+Priority: extra
 Architecture: all
 Depends: ${misc:Depends}, ruby-activesupport
 Description: Transitional package for ruby-activesupport
@@ -163,6 +171,7 @@ Description: Transitional package for ruby-activesupport
 
 Package: libactionpack-ruby
 Section: oldlibs
+Priority: extra
 Architecture: all
 Depends: ${misc:Depends}, ruby-actionpack
 Description: Transitional package for ruby-actionpack
@@ -171,6 +180,7 @@ Description: Transitional package for ruby-actionpack
 
 Package: libactionpack-ruby1.8
 Section: oldlibs
+Priority: extra
 Architecture: all
 Depends: ${misc:Depends}, ruby-actionpack
 Description: Transitional package for ruby-actionpack
@@ -179,6 +189,7 @@ Description: Transitional package for ruby-actionpack
 
 Package: libactionmailer-ruby
 Section: oldlibs
+Priority: extra
 Architecture: all
 Depends: ${misc:Depends}, ruby-actionmailer
 Description: Transitional package for ruby-actionmailer
@@ -187,6 +198,7 @@ Description: Transitional package for ruby-actionmailer
 
 Package: libactionmailer-ruby1.8
 Section: oldlibs
+Priority: extra
 Architecture: all
 Depends: ${misc:Depends}, ruby-actionmailer
 Description: Transitional package for ruby-actionmailer
@@ -195,6 +207,7 @@ Description: Transitional package for ruby-actionmailer
 
 Package: libactiveresource-ruby
 Section: oldlibs
+Priority: extra
 Architecture: all
 Depends: ${misc:Depends}, ruby-activeresource
 Description: Transitional package for ruby-activeresource
@@ -203,6 +216,7 @@ Description: Transitional package for ruby-activeresource
 
 Package: libactiveresource-ruby1.8
 Section: oldlibs
+Priority: extra
 Architecture: all
 Depends: ${misc:Depends}, ruby-activeresource
 Description: Transitional package for ruby-activeresource
