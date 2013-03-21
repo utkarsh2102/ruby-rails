@@ -1,3 +1,0 @@
-#!/bin/sh
-
-exec ruby /usr/lib/ruby/vendor_ruby/railties/bin/rails "$@"
