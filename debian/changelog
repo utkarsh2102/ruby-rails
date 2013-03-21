@@ -1,3 +1,11 @@
+rails (2:3.2) experimental; urgency=low
+
+  * Add gbp.conf for experimental
+  * rails is already provided by ruby-railties-3.2
+  * Bump dependencies to 3.2 and remove transitional packages
+
+ -- Ondřej Surý <ondrej@debian.org>  Thu, 21 Mar 2013 15:57:24 +0100
+
 rails (2:2.3.14.2) unstable; urgency=low
 
   * Introduce epoch to fix mistake when ruby-activerecord-3.2 provided
