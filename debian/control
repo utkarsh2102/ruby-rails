@@ -5,7 +5,6 @@ Maintainer: Debian Ruby Extras Maintainers <pkg-ruby-extras-maintainers@lists.al
 Uploaders:
  Ondřej Surý <ondrej@debian.org>,
  Antonio Terceiro <terceiro@debian.org>,
-DM-Upload-Allowed: yes
 Standards-Version: 3.9.3
 Build-Depends: debhelper (>= 7.0.50~)
 Vcs-Browser: http://git.debian.org/?p=pkg-ruby-extras/rails.git
