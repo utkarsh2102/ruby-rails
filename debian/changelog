@@ -1,3 +1,9 @@
+rails (2:3.2.13+1) unstable; urgency=low
+
+  * Upload Rail 3.2 as default version to unstable.
+
+ -- Ondřej Surý <ondrej@debian.org>  Fri, 24 May 2013 17:32:01 +0200
+
 rails (2:3.2) experimental; urgency=low
 
   * Add gbp.conf for experimental
