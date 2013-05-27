@@ -5,7 +5,7 @@ Maintainer: Debian Ruby Extras Maintainers <pkg-ruby-extras-maintainers@lists.al
 Uploaders:
  Ondřej Surý <ondrej@debian.org>,
  Antonio Terceiro <terceiro@debian.org>,
-Standards-Version: 3.9.3
+Standards-Version: 3.9.4
 Build-Depends: debhelper (>= 7.0.50~)
 Vcs-Browser: http://anonscm.debian.org/gitweb?p=pkg-ruby-extras/rails.git
 Vcs-Git: git://anonscm.debian.org/pkg-ruby-extras/rails.git
@@ -26,6 +26,19 @@ Description: MVC ruby based framework geared for web application development
  command which runs the defaults version of the rails.  If you need
  a specific version of rails, you need to depend on ruby-rails-VERSION
  package.
+
+Package: ruby-activemodel
+Architecture: all
+Depends: ${misc:Depends}, ruby-activerecord-3.2
+Description: toolkit for building modeling frameworks (part of Rails)
+ Active Model is a toolkit for building modeling frameworks like
+ Active Record and Active Resource.  This includes a rich support for
+ attributes, callbacks, validations, observers, serialization,
+ internationalization, and testing.
+ .
+ This is empty dependency package which depends on the default Debian
+ version of rails framework.  If you need to depend on a specific version
+ of rails, you need to depend on <package>-VERSION package.
 
 Package: ruby-activerecord
 Architecture: all
@@ -90,6 +103,22 @@ Description: Framework for generation of customized email messages
  are used to consolidate code for sending out forgotten passwords, welcome
  wishes on signup, invoices for billing, and any other use case that requires
  a written notification to either a person or another system.
+ .
+ This is empty dependency package which depends on the default Debian
+ version of rails framework.  If you need to depend on a specific version
+ of rails, you need to depend on <package>-VERSION package.
+
+Package: ruby-railties
+Architecture: all
+Depends: ${misc:Depends}, ruby-railties-3.2
+Description: MVC ruby based framework geared for web application development
+ Rails is a full-stack, open-source web framework in Ruby for writing
+ real-world applications.
+ .
+ Being a full-stack framework means that all layers are built to work
+ seamlessly together. That way you don't repeat yourself and you can
+ use a single language from top to bottom. Everything from templates to
+ control flow to business logic is written in Ruby.
  .
  This is empty dependency package which depends on the default Debian
  version of rails framework.  If you need to depend on a specific version
