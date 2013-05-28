@@ -1,0 +1,42 @@
+#!/usr/bin/make -f
+#export DH_VERBOSE=1
+#
+# Uncomment to ignore all test failures (but the tests will run anyway)
+#export DH_RUBY_IGNORE_TESTS=all
+#
+# Uncomment to ignore some test failures (but the tests will run anyway).
+# Valid values:
+#export DH_RUBY_IGNORE_TESTS=ruby1.8 ruby1.9.1 require-rubygems
+#
+# If you need to specify the .gemspec (eg there is more than one)
+#export DH_RUBY_GEMSPEC=gem.gemspec
+
+export DH_RUBY_USE_DH_AUTO_INSTALL_DESTDIR=yes
+
+UPSTREAM_PACKAGES=actionmailer activerecord activemodel activesupport railties actionpack
+
+%:
+	dh $@ --buildsystem=ruby --with ruby
+
+override_dh_auto_configure:
+override_dh_auto_build:
+override_dh_auto_clean:
+override_dh_auto_test:
+override_dh_auto_install:
+	CMD=$$(echo $@ | sed -e "s/override_//"); \
+	DH_RUBY_GEMSPEC=rails.gemspec $$CMD; \
+	for pkg in $(UPSTREAM_PACKAGES); do \
+	  ln -s ../debian $${pkg}; \
+	  DH_RUBY_GEMSPEC=$${pkg}.gemspec $$CMD -D$${pkg}; \
+	  rm $${pkg}/debian; \
+	done
+
+override_dh_install:
+	dh_install --fail-missing
+
+override_dh_installexamples:
+	dh_installexamples -Xjquery.min.js -X.gitignore
+	chmod -x \
+	  $(CURDIR)/debian/ruby-rails-4.0/usr/share/doc/ruby-rails-4.0/examples/guides/assets/stylesheets/responsive-tables.css \
+	  $(CURDIR)/debian/ruby-rails-4.0/usr/share/doc/ruby-rails-4.0/examples/guides/assets/stylesheets/syntaxhighlighter/shThemeMDUltra.css \
+	  $(CURDIR)/debian/ruby-rails-4.0/usr/share/doc/ruby-rails-4.0/examples/guides/assets/javascripts/responsive-tables.js

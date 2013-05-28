@@ -1,0 +1,5 @@
+rails-4.0 (4.0.0~rc1-1) experimental; urgency=low
+
+  * Merge ruby-{active,action}*-X.Y packages into rails-4.0
+
+ -- Ondřej Surý <ondrej@debian.org>  Thu, 28 Mar 2013 15:13:20 +0100
