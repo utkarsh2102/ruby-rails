@@ -11,28 +11,10 @@
 # If you need to specify the .gemspec (eg there is more than one)
 #export DH_RUBY_GEMSPEC=gem.gemspec
 
-export DH_RUBY_USE_DH_AUTO_INSTALL_DESTDIR=yes
-
 UPSTREAM_PACKAGES=actionmailer activerecord activemodel activesupport railties actionpack
 
 %:
 	dh $@ --buildsystem=ruby --with ruby
-
-override_dh_auto_configure:
-override_dh_auto_build:
-override_dh_auto_clean:
-override_dh_auto_test:
-override_dh_auto_install:
-	CMD=$$(echo $@ | sed -e "s/override_//"); \
-	DH_RUBY_GEMSPEC=rails.gemspec $$CMD; \
-	for pkg in $(UPSTREAM_PACKAGES); do \
-	  ln -s ../debian $${pkg}; \
-	  DH_RUBY_GEMSPEC=$${pkg}.gemspec $$CMD -D$${pkg}; \
-	  rm $${pkg}/debian; \
-	done
-
-override_dh_install:
-	dh_install --fail-missing
 
 override_dh_installexamples:
 	dh_installexamples -Xjquery.min.js -X.gitignore

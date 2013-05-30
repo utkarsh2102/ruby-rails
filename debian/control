@@ -5,7 +5,7 @@ Maintainer: Debian Ruby Extras Maintainers <pkg-ruby-extras-maintainers@lists.al
 Uploaders: Ondřej Surý <ondrej@debian.org>,
 	   Antonio Terceiro <terceiro@debian.org>,
 Build-Depends: debhelper (>= 9),
-	       gem2deb (>= 0.3.0~)
+	       gem2deb (>= 0.4.0~)
 Standards-Version: 3.9.4
 Vcs-Git: git://anonscm.debian.org/pkg-ruby-extras/rails-4.0.git
 Vcs-Browser: http://anonscm.debian.org/git/?p=pkg-ruby-extras/rails-4.0.git;a=summary
@@ -14,6 +14,7 @@ XS-Ruby-Versions: all
 
 Package: ruby-activesupport-4.0
 Architecture: all
+X-DhRuby-Root: activesupport/
 XB-Ruby-Versions: ${ruby:Versions}
 Depends: ${shlibs:Depends},
 	 ${misc:Depends},
@@ -33,6 +34,7 @@ Description: Support and utility classes used by the Rails 4.0 framework
 
 Package: ruby-activerecord-4.0
 Architecture: all
+X-DhRuby-Root: activerecord/
 XB-Ruby-Versions: ${ruby:Versions}
 Depends: ${misc:Depends},
 	 ruby | ruby-interpreter,
@@ -51,6 +53,7 @@ Description: object-relational mapper framework (part of Rails)
 
 Package: ruby-activemodel-4.0
 Architecture: all
+X-DhRuby-Root: activemodel/
 XB-Ruby-Versions: ${ruby:Versions}
 Depends: ${misc:Depends},
 	 ruby | ruby-interpreter,
@@ -68,6 +71,7 @@ Description: toolkit for building modeling frameworks (part of Rails)
 
 Package: ruby-actionpack-4.0
 Architecture: all
+X-DhRuby-Root: actionpack/
 XB-Ruby-Versions: ${ruby:Versions}
 Depends: ${misc:Depends},
 	 ruby | ruby-interpreter,
@@ -86,6 +90,7 @@ Description: web-flow and rendering framework putting the VC in MVC (part of Rai
 
 Package: ruby-actionmailer-4.0
 Architecture: all
+X-DhRuby-Root: actionmailer/
 XB-Ruby-Versions: ${ruby:Versions}
 Depends: ${shlibs:Depends},
 	 ${misc:Depends},
@@ -103,6 +108,7 @@ Description: email composition, delivery, and receiving framework (part of Rails
 
 Package: ruby-railties-4.0
 Architecture: all
+X-DhRuby-Root: railties/
 XB-Ruby-Versions: ${ruby:Versions}
 Depends: ${misc:Depends},
 	 ruby | ruby-interpreter,
@@ -125,6 +131,7 @@ Description: MVC ruby based framework geared for web application development
 
 Package: ruby-rails-4.0
 Architecture: all
+X-DhRuby-Root: ./
 XB-Ruby-Versions: ${ruby:Versions}
 Depends: ${shlibs:Depends},
 	 ${misc:Depends},
