@@ -19,10 +19,3 @@ UPSTREAM_PACKAGES=actionmailer activerecord activemodel activesupport railties a
 overrride_dh_auto_build:
 	racc -o actionpack/lib/action_dispatch/journey/parser.rb \
 		actionpack/lib/action_dispatch/journey/parser.y
-
-override_dh_installexamples:
-	dh_installexamples -Xjquery.min.js -X.gitignore
-	chmod -x \
-	  $(CURDIR)/debian/ruby-rails-4.0/usr/share/doc/ruby-rails-4.0/examples/guides/assets/stylesheets/responsive-tables.css \
-	  $(CURDIR)/debian/ruby-rails-4.0/usr/share/doc/ruby-rails-4.0/examples/guides/assets/stylesheets/syntaxhighlighter/shThemeMDUltra.css \
-	  $(CURDIR)/debian/ruby-rails-4.0/usr/share/doc/ruby-rails-4.0/examples/guides/assets/javascripts/responsive-tables.js

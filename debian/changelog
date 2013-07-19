@@ -1,3 +1,15 @@
+rails-4.0 (4.0.0-1~1.gbp988ca5) UNRELEASED; urgency=low
+
+  ** SNAPSHOT build @988ca53ef7e37ad282a43b8da237a0efe9cbdb27 **
+
+  [ Antonio Terceiro ]
+  * Migrate to use dh_ruby multi-binary support
+
+  [ Ondřej Surý ]
+  * New upstream version 4.0.0
+
+ -- Antonio Terceiro <terceiro@debian.org>  Fri, 19 Jul 2013 13:58:35 +0200
+
 rails-4.0 (4.0.0~rc1-1) experimental; urgency=low
 
   * Initial release of Rails 4.0
