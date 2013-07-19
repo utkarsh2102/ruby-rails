@@ -1,4 +1,4 @@
-rails-4.0 (4.0.0+dfsg-1) experimental; urgency=low
+rails-4.0 (4.0.0+dfsg-1) unstable; urgency=low
 
   [ Antonio Terceiro ]
   * Migrate to use dh_ruby multi-binary support
@@ -19,8 +19,11 @@ rails-4.0 (4.0.0+dfsg-1) experimental; urgency=low
     + Just remove whole guides.rubyonrails.org content from source tarball
       (We'll repackage it to ruby-rails-guides-4.0 as soon as we clear the
       licensing with upstream.)
+    + MIT-LICENSE in templates is needed for templating new projects, add
+      a lintian-override
+  * Add dversionmangle to debian/watch
 
- -- Ondřej Surý <ondrej@debian.org>  Fri, 19 Jul 2013 15:23:01 +0200
+ -- Ondřej Surý <ondrej@debian.org>  Fri, 19 Jul 2013 15:35:13 +0200
 
 rails-4.0 (4.0.0~rc1-1) experimental; urgency=low
 
