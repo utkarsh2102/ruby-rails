@@ -18,11 +18,11 @@ tarball="$(readlink -f "$tarball")"
 tdir="$(mktemp -d)"
 trap '[ ! -d "$tdir" ] || rm -r "$tdir"' EXIT
 
-xzcat "$tarball" | \
+zcat "$tarball" | \
     tar --wildcards \
         --delete '*/guides/*' \
         --delete '*/actionpack/test/fixtures/multipart/mona_lisa.jpg' \
-    > "$tdir/${fname/.xz}"
-xz "$tdir/${fname/.xz}"
+    > "$tdir/${fname/.gz}"
+xz "$tdir/${fname/.gz}"
 
-mv "$tdir/$fname" "${tarball/.tar.xz}+dfsg.tar.xz"
+mv "$tdir/${fname/.gz}.xz" "${tarball/.tar.gz}+dfsg.tar.xz"
