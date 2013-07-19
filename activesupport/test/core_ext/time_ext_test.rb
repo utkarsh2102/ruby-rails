@@ -741,6 +741,28 @@ class TimeExtCalculationsTest < ActiveSupport::TestCase
     assert_equal(-1, Time.utc(2000) <=> ActiveSupport::TimeWithZone.new( Time.utc(2000, 1, 1, 0, 0, 1), ActiveSupport::TimeZone['UTC'] ))
   end
 
+  def test_at_with_datetime
+    assert_equal Time.utc(2000, 1, 1, 0, 0, 0), Time.at(DateTime.civil(2000, 1, 1, 0, 0, 0))
+
+    # Only test this if the underlying Time.at raises a TypeError
+    begin
+      Time.at_without_coercion(Time.now, 0)
+    rescue TypeError
+      assert_raise(TypeError) { assert_equal(Time.utc(2000, 1, 1, 0, 0, 0), Time.at(DateTime.civil(2000, 1, 1, 0, 0, 0), 0)) }
+    end
+  end
+
+  def test_at_with_time_with_zone
+    assert_equal Time.utc(2000, 1, 1, 0, 0, 0), Time.at(ActiveSupport::TimeWithZone.new(Time.utc(2000, 1, 1, 0, 0, 0), ActiveSupport::TimeZone['UTC']))
+
+    # Only test this if the underlying Time.at raises a TypeError
+    begin
+      Time.at_without_coercion(Time.now, 0)
+    rescue TypeError
+      assert_raise(TypeError) { assert_equal(Time.utc(2000, 1, 1, 0, 0, 0), Time.at(ActiveSupport::TimeWithZone.new(Time.utc(2000, 1, 1, 0, 0, 0), ActiveSupport::TimeZone['UTC']), 0)) }
+    end
+  end
+
   def test_eql?
     assert_equal true, Time.utc(2000).eql?( ActiveSupport::TimeWithZone.new(Time.utc(2000), ActiveSupport::TimeZone['UTC']) )
     assert_equal true, Time.utc(2000).eql?( ActiveSupport::TimeWithZone.new(Time.utc(2000), ActiveSupport::TimeZone["Hawaii"]) )
@@ -853,12 +875,5 @@ class TimeExtMarshalingTest < ActiveSupport::TestCase
 
   def test_last_quarter_on_31st
     assert_equal Time.local(2004, 2, 29), Time.local(2004, 5, 31).last_quarter
-  end
-end
-
-class TimeExtBehaviorTest < ActiveSupport::TestCase
-  def test_compare_with_infinity
-    assert_equal(-1, Time.now <=> Float::INFINITY)
-    assert_equal(1, Time.now <=> -Float::INFINITY)
   end
 end

@@ -116,7 +116,7 @@ module Rails
 
       def database_gemfile_entry
         options[:skip_active_record] ? "" :
-          <<-GEMFILE.strip_heredoc.chomp
+          <<-GEMFILE.strip_heredoc
             # Use #{options[:database]} as the database for Active Record
             gem '#{gem_for_database}'
           GEMFILE
@@ -193,7 +193,7 @@ module Rails
         else
           <<-GEMFILE.strip_heredoc
             # Use SCSS for stylesheets
-            gem 'sass-rails', '~> 4.0.0.rc1'
+            gem 'sass-rails', '~> 4.0.0'
 
             # Use Uglifier as compressor for JavaScript assets
             gem 'uglifier', '>= 1.3.0'

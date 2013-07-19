@@ -150,7 +150,25 @@ class AddPartNumberToProducts < ActiveRecord::Migration
 end
 ```
 
-Similarly,
+If you'd like to add an index on the new column, you can do that as well:
+
+```bash
+$ rails generate migration AddPartNumberToProducts part_number:string:index
+```
+
+will generate
+
+```ruby
+class AddPartNumberToProducts < ActiveRecord::Migration
+  def change
+    add_column :products, :part_number, :string
+    add_index :products, :part_number
+  end
+end
+```
+
+
+Similarly, you can generate a migration to remove a column from the command line:
 
 ```bash
 $ rails generate migration RemovePartNumberFromProducts part_number:string
@@ -374,8 +392,8 @@ will create the `product_id` and `category_id` with the `:null` option as
 
 ```ruby
 create_join_table :products, :categories do |t|
-  t.index :products
-  t.index :categories
+  t.index :product_id
+  t.index :category_id
 end
 ```
 
