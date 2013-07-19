@@ -17,7 +17,8 @@ module ActiveRecord
   # be destroyed directly. They will however still be marked for destruction.
   #
   # Note that <tt>autosave: false</tt> is not same as not declaring <tt>:autosave</tt>.
-  # When the <tt>:autosave</tt> option is not present new associations are saved.
+  # When the <tt>:autosave</tt> option is not present then new association records are
+  # saved but the updated association records are not saved.
   #
   # == Validation
   #
@@ -300,7 +301,7 @@ module ActiveRecord
     def association_valid?(reflection, record)
       return true if record.destroyed? || record.marked_for_destruction?
 
-      unless valid = record.valid?(validation_context)
+      unless valid = record.valid?
         if reflection.options[:autosave]
           record.errors.each do |attribute, message|
             attribute = "#{reflection.name}.#{attribute}"

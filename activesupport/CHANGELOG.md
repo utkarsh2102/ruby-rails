@@ -1,8 +1,16 @@
-## Rails 4.0.0 (unreleased) ##
+## Rails 4.0.0 (June 25, 2013) ##
 
-*   Fix skipping of filters defined by objects in `ActiveSupport::Callbacks::Callback`.
+*   Override `Time.at` to support the passing of Time-like values when called with a single argument.
 
-    *Ben McRedmond*
+    *Andrew White*
+
+*   Allow Date to be compared with Time (like it was possible to compare Time with Date).
+
+    *DHH*
+
+*   Deprecate multiple parameters support of `Object#in?`.
+
+    *Brian Morearty + Carlos Antonio da Silva*
 
 *   An `ActiveSupport::Subscriber` class has been extracted from
     `ActiveSupport::LogSubscriber`, allowing you to use the event attachment
@@ -31,8 +39,6 @@
 *   Fix deletion of empty directories in `ActiveSupport::Cache::FileStore`.
 
     *Charles Jones*
-
-## Rails 4.0.0.beta1 (February 25, 2013) ##
 
 *   Improve singularizing a singular for multiple cases.
     Fixes #2608 #1825 #2395.
@@ -133,19 +139,6 @@
         "3rd Feb".to_date => Sun, 03 Feb 2013
 
     *Kelly Stannard*
-
-*   It's now possible to compare `Date`, `DateTime`, `Time` and `TimeWithZone`
-    with `Float::INFINITY`. This allows to create date/time ranges with one infinite bound.
-    Example:
-
-        range = Range.new(Date.today, Float::INFINITY)
-
-    Also it's possible to check inclusion of date/time in range with conversion.
-
-        range.include?(Time.now + 1.year)     # => true
-        range.include?(DateTime.now + 1.year) # => true
-
-    *Alexander Grebennik*
 
 *   Remove meaningless `ActiveSupport::FrozenObjectError`, which was just an alias of `RuntimeError`.
 

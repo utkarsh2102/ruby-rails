@@ -1,4 +1,38 @@
-## Rails 4.0.0 (unreleased) ##
+## Rails 4.0.0 (June 25, 2013) ##
+
+*   Merge `:action` from routing scope and assign endpoint if both `:controller`
+    and `:action` are present. The endpoint assignment only occurs if there is
+    no `:to` present in the options hash so should only affect routes using the
+    shorthand syntax (i.e. endpoint is inferred from the the path).
+
+    Fixes #9856
+
+    *Yves Senn*, *Andrew White*
+
+*   Use a case insensitive URI Regexp for #asset_path.
+
+    This fix a problem where the same asset path using different case are generating
+    different URIs.
+
+    Before:
+
+        image_tag("HTTP://google.com")
+        # => "<img alt=\"Google\" src=\"/assets/HTTP://google.com\" />"
+        image_tag("http://google.com")
+        # => "<img alt=\"Google\" src=\"http://google.com\" />"
+
+    After:
+
+        image_tag("HTTP://google.com")
+        # => "<img alt=\"Google\" src=\"HTTP://google.com\" />"
+        image_tag("http://google.com")
+        # => "<img alt=\"Google\" src=\"http://google.com\" />"
+
+    *David Celis*
+
+*   Fix an issue where partials with a number in the filename weren't being digested for cache dependencies.
+
+    *Bryan Ricker*
 
 *   Add support for passing custom url options other than `:host` and custom
     status and flash options to `force_ssl`.
@@ -180,9 +214,6 @@
 *   Make `ActionDispatch::Journey::Path::Pattern#new` raise more meaningful exception message.
 
     *Thierry Zires*
-
-
-## Rails 4.0.0.beta1 (February 25, 2013) ##
 
 *   Fix `respond_to` not using formats that have no block if all is present. *Michael Grosser*
 
@@ -1058,6 +1089,14 @@
 
     *Andrew White*
 
+*   In the routes DSL the `:via` option of `match` is now mandatory.
+
+    For routes that respond to one single verb it is recommended to use the more specific
+    macros `get`, `post`, etc. instead. You can still map all HTTP verbs to one action
+    with `match`, but it has to be explictly configured using `:via => :all`.
+
+    *José Valim and Yehuda Katz*
+
 *   Add `index` method to FormBuilder class. *Jorge Bejar*
 
 *   Remove the leading \n added by textarea on `assert_select`. *Santiago Pastorino*
@@ -1105,8 +1144,6 @@
       * New method `patch_via_redirect` available in integration tests.
 
     *dlee*
-
-*   Integration tests support the `OPTIONS` method. *Jeremy Kemper*
 
 *   `expires_in` accepts a `must_revalidate` flag. If true, "must-revalidate"
     is added to the Cache-Control header. *fxn*

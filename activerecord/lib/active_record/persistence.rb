@@ -99,6 +99,9 @@ module ActiveRecord
     # <tt>before_*</tt> callbacks return +false+ the action is cancelled and
     # +save+ returns +false+. See ActiveRecord::Callbacks for further
     # details.
+    #
+    # Attributes marked as readonly are silently ignored if the record is
+    # being updated.
     def save(*)
       create_or_update
     rescue ActiveRecord::RecordInvalid
@@ -118,6 +121,9 @@ module ActiveRecord
     # the <tt>before_*</tt> callbacks return +false+ the action is cancelled
     # and <tt>save!</tt> raises ActiveRecord::RecordNotSaved. See
     # ActiveRecord::Callbacks for further details.
+    #
+    # Attributes marked as readonly are silently ignored if the record is
+    # being updated.
     def save!(*)
       create_or_update || raise(RecordNotSaved)
     end
@@ -204,6 +210,8 @@ module ActiveRecord
     # * updated_at/updated_on column is updated if that column is available.
     # * Updates all the attributes that are dirty in this object.
     #
+    # This method raises an +ActiveRecord::ActiveRecordError+  if the
+    # attribute is marked as readonly.
     def update_attribute(name, value)
       name = name.to_s
       verify_readonly_attribute(name)
@@ -325,10 +333,44 @@ module ActiveRecord
       toggle(attribute).update_attribute(attribute, self[attribute])
     end
 
-    # Reloads the attributes of this object from the database.
-    # The optional options argument is passed to find when reloading so you
-    # may do e.g. record.reload(lock: true) to reload the same record with
-    # an exclusive row lock.
+    # Reloads the record from the database.
+    #
+    # This method modifies the receiver in-place. Attributes are updated, and
+    # caches busted, in particular the associations cache.
+    #
+    # If the record no longer exists in the database <tt>ActiveRecord::RecordNotFound</tt>
+    # is raised. Otherwise, in addition to the in-place modification the method
+    # returns +self+ for convenience.
+    #
+    # The optional <tt>:lock</tt> flag option allows you to lock the reloaded record:
+    #
+    #   reload(lock: true) # reload with pessimistic locking
+    #
+    # Reloading is commonly used in test suites to test something is actually
+    # written to the database, or when some action modifies the corresponding
+    # row in the database but not the object in memory:
+    #
+    #   assert account.deposit!(25)
+    #   assert_equal 25, account.credit        # check it is updated in memory
+    #   assert_equal 25, account.reload.credit # check it is also persisted
+    #
+    # Another commom use case is optimistic locking handling:
+    #
+    #   def with_optimistic_retry
+    #     begin
+    #       yield
+    #     rescue ActiveRecord::StaleObjectError
+    #       begin
+    #         # Reload lock_version in particular.
+    #         reload
+    #       rescue ActiveRecord::RecordNotFound
+    #         # If the record is gone there is nothing to do.
+    #       else
+    #         retry
+    #       end
+    #     end
+    #   end
+    #
     def reload(options = nil)
       clear_aggregation_cache
       clear_association_cache

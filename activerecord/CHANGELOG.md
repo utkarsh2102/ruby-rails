@@ -1,4 +1,60 @@
-## Rails 4.0.0 (unreleased) ##
+## Rails 4.0.0 (June 25, 2013) ##
+
+*   Fix `add_column` with `array` option when using PostgreSQL. Fixes #10432
+
+*   Do not overwrite manually built records during one-to-one nested attribute assignment
+
+    For one-to-one nested associations, if you build the new (in-memory)
+    child object yourself before assignment, then the NestedAttributes
+    module will not overwrite it, e.g.:
+
+        class Member < ActiveRecord::Base
+          has_one :avatar
+          accepts_nested_attributes_for :avatar
+
+          def avatar
+            super || build_avatar(width: 200)
+          end
+        end
+
+        member = Member.new
+        member.avatar_attributes = {icon: 'sad'}
+        member.avatar.width # => 200
+
+    *Olek Janiszewski*
+
+*   fixes bug introduced by #3329.  Now, when autosaving associations,
+    deletions happen before inserts and saves.  This prevents a 'duplicate
+    unique value' database error that would occur if a record being created had
+    the same value on a unique indexed field as that of a record being destroyed.
+
+    *Adam Anderson*
+
+
+*   Fix pending migrations error when loading schema and `ActiveRecord::Base.table_name_prefix`
+    is not blank.
+
+    Call `assume_migrated_upto_version` on connection to prevent it from first
+    being picked up in `method_missing`.
+
+    In the base class, `Migration`, `method_missing` expects the argument to be a
+    table name, and calls `proper_table_name` on the arguments before sending to
+    `connection`. If `table_name_prefix` or `table_name_suffix` is used, the schema
+    version changes to `prefix_version_suffix`, breaking `rake test:prepare`.
+
+    Fixes #10411.
+
+    *Kyle Stevens*
+
+*   Mute `psql` output when running rake db:schema:load.
+
+    *Godfrey Chan*
+
+*   Trigger a save on `has_one association=(associate)` when the associate contents have changed.
+
+    Fix #8856.
+
+    *Chris Thompson*
 
 *   Allow to use databases.rake tasks without having `Rails.application`.
 
@@ -534,9 +590,6 @@
         # This will expand the order :name to "authors".name.
         Author.joins(:books).where('books.published = 1').order(:name)
 
-
-## Rails 4.0.0.beta1 (February 25, 2013) ##
-
 *   Fix overriding of attributes by `default_scope` on `ActiveRecord::Base#dup`.
 
     *Hiroshige UMINO*
@@ -927,6 +980,11 @@
     http://www.postgresql.org/docs/8.3/static/sql-set.html
 
     *Aaron Stone*
+
+*   Allow setting of all libpq connection parameters through the PostgreSQL adapter. See also:
+    http://www.postgresql.org/docs/9.2/static/libpq-connect.html#LIBPQ-PARAMKEYWORDS
+
+    *Lars Kanis*
 
 *   Allow `Relation#where` with no arguments to be chained with new `not` query method.
 
