@@ -1,14 +1,26 @@
-rails-4.0 (4.0.0-1~1.gbp988ca5) UNRELEASED; urgency=low
-
-  ** SNAPSHOT build @988ca53ef7e37ad282a43b8da237a0efe9cbdb27 **
+rails-4.0 (4.0.0+dfsg-1) experimental; urgency=low
 
   [ Antonio Terceiro ]
   * Migrate to use dh_ruby multi-binary support
 
   [ Ondřej Surý ]
-  * New upstream version 4.0.0
+  * New upstream version 4.0.0+dfsg
+  * Update the package based on ftp-master review:
+    + Weaken some Conflicts to Breaks (Keeping Conflicts for virtual
+      packages)
+    + Generate actionpack/lib/action_dispatch/journey/parser.rb in the
+      build using racc
+    + Fix copyright to include correct year: (c) 2004-2013 David
+      Heinemeier Hansson
+    + Add MIT and/or CC-BY license for HTML selector by Assaf Arkin  
+    + PD-Art license is inconclusive, so we just remove the wikimedia Mona
+      Lisa picture and patch out the tests that were using it.
+      (http://commons.wikimedia.org/wiki/Commons:Reuse_of_PD-Art_photographs)
+    + Just remove whole guides.rubyonrails.org content from source tarball
+      (We'll repackage it to ruby-rails-guides-4.0 as soon as we clear the
+      licensing with upstream.)
 
- -- Antonio Terceiro <terceiro@debian.org>  Fri, 19 Jul 2013 13:58:35 +0200
+ -- Ondřej Surý <ondrej@debian.org>  Fri, 19 Jul 2013 15:23:01 +0200
 
 rails-4.0 (4.0.0~rc1-1) experimental; urgency=low
 
