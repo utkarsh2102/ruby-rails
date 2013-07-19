@@ -22,6 +22,7 @@ xzcat "$tarball" | \
     tar --wildcards \
         --delete '*/guides/assets/images/icons/*' \
         --delete '*/guides/assets/images/icons' \
+        --delete '*/actionpack/test/fixtures/multipart/mona_lisa.jpg' \
     > "$tdir/${fname/.xz}"
 xz "$tdir/${fname/.xz}"
 

@@ -1,0 +1,100 @@
+--- rails-4.0.orig/actionpack/test/controller/test_case_test.rb
++++ rails-4.0/actionpack/test/controller/test_case_test.rb
+@@ -780,80 +780,6 @@ XML
+   READ_BINARY = 'rb:binary'
+   READ_PLAIN = 'r:binary'
+ 
+-  def test_test_uploaded_file
+-    filename = 'mona_lisa.jpg'
+-    path = "#{FILES_DIR}/#{filename}"
+-    content_type = 'image/png'
+-    expected = File.read(path)
+-    expected.force_encoding(Encoding::BINARY)
+-
+-    file = Rack::Test::UploadedFile.new(path, content_type)
+-    assert_equal filename, file.original_filename
+-    assert_equal content_type, file.content_type
+-    assert_equal file.path, file.local_path
+-    assert_equal expected, file.read
+-
+-    new_content_type = "new content_type"
+-    file.content_type = new_content_type
+-    assert_equal new_content_type, file.content_type
+-
+-  end
+-
+-  def test_fixture_path_is_accessed_from_self_instead_of_active_support_test_case
+-    TestCaseTest.stubs(:fixture_path).returns(FILES_DIR)
+-
+-    uploaded_file = fixture_file_upload('/mona_lisa.jpg', 'image/png')
+-    assert_equal File.open("#{FILES_DIR}/mona_lisa.jpg", READ_PLAIN).read, uploaded_file.read
+-  end
+-
+-  def test_test_uploaded_file_with_binary
+-    filename = 'mona_lisa.jpg'
+-    path = "#{FILES_DIR}/#{filename}"
+-    content_type = 'image/png'
+-
+-    binary_uploaded_file = Rack::Test::UploadedFile.new(path, content_type, :binary)
+-    assert_equal File.open(path, READ_BINARY).read, binary_uploaded_file.read
+-
+-    plain_uploaded_file = Rack::Test::UploadedFile.new(path, content_type)
+-    assert_equal File.open(path, READ_PLAIN).read, plain_uploaded_file.read
+-  end
+-
+-  def test_fixture_file_upload_with_binary
+-    filename = 'mona_lisa.jpg'
+-    path = "#{FILES_DIR}/#{filename}"
+-    content_type = 'image/jpg'
+-
+-    binary_file_upload = fixture_file_upload(path, content_type, :binary)
+-    assert_equal File.open(path, READ_BINARY).read, binary_file_upload.read
+-
+-    plain_file_upload = fixture_file_upload(path, content_type)
+-    assert_equal File.open(path, READ_PLAIN).read, plain_file_upload.read
+-  end
+-
+-  def test_fixture_file_upload
+-    post :test_file_upload, :file => fixture_file_upload(FILES_DIR + "/mona_lisa.jpg", "image/jpg")
+-    assert_equal '159528', @response.body
+-  end
+-
+-  def test_fixture_file_upload_relative_to_fixture_path
+-    TestCaseTest.stubs(:fixture_path).returns(FILES_DIR)
+-    uploaded_file = fixture_file_upload("mona_lisa.jpg", "image/jpg")
+-    assert_equal File.open("#{FILES_DIR}/mona_lisa.jpg", READ_PLAIN).read, uploaded_file.read
+-  end
+-
+-  def test_fixture_file_upload_ignores_nil_fixture_path
+-    TestCaseTest.stubs(:fixture_path).returns(nil)
+-    uploaded_file = fixture_file_upload("#{FILES_DIR}/mona_lisa.jpg", "image/jpg")
+-    assert_equal File.open("#{FILES_DIR}/mona_lisa.jpg", READ_PLAIN).read, uploaded_file.read
+-  end
+-
+-  def test_action_dispatch_uploaded_file_upload
+-    filename = 'mona_lisa.jpg'
+-    path = "#{FILES_DIR}/#{filename}"
+-    post :test_file_upload, :file => ActionDispatch::Http::UploadedFile.new(:filename => path, :type => "image/jpg", :tempfile => File.open(path))
+-    assert_equal '159528', @response.body
+-  end
+-
+   def test_test_uploaded_file_exception_when_file_doesnt_exist
+     assert_raise(RuntimeError) { Rack::Test::UploadedFile.new('non_existent_file') }
+   end
+--- rails-4.0.orig/actionpack/test/dispatch/request/multipart_params_parsing_test.rb
++++ rails-4.0/actionpack/test/dispatch/request/multipart_params_parsing_test.rb
+@@ -127,14 +127,6 @@ class MultipartParamsParsingTest < Actio
+     assert_equal "", params['files'].read
+   end
+ 
+-  test "uploads and reads binary file" do
+-    with_test_routing do
+-      fixture = FIXTURE_PATH + "/mona_lisa.jpg"
+-      params = { :uploaded_data => fixture_file_upload(fixture, "image/jpg") }
+-      post '/read', params
+-    end
+-  end
+-
+   test "uploads and reads file" do
+     with_test_routing do
+       post '/read', :uploaded_data => fixture_file_upload(FIXTURE_PATH + "/hello.txt", "text/plain")
