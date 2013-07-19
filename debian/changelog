@@ -4,6 +4,9 @@ rails-4.0 (4.0.0+dfsg-1) unstable; urgency=low
   * Migrate to use dh_ruby multi-binary support
 
   [ Ondřej Surý ]
+  * Initial release of Rails 4.0
+  * Merge ruby-{active,action}*-X.Y packages into rails-4.0
+  * Add Copyright headers for syntaxhighlighter
   * New upstream version 4.0.0+dfsg
   * Update the package based on ftp-master review:
     + Weaken some Conflicts to Breaks (Keeping Conflicts for virtual
@@ -12,7 +15,7 @@ rails-4.0 (4.0.0+dfsg-1) unstable; urgency=low
       build using racc
     + Fix copyright to include correct year: (c) 2004-2013 David
       Heinemeier Hansson
-    + Add MIT and/or CC-BY license for HTML selector by Assaf Arkin  
+    + Add MIT or CC-BY license for HTML selector by Assaf Arkin  
     + PD-Art license is inconclusive, so we just remove the wikimedia Mona
       Lisa picture and patch out the tests that were using it.
       (http://commons.wikimedia.org/wiki/Commons:Reuse_of_PD-Art_photographs)
@@ -24,11 +27,3 @@ rails-4.0 (4.0.0+dfsg-1) unstable; urgency=low
   * Add dversionmangle to debian/watch
 
  -- Ondřej Surý <ondrej@debian.org>  Fri, 19 Jul 2013 15:35:13 +0200
-
-rails-4.0 (4.0.0~rc1-1) experimental; urgency=low
-
-  * Initial release of Rails 4.0
-  * Merge ruby-{active,action}*-X.Y packages into rails-4.0
-  * Add Copyright headers for syntaxhighlighter
-
- -- Ondřej Surý <ondrej@debian.org>  Tue, 28 May 2013 15:37:24 +0200
