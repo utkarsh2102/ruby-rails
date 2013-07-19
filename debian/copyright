@@ -17,7 +17,7 @@ Files: actionpack/test/controller/selector_test.rb
        actionpack/lib/action_view/vendor/html-scanner/html/selector.rb
        actionpack/lib/action_dispatch/testing/assertions/selector.rb
 Copyright: 2006 Assaf Arkin (http://labnotes.org)
-License: MIT and/or CC-BY
+License: MIT or CC-BY
 
 Files: debian/*
 Copyright: Copyright 2011 Ondřej Surý <ondrej@debian.org>
