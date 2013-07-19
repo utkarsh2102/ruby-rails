@@ -16,6 +16,10 @@ UPSTREAM_PACKAGES=actionmailer activerecord activemodel activesupport railties a
 %:
 	dh $@ --buildsystem=ruby --with ruby
 
+overrride_dh_auto_build:
+	racc -o actionpack/lib/action_dispatch/journey/parser.rb \
+		actionpack/lib/action_dispatch/journey/parser.y
+
 override_dh_installexamples:
 	dh_installexamples -Xjquery.min.js -X.gitignore
 	chmod -x \
