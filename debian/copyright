@@ -5,25 +5,25 @@ Source: https://github.com/rails/rails
 
 Files: *
 Copyright: Copyright 2004-2013 David Heinemeier Hansson
-License: MIT
+License: Expat
 
 Files: guides/assets/javascripts/syntaxhighlighter/*.js
        guides/assets/stylesheets/syntaxhighlighter/*.css
 Copyright: 2004-2010 Alex Gorbatchev
-License: GPL or MIT
+License: GPL or Expat
 
 Files: actionpack/test/controller/selector_test.rb
        actionpack/test/controller/assert_select_test.rb
        actionpack/lib/action_view/vendor/html-scanner/html/selector.rb
        actionpack/lib/action_dispatch/testing/assertions/selector.rb
 Copyright: 2006 Assaf Arkin (http://labnotes.org)
-License: MIT or CC-BY
+License: Expat or CC-BY
 
 Files: debian/*
 Copyright: Copyright 2011 Ondřej Surý <ondrej@debian.org>
-License: MIT
+License: Expat
 
-License: MIT
+License: Expat
  Permission is hereby granted, free of charge, to any person obtaining
  a copy of this software and associated documentation files (the
  "Software"), to deal in the Software without restriction, including
