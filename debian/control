@@ -80,7 +80,7 @@ XB-Ruby-Versions: ${ruby:Versions}
 Depends: ${misc:Depends},
 	 ruby | ruby-interpreter,
 	 ruby-activesupport-4.0 (= ${source:Version}),
-	 ruby-rack (>= 1.5.2),
+	 ruby-rack (>= 1:1.5.2),
 	 ruby-rack-test (>= 0.6.2),
 	 ruby-builder (>= 3.1.0),
 	 ruby-erubis (>= 2.7.0~)

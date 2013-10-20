@@ -1,3 +1,10 @@
+rails-4.0 (4.0.0+dfsg-2) UNRELEASED; urgency=low
+
+  * ruby-actionpack-4.0: tighten versioned dependency on ruby-rack to take
+    epoch into account.
+
+ -- Antonio Terceiro <terceiro@debian.org>  Sun, 20 Oct 2013 16:22:25 -0300
+
 rails-4.0 (4.0.0+dfsg-1) unstable; urgency=low
 
   [ Antonio Terceiro ]
