@@ -135,11 +135,12 @@ module ActiveRecord
 
         def exec_query(sql, name = 'SQL', binds = [])
           log(sql, name, binds) do
-            result = binds.empty? ? exec_no_cache(sql, binds) :
-                                    exec_cache(sql, binds)
+            result = without_prepared_statement?(binds) ? exec_no_cache(sql, binds) :
+                                                          exec_cache(sql, binds)
 
             types = {}
-            result.fields.each_with_index do |fname, i|
+            fields = result.fields
+            fields.each_with_index do |fname, i|
               ftype = result.ftype i
               fmod  = result.fmod i
               types[fname] = OID::TYPE_MAP.fetch(ftype, fmod) { |oid, mod|
@@ -148,7 +149,7 @@ module ActiveRecord
               }
             end
 
-            ret = ActiveRecord::Result.new(result.fields, result.values, types)
+            ret = ActiveRecord::Result.new(fields, result.values, types)
             result.clear
             return ret
           end
@@ -156,8 +157,8 @@ module ActiveRecord
 
         def exec_delete(sql, name = 'SQL', binds = [])
           log(sql, name, binds) do
-            result = binds.empty? ? exec_no_cache(sql, binds) :
-                                    exec_cache(sql, binds)
+            result = without_prepared_statement?(binds) ? exec_no_cache(sql, binds) :
+                                                          exec_cache(sql, binds)
             affected = result.cmd_tuples
             result.clear
             affected

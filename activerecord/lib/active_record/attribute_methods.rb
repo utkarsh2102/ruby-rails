@@ -1,4 +1,5 @@
 require 'active_support/core_ext/enumerable'
+require 'mutex_m'
 
 module ActiveRecord
   # = Active Record Attribute Methods
@@ -7,6 +8,7 @@ module ActiveRecord
     include ActiveModel::AttributeMethods
 
     included do
+      initialize_generated_modules
       include Read
       include Write
       include BeforeTypeCast
@@ -18,12 +20,34 @@ module ActiveRecord
     end
 
     module ClassMethods
+      def inherited(child_class) #:nodoc:
+        child_class.initialize_generated_modules
+        super
+      end
+
+      def initialize_generated_modules # :nodoc:
+        @generated_attribute_methods = Module.new {
+          extend Mutex_m
+
+          const_set :AttrNames, Module.new {
+            def self.set_name_cache(name, value)
+              const_name = "ATTR_#{name}"
+              unless const_defined? const_name
+                const_set const_name, value.dup.freeze
+              end
+            end
+          }
+        }
+        @attribute_methods_generated = false
+        include @generated_attribute_methods
+      end
+
       # Generates all the attribute related methods for columns in the database
       # accessors, mutators and query methods.
       def define_attribute_methods # :nodoc:
         # Use a mutex; we don't want two thread simultaneously trying to define
         # attribute methods.
-        @attribute_methods_mutex.synchronize do
+        generated_attribute_methods.synchronize do
           return if attribute_methods_generated?
           superclass.define_attribute_methods unless self == base_class
           super(column_names)
@@ -32,7 +56,7 @@ module ActiveRecord
       end
 
       def attribute_methods_generated? # :nodoc:
-        @attribute_methods_generated ||= false
+        @attribute_methods_generated
       end
 
       def undefine_attribute_methods # :nodoc:

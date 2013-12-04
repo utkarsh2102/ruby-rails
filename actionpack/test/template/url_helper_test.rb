@@ -18,6 +18,7 @@ class UrlHelperTest < ActiveSupport::TestCase
     get "/" => "foo#bar"
     get "/other" => "foo#other"
     get "/article/:id" => "foo#article", :as => :article
+    get "/category/:category" => "foo#category"
   end
 
   include ActionView::Helpers::UrlHelper
@@ -307,6 +308,13 @@ class UrlHelperTest < ActiveSupport::TestCase
     )
   end
 
+  def test_link_tag_using_block_and_hash
+    assert_dom_equal(
+      %{<a href="/"><span>Example site</span></a>},
+      link_to(url_hash) { content_tag(:span, 'Example site') }
+    )
+  end
+
   def test_link_to_with_string_remote_in_non_html_options
     assert_dom_equal(
       %{<a href="/" data-remote="true">Hello</a>},
@@ -423,6 +431,11 @@ class UrlHelperTest < ActiveSupport::TestCase
       link_to_unless(true, "Showing", url_hash) {
         "test"
       }
+
+    assert_equal %{&lt;b&gt;Showing&lt;/b&gt;}, link_to_unless(true, "<b>Showing</b>", url_hash)
+    assert_equal %{<a href="/">&lt;b&gt;Showing&lt;/b&gt;</a>}, link_to_unless(false, "<b>Showing</b>", url_hash)
+    assert_equal %{<b>Showing</b>}, link_to_unless(true, "<b>Showing</b>".html_safe, url_hash)
+    assert_equal %{<a href="/"><b>Showing</b></a>}, link_to_unless(false, "<b>Showing</b>".html_safe, url_hash)
   end
 
   def test_link_to_if
@@ -466,6 +479,26 @@ class UrlHelperTest < ActiveSupport::TestCase
     @request = request_for_url("/events", method: :post)
 
     assert !current_page?('/events')
+  end
+
+  def test_current_page_with_escaped_params
+    @request = request_for_url("/category/administra%c3%a7%c3%a3o")
+
+    assert current_page?(controller: 'foo', action: 'category', category: 'administração')
+  end
+
+  def test_current_page_with_escaped_params_with_different_encoding
+    @request = request_for_url("/")
+    @request.stubs(path: "/category/administra%c3%a7%c3%a3o".force_encoding(Encoding::ASCII_8BIT))
+
+    assert current_page?(:controller => 'foo', :action => 'category', category: 'administração')
+    assert current_page?("http://www.example.com/category/administra%c3%a7%c3%a3o")
+  end
+
+  def test_current_page_with_double_escaped_params
+    @request = request_for_url("/category/administra%c3%a7%c3%a3o?callback_url=http%3a%2f%2fexample.com%2ffoo")
+
+    assert current_page?(controller: 'foo', action: 'category', category: 'administração', callback_url: 'http://example.com/foo')
   end
 
   def test_link_unless_current

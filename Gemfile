@@ -4,10 +4,9 @@ gemspec
 
 gem 'mocha', '~> 0.13.0', require: false
 gem 'rack-cache', '~> 1.2'
-gem 'bcrypt-ruby', '~> 3.0.0'
+gem 'bcrypt-ruby', '~> 3.1.2'
 gem 'jquery-rails', '~> 2.2.0'
 gem 'turbolinks'
-gem 'coffee-rails', '~> 4.0.0'
 
 # This needs to be with require false to avoid
 # it being automatically loaded by sprockets
@@ -58,11 +57,11 @@ end
 
 platforms :jruby do
   gem 'json'
-  gem 'activerecord-jdbcsqlite3-adapter', '>= 1.2.7'
+  gem 'activerecord-jdbcsqlite3-adapter', '>= 1.3.0'
 
   group :db do
-    gem 'activerecord-jdbcmysql-adapter', '>= 1.2.7'
-    gem 'activerecord-jdbcpostgresql-adapter', '>= 1.2.7'
+    gem 'activerecord-jdbcmysql-adapter', '>= 1.3.0'
+    gem 'activerecord-jdbcpostgresql-adapter', '>= 1.3.0'
   end
 end
 

@@ -376,6 +376,7 @@ module ActiveRecord
       column ? column.type_cast(value) : value
     end
 
+    # TODO: refactor to allow non-string `select_values` (eg. Arel nodes).
     def select_for_count
       if select_values.present?
         select = select_values.join(", ")

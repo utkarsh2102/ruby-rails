@@ -30,11 +30,18 @@ module ActiveModel
         @delimiter ||= options[:in] || options[:within]
       end
 
-      # In Ruby 1.9 <tt>Range#include?</tt> on non-numeric ranges checks all possible values in the
-      # range for equality, so it may be slow for large ranges. The new <tt>Range#cover?</tt>
-      # uses the previous logic of comparing a value with the range endpoints.
+      # In Ruby 1.9 <tt>Range#include?</tt> on non-number-or-time-ish ranges checks all
+      # possible values in the range for equality, which is slower but more accurate.
+      # <tt>Range#cover?</tt> uses the previous logic of comparing a value with the range
+      # endpoints, which is fast but is only accurate on Numeric, Time, or DateTime ranges.
       def inclusion_method(enumerable)
-        enumerable.is_a?(Range) ? :cover? : :include?
+        return :include? unless enumerable.is_a?(Range)
+        case enumerable.first
+        when Numeric, Time, DateTime
+          :cover?
+        else
+          :include?
+        end
       end
     end
   end

@@ -186,16 +186,41 @@ module ActionDispatch
               klass = Journey::Router::Utils
 
               @path_parts.zip(args) do |part, arg|
+                parameterized_arg = arg.to_param
+
+                if parameterized_arg.nil? || parameterized_arg.empty?
+                  raise_generation_error(args)
+                end
+
                 # Replace each route parameter
                 # e.g. :id for regular parameter or *path for globbing
                 # with ruby string interpolation code
-                path.gsub!(/(\*|:)#{part}/, klass.escape_fragment(arg.to_param))
+                path.gsub!(/(\*|:)#{part}/, klass.escape_fragment(parameterized_arg))
               end
               path
             end
 
             def optimize_routes_generation?(t)
               t.send(:optimize_routes_generation?)
+            end
+
+            def raise_generation_error(args)
+              parts, missing_keys = [], []
+
+              @path_parts.zip(args) do |part, arg|
+                parameterized_arg = arg.to_param
+
+                if parameterized_arg.nil? || parameterized_arg.empty?
+                  missing_keys << part
+                end
+
+                parts << [part, arg]
+              end
+
+              message = "No route matches #{Hash[parts].inspect}"
+              message << " missing required keys: #{missing_keys.inspect}"
+
+              raise ActionController::UrlGenerationError, message
             end
           end
 

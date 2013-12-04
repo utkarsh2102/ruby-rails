@@ -1,8 +1,36 @@
+## Rails 4.0.1 (November 01, 2013) ##
+
+*   Fix the event name of action_dispatch requests.
+
+    *Rafael Mendonça França*
+
+*   Make `config.log_level` work with custom loggers.
+
+    *Max Shytikov*
+
+*   Fix `rake environment` to do not eager load modules
+
+    *Paul Nikitochkin*
+
+*   Fix `rails plugin --help` command.
+
+    *Richard Schneeman*
+
+*   Omit turbolinks configuration completely on skip_javascript generator option.
+
+    *Nikita Fedyashev*
+
+
 ## Rails 4.0.0 (June 25, 2013) ##
 
 *   Clearing autoloaded constants triggers routes reloading [Fixes #10685].
 
     *Xavier Noria*
+
+*   Fixes bug with scaffold generator with `--assets=false --resource-route=false`.
+    Fixes #9525.
+
+    *Arun Agrawal*
 
 *   Move rails.png into a data-uri. One less file to get generated into a new
     application. This is also consistent with the removal of index.html.

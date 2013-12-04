@@ -202,6 +202,11 @@ class SchemaDumperTest < ActiveRecord::TestCase
     assert_match %r(primary_key: "movieid"), match[1], "non-standard primary key not preserved"
   end
 
+  def test_schema_dump_should_use_false_as_default
+    output = standard_dump
+    assert_match %r{t\.boolean\s+"has_fun",.+default: false}, output
+  end
+
   if current_adapter?(:MysqlAdapter, :Mysql2Adapter)
     def test_schema_dump_should_not_add_default_value_for_mysql_text_field
       output = standard_dump
@@ -299,7 +304,7 @@ class SchemaDumperTest < ActiveRecord::TestCase
 
     def test_schema_dump_includes_uuid_shorthand_definition
       output = standard_dump
-      if %r{create_table "poistgresql_uuids"} =~ output
+      if %r{create_table "postgresql_uuids"} =~ output
         assert_match %r{t.uuid "guid"}, output
       end
     end

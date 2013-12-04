@@ -18,6 +18,7 @@ module ActiveRecord
     #         HasManyThroughAssociation + ThroughAssociation
     class Association #:nodoc:
       attr_reader :owner, :target, :reflection
+      attr_accessor :inversed
 
       delegate :options, :to => :reflection
 
@@ -43,6 +44,7 @@ module ActiveRecord
         @loaded = false
         @target = nil
         @stale_state = nil
+        @inversed = false
       end
 
       # Reloads the \target and returns +self+ on success.
@@ -60,8 +62,9 @@ module ActiveRecord
 
       # Asserts the \target has been loaded setting the \loaded flag to +true+.
       def loaded!
-        @loaded      = true
+        @loaded = true
         @stale_state = stale_state
+        @inversed = false
       end
 
       # The target is stale if the target no longer points to the record(s) that the
@@ -71,7 +74,7 @@ module ActiveRecord
       #
       # Note that if the target has not been loaded, it is not considered stale.
       def stale_target?
-        loaded? && @stale_state != stale_state
+        !inversed && loaded? && @stale_state != stale_state
       end
 
       # Sets the target of this association to <tt>\target</tt>, and the \loaded flag to +true+.
@@ -110,6 +113,7 @@ module ActiveRecord
         if record && invertible_for?(record)
           inverse = record.association(inverse_reflection_for(record).name)
           inverse.target = owner
+          inverse.inversed = true
         end
       end
 
@@ -122,7 +126,11 @@ module ActiveRecord
       # Can be overridden (i.e. in ThroughAssociation) to merge in other scopes (i.e. the
       # through association's scope)
       def target_scope
-        klass.all
+        all = klass.all
+        scope = AssociationRelation.new(klass, klass.arel_table, self)
+        scope.merge! all
+        scope.default_scoped = all.default_scoped?
+        scope
       end
 
       # Loads the \target if needed and returns it.

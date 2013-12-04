@@ -99,6 +99,7 @@ module ActiveRecord
         @query_cache_enabled = false
         @schema_cache        = SchemaCache.new self
         @visitor             = nil
+        @prepared_statements = false
       end
 
       def valid_type?(type)
@@ -197,10 +198,11 @@ module ActiveRecord
       end
 
       def unprepared_statement
-        old, @visitor = @visitor, unprepared_visitor
+        old_prepared_statements, @prepared_statements = @prepared_statements, false
+        old_visitor, @visitor = @visitor, unprepared_visitor
         yield
       ensure
-        @visitor = old
+        @visitor, @prepared_statements = old_visitor, old_prepared_statements
       end
 
       # Returns the human-readable name of the adapter. Use mixed case - one
@@ -278,6 +280,14 @@ module ActiveRecord
       # postgresql does.
       def supports_extensions?
         false
+      end
+
+      # This is meant to be implemented by the adapters that support extensions
+      def disable_extension(name)
+      end
+
+      # This is meant to be implemented by the adapters that support extensions
+      def enable_extension(name)
       end
 
       # A list of extensions, to be filled in by adapters that support them. At
@@ -434,6 +444,10 @@ module ActiveRecord
       def translate_exception(exception, message)
         # override in derived class
         ActiveRecord::StatementInvalid.new(message, exception)
+      end
+
+      def without_prepared_statement?(binds)
+        !@prepared_statements || binds.empty?
       end
     end
   end

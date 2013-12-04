@@ -35,19 +35,17 @@ command = ARGV.shift
 command = aliases[command] || command
 
 case command
-when 'generate', 'destroy', 'plugin'
+when 'plugin'
+  require "rails/commands/plugin_new"
+when 'generate', 'destroy'
   require 'rails/generators'
 
-  if command == 'plugin' && ARGV.first == 'new'
-    require "rails/commands/plugin_new"
-  else
-    require APP_PATH
-    Rails.application.require_environment!
+  require APP_PATH
+  Rails.application.require_environment!
 
-    Rails.application.load_generators
+  Rails.application.load_generators
 
-    require "rails/commands/#{command}"
-  end
+  require "rails/commands/#{command}"
 
 when 'console'
   require 'rails/commands/console'
@@ -64,7 +62,7 @@ when 'console'
   Rails::Console.start(Rails.application, options)
 
 when 'server'
-  # Change to the application's path if there is no config.ru file in current dir.
+  # Change to the application's path if there is no config.ru file in current directory.
   # This allows us to run `rails server` from other directories, but still get
   # the main config.ru and properly set the tmp directory.
   Dir.chdir(File.expand_path('../../', APP_PATH)) unless File.exists?(File.expand_path("config.ru"))
