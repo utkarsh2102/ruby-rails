@@ -1,9 +1,18 @@
-rails-4.0 (4.0.0+dfsg-2) UNRELEASED; urgency=low
+rails-4.0 (4.0.2+dfsg-1) unstable; urgency=low
 
+  [ Antonio Terceiro ]
   * ruby-actionpack-4.0: tighten versioned dependency on ruby-rack to take
     epoch into account.
 
- -- Antonio Terceiro <terceiro@debian.org>  Sun, 20 Oct 2013 16:22:25 -0300
+  [ Ondřej Surý ]
+  * New upstream version 4.0.2+dfsg, fixes:
+    + [CVE-2013-6417] Incomplete fix to CVE-2013-0155 (Unsafe Query Generation Risk)
+    + [CVE-2013-4491] Reflective XSS Vulnerability in Ruby on Rails
+    + [CVE-2013-6415] XSS Vulnerability in number_to_currency
+    + [CVE-2013-6414] Denial of Service Vulnerability in Action View
+    + [CVE-2013-6416] XSS Vulnerability in simple_format helper
+
+ -- Ondřej Surý <ondrej@debian.org>  Wed, 04 Dec 2013 10:34:24 +0100
 
 rails-4.0 (4.0.0+dfsg-1) unstable; urgency=low
 
