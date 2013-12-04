@@ -179,7 +179,15 @@ module ActiveRecord
       assert_equal ['foo = bar'], relation.where_values
     end
 
-    def test_relation_merging_with_merged_joins
+    def test_merging_readonly_false
+      relation = Relation.new FakeKlass, :b
+      readonly_false_relation = relation.readonly(false)
+      # test merging in both directions
+      assert_equal false, relation.merge(readonly_false_relation).readonly_value
+      assert_equal false, readonly_false_relation.merge(relation).readonly_value
+    end
+
+    def test_relation_merging_with_merged_joins_as_symbols
       special_comments_with_ratings = SpecialComment.joins(:ratings)
       posts_with_special_comments_with_ratings = Post.group("posts.id").joins(:special_comments).merge(special_comments_with_ratings)
       assert_equal 3, authors(:david).posts.merge(posts_with_special_comments_with_ratings).count.length
@@ -193,12 +201,18 @@ module ActiveRecord
       assert_equal false, post.respond_to?(:title), "post should not respond_to?(:body) since invoking it raises exception"
     end
 
+    def test_relation_merging_with_merged_joins_as_strings
+      join_string = "LEFT OUTER JOIN #{Rating.quoted_table_name} ON #{SpecialComment.quoted_table_name}.id = #{Rating.quoted_table_name}.comment_id"
+      special_comments_with_ratings = SpecialComment.joins join_string
+      posts_with_special_comments_with_ratings = Post.group("posts.id").joins(:special_comments).merge(special_comments_with_ratings)
+      assert_equal 3, authors(:david).posts.merge(posts_with_special_comments_with_ratings).count.length
+    end
   end
 
   class RelationMutationTest < ActiveSupport::TestCase
     class FakeKlass < Struct.new(:table_name, :name)
-      def quoted_table_name
-        %{"#{table_name}"}
+      def arel_table
+        Post.arel_table
       end
     end
 
@@ -220,7 +234,10 @@ module ActiveRecord
 
     test "#order! with symbol prepends the table name" do
       assert relation.order!(:name).equal?(relation)
-      assert_equal ['"posts".name ASC'], relation.order_values
+      node = relation.order_values.first
+      assert node.ascending?
+      assert_equal :name, node.expr.name
+      assert_equal "posts", node.expr.relation.name
     end
 
     test '#references!' do

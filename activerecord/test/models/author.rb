@@ -13,7 +13,11 @@ class Author < ActiveRecord::Base
   has_many :posts_with_extension, :class_name => "Post"
   has_one  :post_about_thinking, -> { where("posts.title like '%thinking%'") }, :class_name => 'Post'
   has_one  :post_about_thinking_with_last_comment, -> { where("posts.title like '%thinking%'").includes(:last_comment) }, :class_name => 'Post'
-  has_many :comments, :through => :posts
+  has_many :comments, through: :posts do
+    def ratings
+      Rating.joins(:comment).merge(self)
+    end
+  end
   has_many :comments_containing_the_letter_e, :through => :posts, :source => :comments
   has_many :comments_with_order_and_conditions, -> { order('comments.body').where("comments.body like 'Thank%'") }, :through => :posts, :source => :comments
   has_many :comments_with_include, -> { includes(:post) }, :through => :posts, :source => :comments
@@ -26,6 +30,13 @@ class Author < ActiveRecord::Base
 
   has_many :thinking_posts, -> { where(:title => 'So I was thinking') }, :dependent => :delete_all, :class_name => 'Post'
   has_many :welcome_posts, -> { where(:title => 'Welcome to the weblog') }, :class_name => 'Post'
+
+  has_many :welcome_posts_with_comment,
+           -> { where(title: 'Welcome to the weblog').where('comments_count = ?', 1) },
+           class_name: 'Post'
+  has_many :welcome_posts_with_comments,
+           -> { where(title: 'Welcome to the weblog').where(Post.arel_table[:comments_count].gt(0)) },
+           class_name: 'Post'
 
   has_many :comments_desc, -> { order('comments.id DESC') }, :through => :posts, :source => :comments
   has_many :limited_comments, -> { limit(1) }, :through => :posts, :source => :comments

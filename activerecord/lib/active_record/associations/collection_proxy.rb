@@ -830,7 +830,7 @@ module ActiveRecord
       #   person.pets.include?(Pet.find(20)) # => true
       #   person.pets.include?(Pet.find(21)) # => false
       def include?(record)
-        @association.include?(record)
+        !!@association.include?(record)
       end
 
       def proxy_association
@@ -847,9 +847,7 @@ module ActiveRecord
 
       # Returns a <tt>Relation</tt> object for the records in this association
       def scope
-        @association.scope.tap do |scope|
-          scope.proxy_association = @association
-        end
+        @association.scope
       end
 
       # :nodoc:

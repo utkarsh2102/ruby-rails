@@ -11,6 +11,11 @@ class Company < AbstractCompany
   has_many :contracts
   has_many :developers, :through => :contracts
 
+  scope :of_first_firm, lambda {
+    joins(:account => :firm).
+    where('firms.id' => 1)
+  }
+
   def arbitrary_method
     "I am Jack's profound disappointment"
   end
@@ -45,7 +50,7 @@ class Firm < Company
   has_many :unsorted_clients, :class_name => "Client"
   has_many :unsorted_clients_with_symbol, :class_name => :Client
   has_many :clients_sorted_desc, -> { order "id DESC" }, :class_name => "Client"
-  has_many :clients_of_firm, -> { order "id" }, :foreign_key => "client_of", :class_name => "Client"
+  has_many :clients_of_firm, -> { order "id" }, :foreign_key => "client_of", :class_name => "Client", :inverse_of => :firm
   has_many :clients_ordered_by_name, -> { order "name" }, :class_name => "Client"
   has_many :unvalidated_clients_of_firm, :foreign_key => "client_of", :class_name => "Client", :validate => false
   has_many :dependent_clients_of_firm, -> { order "id" }, :foreign_key => "client_of", :class_name => "Client", :dependent => :destroy
@@ -143,6 +148,10 @@ class Client < Company
   belongs_to :bob_firm, -> { where :name => "Bob" }, :class_name => "Firm", :foreign_key => "client_of"
   has_many :accounts, :through => :firm
   belongs_to :account
+
+  validate do
+    firm
+  end
 
   class RaisedOnSave < RuntimeError; end
   attr_accessor :raise_on_save

@@ -1,3 +1,231 @@
+*   Ensure simple_format escapes its html attributes. This fixes CVE-2013-6416
+
+*   Deep Munge the parameters for GET and POST Fixes CVE-2013-6417
+
+*   Stop using i18n's built in HTML error handling.  Fixes: CVE-2013-4491
+
+*   Escape the unit value provided to number_to_currency Fixes CVE-2013-6415
+
+*   Only use valid mime type symbols as cache keys CVE-2013-6414
+
+
+## Rails 4.0.1 (November 01, 2013) ##
+
+*   Respect `SCRIPT_NAME` when using `redirect` with a relative path
+
+    Example:
+        # application routes.rb
+        mount BlogEngine => '/blog'
+
+        # engine routes.rb
+        get '/admin' => redirect('admin/dashboard')
+
+    This now redirects to the path `/blog/admin/dashboard`, whereas before it would've
+    generated an invalid url because there would be no slash between the host name and
+    the path. It also allows redirects to work where the application is deployed to a
+    subdirectory of a website.
+
+    Fixes #7977.
+
+    *Andrew White*
+
+*   Fix `ActionDispatch::RemoteIp::GetIp#calculate_ip` to only check for spoofing
+    attacks if both `HTTP_CLIENT_IP` and `HTTP_X_FORWARDED_FOR` are set.
+
+    Fixes #10844.
+
+    *Tamir Duberstein*
+
+*   Strong parameters should permit nested number as key.
+
+    Fixes #12293.
+
+    *kennyj*
+
+*   Fix `collection_check_boxes` generated hidden input to use the name attribute provided
+    in the options hash.
+
+    *Angel N. Sciortino*
+
+*   Fix some edge cases for AV `select` helper with `:selected` option
+
+    *Bogdan Gusiev*
+
+*   Handle `:namespace` form option in collection labels
+
+    *Vasiliy Ermolovich*
+
+*   Fix an issue where router can't recognize downcased url encoding path.
+
+    Fixes #12269.
+
+    *kennyj*
+
+*   Fix custom flash type definition. Misusage of the `_flash_types` class variable
+    caused an error when reloading controllers with custom flash types.
+
+    Fixes #12057.
+
+    *Ricardo de Cillo*
+
+*   Do not break params filtering on `nil` values.
+
+    Fixes #12149.
+
+    *Vasiliy Ermolovich*
+
+*   Fix `excerpt` when `:separator` is `nil`.
+
+    *Paul Nikitochkin*
+
+*   Make Live Streaming work with basic authentication or builder.
+
+    Fixes #10984.
+
+    *Aaron Patterson*
+
+*   Always use `Rack::Sendfile` to make possible to it be automatically
+    configured by the webserver.
+
+    Fixes #11440.
+
+    *Martin Schürrer*
+
+*   Flag cookies as secure with ignore case in `ActionDispatch::SSL`.
+
+    *Yamagishi Kazutoshi*
+
+*   Don't include STS header in non-HTTPS responses.
+
+    *Geoff Buesing*
+
+*   Fix an issue where rails raise exception about missing helper where it
+    should throw `LoadError`. When helper file exists and only loaded file from
+    this helper does not exist rails should throw LoadError instead of
+    `MissingHelperError`.
+
+    *Piotr Niełacny*
+
+*   Only cache template digests if `config.cache_template_loading` is true.
+
+    *Josh Lauer*, *Justin Ridgewell*
+
+*   Fix an issue where `:if` and `:unless` controller action procs were being run
+    before checking for the correct action in the `:only` and `:unless` options.
+
+    Fixes #11799.
+
+    *Nicholas Jakobsen*
+
+*   Fix an issue where `assert_dom_equal` and `assert_dom_not_equal` were
+    ignoring the passed failure message argument.
+
+    Fixes #11751.
+
+    *Ryan McGeary*
+
+*   Fix `current_page?` when the URL contains escaped characters and the
+    original URL is using the hexadecimal lowercased.
+
+    *Rafael Mendonça França*
+
+*   Allow `REMOTE_ADDR`, `HTTP_HOST` and `HTTP_USER_AGENT` to be overridden from
+    the environment passed into `ActionDispatch::TestRequest.new`.
+
+    Fixes #11590.
+
+    *Andrew White*
+
+*   Fix `text_area` to behave like `text_field` when `nil` is given as
+    value.
+
+    Before:
+
+        f.text_field :field, value: nil #=> <input value="">
+        f.text_area :field, value: nil  #=> <textarea>value of field</textarea>
+
+    After:
+
+        f.text_area :field, value: nil  #=> <textarea></textarea>
+
+    *Joel Cogen*
+
+*   Fix an issue where Journey was failing to clear the named routes hash when the
+    routes were reloaded and since it doesn't overwrite existing routes then if a
+    route changed but wasn't renamed it kept the old definition. This was being
+    masked by the optimised url helpers so it only became apparent when passing an
+    options hash to the url helper.
+
+    *Andrew White*
+
+*   Skip routes pointing to a redirect or mounted application when generating urls
+    using an options hash as they aren't relevant and generate incorrect urls.
+
+    Fixes #8018.
+
+    *Andrew White*
+
+*   Fix default rendered format problem when calling `render` without `:content_type` option.
+    It should return `:html`.
+
+    Fixes #11393.
+
+    *Gleb Mazovetskiy*, *Oleg*, *kennyj*
+
+*   Fix `ActionDispatch::ParamsParser#parse_formatted_parameters` to rewind body input stream on
+    parsing json params.
+
+    Fixes #11345.
+
+    *Yuri Bol*, *Paul Nikitochkin*
+
+*   Fix `link_to` with block and url hashes.
+
+    Before:
+
+        link_to(action: 'bar', controller: 'foo') { content_tag(:span, 'Example site') }
+        # => "<a action=\"bar\" controller=\"foo\"><span>Example site</span></a>"
+
+    After:
+
+        link_to(action: 'bar', controller: 'foo') { content_tag(:span, 'Example site') }
+        # => "<a href=\"/foo/bar\"><span>Example site</span></a>"
+
+    *Murahashi Sanemat Kenichi*
+
+*   Fix "Stack Level Too Deep" error when redering recursive partials.
+
+    Fixes #11340.
+
+    *Rafael Mendonça França*
+
+*   Pick `DateField` `DateTimeField` and `ColorField` values from stringified options allowing use of symbol keys with helpers.
+
+    *Jon Rowe*
+
+*   Fix `Mime::Type.parse` when bad accepts header is looked up. Previously it
+    was setting `request.formats` with an array containing a `nil` value, which
+    raised an error when setting the controller formats.
+
+    Fixes #10965.
+
+    *Becker*
+
+*   Always escape the result of `link_to_unless` method.
+
+    Before:
+
+        link_to_unless(true, '<b>Showing</b>', 'github.com')
+        # => "<b>Showing</b>"
+
+    After:
+
+        link_to_unless(true, '<b>Showing</b>', 'github.com')
+        # => "&lt;b&gt;Showing&lt;/b&gt;"
+
+    *dtaniwaki*
+
+
 ## Rails 4.0.0 (June 25, 2013) ##
 
 *   Merge `:action` from routing scope and assign endpoint if both `:controller`
@@ -29,6 +257,10 @@
         # => "<img alt=\"Google\" src=\"http://google.com\" />"
 
     *David Celis*
+
+*   Add `has_named_route?(route_name)` to the mapper API.
+
+    *José Valim*
 
 *   Fix an issue where partials with a number in the filename weren't being digested for cache dependencies.
 

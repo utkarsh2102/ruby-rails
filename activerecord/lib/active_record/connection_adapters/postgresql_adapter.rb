@@ -49,13 +49,17 @@ module ActiveRecord
       # Instantiates a new PostgreSQL column definition in a table.
       def initialize(name, default, oid_type, sql_type = nil, null = true)
         @oid_type = oid_type
+        default_value     = self.class.extract_value_from_default(default)
+
         if sql_type =~ /\[\]$/
           @array = true
-          super(name, self.class.extract_value_from_default(default), sql_type[0..sql_type.length - 3], null)
+          super(name, default_value, sql_type[0..sql_type.length - 3], null)
         else
           @array = false
-          super(name, self.class.extract_value_from_default(default), sql_type, null)
+          super(name, default_value, sql_type, null)
         end
+
+        @default_function = default if has_default_function?(default_value, default)
       end
 
       # :stopdoc:
@@ -137,6 +141,10 @@ module ActiveRecord
       end
 
       private
+
+        def has_default_function?(default_value, default)
+          !default_value && (%r{\w+\(.*\)} === default)
+        end
 
         def extract_limit(sql_type)
           case sql_type
@@ -374,15 +382,11 @@ module ActiveRecord
           self
         end
 
-        def xml(options = {})
-          column(args[0], :text, options)
-        end
-
         private
 
-        def create_column_definition(name, type)
-          ColumnDefinition.new name, type
-        end
+          def create_column_definition(name, type)
+            ColumnDefinition.new name, type
+          end
       end
 
       class Table < ActiveRecord::ConnectionAdapters::Table
@@ -436,6 +440,7 @@ module ActiveRecord
       def prepare_column_options(column, types)
         spec = super
         spec[:array] = 'true' if column.respond_to?(:array) && column.array
+        spec[:default] = "\"#{column.default_function}\"" if column.default_function
         spec
       end
 
@@ -528,6 +533,7 @@ module ActiveRecord
         super(connection, logger)
 
         if self.class.type_cast_config_to_boolean(config.fetch(:prepared_statements) { true })
+          @prepared_statements = true
           @visitor = Arel::Visitors::PostgreSQL.new self
         else
           @visitor = unprepared_visitor
@@ -623,9 +629,9 @@ module ActiveRecord
         true
       end
 
-      # Returns true if pg > 9.2
+      # Returns true if pg > 9.1
       def supports_extensions?
-        postgresql_version >= 90200
+        postgresql_version >= 90100
       end
 
       # Range datatypes weren't introduced until PostgreSQL 9.2
@@ -647,9 +653,9 @@ module ActiveRecord
 
       def extension_enabled?(name)
         if supports_extensions?
-          res = exec_query "SELECT EXISTS(SELECT * FROM pg_available_extensions WHERE name = '#{name}' AND installed_version IS NOT NULL)",
+          res = exec_query "SELECT EXISTS(SELECT * FROM pg_available_extensions WHERE name = '#{name}' AND installed_version IS NOT NULL) as enabled",
             'SCHEMA'
-          res.column_types['exists'].type_cast res.rows.first.first
+          res.column_types['enabled'].type_cast res.rows.first.first
         end
       end
 

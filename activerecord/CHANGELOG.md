@@ -1,3 +1,328 @@
+## Rails 4.0.1 (November 01, 2013) ##
+
+*   `NullRelation#pluck` takes a list of columns
+
+    The method signature in `NullRelation` was updated to mimic that in
+    `Calculations`.
+
+    *Derek Prior*
+
+*   `scope_chain` should not be mutated for other reflections.
+
+    Currently `scope_chain` uses same array for building different
+    `scope_chain` for different associations. During processing
+    these arrays are sometimes mutated and because of in-place
+    mutation the changed `scope_chain` impacts other reflections.
+
+    Fix is to dup the value before adding to the `scope_chain`.
+
+    Fixes #3882.
+
+    *Neeraj Singh*
+
+*   Prevent the inversed association from being reloaded on save.
+
+    Fixes #9499.
+
+    *Dmitry Polushkin*
+
+*   `Relation#order` quotes the column name if you pass a `Symbol`.
+    Fixes #11870.
+
+    Example:
+
+        # Before
+        Post.order(:id).to_sql == '... ORDER BY "posts".id ASC'
+
+        # After
+        Post.order(:id).to_sql == '... ORDER BY "posts"."id" ASC'
+
+    *Yves Senn*
+
+*   Generate subquery for `Relation` if it passed as array condition for `where`
+    method.
+
+    Example:
+
+        # Before
+        Blog.where('id in (?)', Blog.where(id: 1))
+        # =>  SELECT "blogs".* FROM "blogs"  WHERE "blogs"."id" = 1
+        # =>  SELECT "blogs".* FROM "blogs"  WHERE (id IN (1))
+
+        # After
+        Blog.where('id in (?)', Blog.where(id: 1).select(:id))
+        # =>  SELECT "blogs".* FROM "blogs"
+        #     WHERE "blogs"."id" IN (SELECT "blogs"."id" FROM "blogs"  WHERE "blogs"."id" = 1)
+
+    Fixes #12415.
+
+    *Paul Nikitochkin*
+
+*   For missed association exception message
+    which is raised in `ActiveRecord::Associations::Preloader` class
+    added owner record class name in order to simplify to find problem code.
+
+    *Paul Nikitochkin*
+
+*   Fixes bug when using includes combined with select, the select statement was overwritten.
+
+    Fixes #11773.
+
+    *Edo Balvers*
+
+*   Objects instantiated using a null relationship will now retain the
+    attributes of the where clause.
+
+    Fixes #11676, #11675, #11376.
+
+    *Paul Nikitochkin*, *Peter Brown*, *Nthalk*
+
+*   Fixed `ActiveRecord::Associations::CollectionAssociation#find`
+    when using `has_many` association with `:inverse_of` and finding an array of one element,
+    it should return an array of one element too.
+
+    *arthurnn*
+
+*   Callbacks on has_many should access the in memory parent if a inverse_of is set.
+
+    *arthurnn*
+
+*   Migration dump UUID default functions to schema.rb.
+
+    Fixes #10751.
+
+    *kennyj*
+
+*   Fixed a bug in `ActiveRecord::Associations::CollectionAssociation#find_by_scan`
+    when using `has_many` association with `:inverse_of` option and UUID primary key.
+
+    Fixes #10450.
+
+    *kennyj*
+
+*   Fix: joins association, with defined in the scope block constraints by using several
+    where constraints and at least of them is not `Arel::Nodes::Equality`,
+    generates invalid SQL expression.
+
+    Fixes: #11963
+
+    *Paul Nikitochkin*
+
+*   Make possible to run SQLite rake tasks without the `Rails` constant defined.
+
+    *Damien Mathieu*
+
+*   Allow Relation#from to accept other relations with bind values.
+
+    *Ryan Wallace*
+
+*   Make `find_in_batches` and `find_each` work without a logger.
+
+    *Dmitry Polushkin*
+
+*   Fix inserts with prepared statements disabled.
+
+    Fixes #12023.
+
+    *Rafael Mendonça França*
+
+*   Setting a has_one association on a new record no longer causes an empty
+    transaction.
+
+    *Dylan Thacker-Smith*
+
+*   Fix `AR::Relation#merge` sometimes failing to preserve `readonly(false)` flag.
+
+    *thedarkone*
+
+*   PostgreSQL adapter recognizes negative money values formatted with
+    parentheses (eg. `($1.25) # => -1.25`)).
+    Fixes #11899.
+
+    * Yves Senn*
+
+*   Do not load all child records for inverse case.
+
+    currently `post.comments.find(Comment.first.id)` would load all
+    comments for the given post to set the inverse association.
+
+    This has a huge performance penalty. Because if post has 100k
+    records and all these 100k records would be loaded in memory
+    even though the comment id was supplied.
+
+    Fix is to use in-memory records only if loaded? is true. Otherwise
+    load the records using full sql.
+
+    Fixes #10509.
+
+    *Neeraj Singh*
+
+*   `ActiveRecord::FinderMethods#exists?` returns `true`/`false` in all cases.
+
+    *Xavier Noria*
+
+*   Load fixtures from linked folders.
+
+    *Kassio Borges*
+
+*   Create a directory for sqlite3 file if not present on the system.
+
+    *Richard Schneeman*
+
+*   Removed redundant override of `xml` column definition for PG,
+    in order to use `xml` column type instead of `text`.
+
+    *Paul Nikitochkin*, *Michael Nikitochkin*
+
+*   Revert `ActiveRecord::Relation#order` change that make new order
+    prepend the old one.
+
+    Before:
+
+        User.order("name asc").order("created_at desc")
+        # SELECT * FROM users ORDER BY created_at desc, name asc
+
+    After:
+
+        User.order("name asc").order("created_at desc")
+        # SELECT * FROM users ORDER BY name asc, created_at desc
+
+    This also affects order defined in `default_scope` or any kind of associations.
+
+    *Rafael Mendonça França*
+
+*   When using optimistic locking, `update` was not passing the column to `quote_value`
+    to allow the connection adapter to properly determine how to quote the value. This was
+    affecting certain databases that use specific column types.
+
+    Fixes #6763.
+
+    *Alfred Wong*
+
+*   `change_column` for PostgreSQL adapter respects the `:array` option.
+
+    *Yves Senn*
+
+*   Fixes bug introduced by #3329. Now, when autosaving associations,
+    deletions happen before inserts and saves. This prevents a
+    'duplicate unique value' database error that would occur if a record being created had
+    the same value on a unique indexed field as that of a record being destroyed.
+
+    *Johnny Holton*
+
+*   Flatten merged join values before building the joins.
+
+    While joining values special treatment is given to string values.
+    By flattening the array it ensures that string values are detected
+    as strings and not arrays.
+
+    Fixes #10669.
+
+    *Neeraj Singh and iwiznia*
+
+*   Remove extra select and update queries on `save`/`touch`/`destroy` Active Record model
+    with belongs to reflection with option `touch: true`.
+
+    Fixes #11288.
+
+    *Paul Nikitochkin*
+
+*   Support array as root element in JSON fields.
+
+    *Alexey Noskov & Francesco Rodriguez*
+
+*   Apply default scope when joining associations. For example:
+
+        class Post < ActiveRecord::Base
+          default_scope -> { where published: true }
+        end
+
+        class Comment
+          belongs_to :post
+        end
+
+    When calling `Comment.joins(:post)`, we expect to receive only
+    comments on published posts, since that is the default scope for
+    posts.
+
+    Before this change, the default scope from `Post` was not applied,
+    so we'd get comments on unpublished posts.
+
+    *Jon Leighton*
+
+*   `inspect` on Active Record model classes does not initiate a
+    new connection. This means that calling `inspect`, when the
+    database is missing, will no longer raise an exception.
+
+    Fixes #10936.
+
+    Example:
+
+        Author.inspect # => "Author(no database connection)"
+
+    *Yves Senn*
+
+*   Fix mysql2 adapter raises the correct exception when executing a query on a
+    closed connection.
+
+    *Yves Senn*
+
+*   Fix the `:primary_key` option for `has_many` associations.
+
+    Fixes #10693.
+
+    *Yves Senn*
+
+*   Fix bug where tiny types are incorectly coerced as booleand when the length is more than 1.
+
+    Fixes #10620.
+
+    *Aaron Patterson*
+
+*   Also support extensions in PostgreSQL 9.1. This feature has been supported since 9.1.
+
+    *kennyj*
+
+*   Deprecate `ConnectionAdapters::SchemaStatements#distinct`,
+    as it is no longer used by internals.
+
+    *Ben Woosley#
+
+*   Remove not needed bind variables. Port of commit #5082345.
+
+    Fixes #10958.
+
+    *Neeraj Singh*
+
+*   Confirm a record has not already been destroyed before decrementing counter cache.
+
+    *Ben Tucker*
+
+*   Fixed a bug in `ActiveRecord#sanitize_sql_hash_for_conditions` in which
+    `self.class` is an argument to `PredicateBuilder#build_from_hash`
+    causing `PredicateBuilder` to call non-existent method
+    `Class#reflect_on_association`.
+
+    *Zach Ohlgren*
+
+*   While removing index if column option is missing then raise IrreversibleMigration exception.
+
+    Following code should raise `IrreversibleMigration`. But the code was
+    failing since options is an array and not a hash.
+
+        def change
+          change_table :users do |t|
+            t.remove_index [:name, :email]
+          end
+        end
+
+    Fix was to check if the options is a Hash before operating on it.
+
+    Fixes #10419.
+
+    *Neeraj Singh*
+
+
 ## Rails 4.0.0 (June 25, 2013) ##
 
 *   Fix `add_column` with `array` option when using PostgreSQL. Fixes #10432
@@ -29,7 +354,6 @@
     the same value on a unique indexed field as that of a record being destroyed.
 
     *Adam Anderson*
-
 
 *   Fix pending migrations error when loading schema and `ActiveRecord::Base.table_name_prefix`
     is not blank.
@@ -2046,7 +2370,7 @@
 *   The primary key is always initialized in the @attributes hash to `nil` (unless
     another value has been specified).
 
-    *Aaron Paterson*
+    *Aaron Patterson*
 
 *   In previous releases, the following would generate a single query with
     an `OUTER JOIN comments`, rather than two separate queries:
@@ -2097,6 +2421,5 @@
 *   PostgreSQL hstore types are automatically deserialized from the database.
 
     *Aaron Patterson*
-
 
 Please check [3-2-stable](https://github.com/rails/rails/blob/3-2-stable/activerecord/CHANGELOG.md) for previous changes.

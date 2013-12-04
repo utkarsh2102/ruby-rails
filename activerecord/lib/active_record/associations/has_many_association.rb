@@ -32,6 +32,7 @@ module ActiveRecord
 
       def insert_record(record, validate = true, raise = false)
         set_owner_attributes(record)
+        set_inverse_instance(record)
 
         if raise
           record.save!(:validate => validate)
@@ -115,8 +116,7 @@ module ActiveRecord
             if records == :all
               scope = self.scope
             else
-              keys  = records.map { |r| r[reflection.association_primary_key] }
-              scope = self.scope.where(reflection.association_primary_key => keys)
+              scope = self.scope.where(reflection.klass.primary_key => records)
             end
 
             if method == :delete_all

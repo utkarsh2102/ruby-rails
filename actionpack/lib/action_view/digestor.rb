@@ -1,16 +1,44 @@
 require 'thread_safe'
 require 'action_view/dependency_tracker'
+require 'monitor'
 
 module ActionView
   class Digestor
     cattr_reader(:cache)
-    @@cache = ThreadSafe::Cache.new
+    @@cache          = ThreadSafe::Cache.new
+    @@digest_monitor = Monitor.new
 
-    def self.digest(name, format, finder, options = {})
-      cache_key = [name, format] + Array.wrap(options[:dependencies])
-      @@cache[cache_key.join('.')] ||= begin
-        klass = options[:partial] || name.include?("/_") ? PartialDigestor : Digestor
-        klass.new(name, format, finder, options).digest
+    class << self
+      def digest(name, format, finder, options = {})
+        cache_key = ([name, format] + Array.wrap(options[:dependencies])).join('.')
+        # this is a correctly done double-checked locking idiom
+        # (ThreadSafe::Cache's lookups have volatile semantics)
+        @@cache[cache_key] || @@digest_monitor.synchronize do
+          @@cache.fetch(cache_key) do # re-check under lock
+            compute_and_store_digest(cache_key, name, format, finder, options)
+          end
+        end
+      end
+
+      private
+      def compute_and_store_digest(cache_key, name, format, finder, options) # called under @@digest_monitor lock
+        klass = if options[:partial] || name.include?("/_")
+          # Prevent re-entry or else recursive templates will blow the stack.
+          # There is no need to worry about other threads seeing the +false+ value,
+          # as they will then have to wait for this thread to let go of the @@digest_monitor lock.
+          pre_stored = @@cache.put_if_absent(cache_key, false).nil? # put_if_absent returns nil on insertion
+          PartialDigestor
+        else
+          Digestor
+        end
+
+        digest = klass.new(name, format, finder, options).digest
+        # Store the actual digest if config.cache_template_loading is true
+        @@cache[cache_key] = stored_digest = digest if ActionView::Resolver.caching?
+        digest
+      ensure
+        # something went wrong or ActionView::Resolver.caching? is false, make sure not to corrupt the @@cache
+        @@cache.delete_pair(cache_key, false) if pre_stored && !stored_digest 
       end
     end
 

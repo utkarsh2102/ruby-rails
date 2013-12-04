@@ -8,6 +8,7 @@ require 'active_support/core_ext/module/introspection'
 require 'active_support/core_ext/module/anonymous'
 require 'active_support/core_ext/module/qualified_const'
 require 'active_support/core_ext/object/blank'
+require 'active_support/core_ext/kernel/reporting'
 require 'active_support/core_ext/load_error'
 require 'active_support/core_ext/name_error'
 require 'active_support/core_ext/string/starts_ends_with'
@@ -213,7 +214,7 @@ module ActiveSupport #:nodoc:
           yield
         end
       rescue Exception => exception  # errors from loading file
-        exception.blame_file! file
+        exception.blame_file! file if exception.respond_to? :blame_file!
         raise
       end
 
@@ -459,7 +460,7 @@ module ActiveSupport #:nodoc:
         if loaded.include?(expanded)
           raise "Circular dependency detected while autoloading constant #{qualified_name}"
         else
-          require_or_load(expanded)
+          require_or_load(expanded, qualified_name)
           raise LoadError, "Unable to autoload constant #{qualified_name}, expected #{file_path} to define it" unless from_mod.const_defined?(const_name, false)
           return from_mod.const_get(const_name)
         end

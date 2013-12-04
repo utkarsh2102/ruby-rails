@@ -36,18 +36,14 @@ task :smoke do
 end
 
 desc "Install gems for all projects."
-task :install => :gem do
-  version = File.read("RAILS_VERSION").strip
-  (PROJECTS - ["railties"]).each do |project|
-    puts "INSTALLING #{project}"
-    system("gem install #{project}/pkg/#{project}-#{version}.gem --local --no-ri --no-rdoc")
-  end
-  system("gem install railties/pkg/railties-#{version}.gem --local --no-ri --no-rdoc")
-  system("gem install pkg/rails-#{version}.gem --local --no-ri --no-rdoc")
-end
+task :install => "all:install"
 
 desc "Generate documentation for the Rails framework"
-Rails::API::RepoTask.new('rdoc')
+if ENV['EDGE']
+  Rails::API::EdgeTask.new('rdoc')
+else
+  Rails::API::StableTask.new('rdoc')
+end
 
 desc 'Bump all versions to match version.rb'
 task :update_versions do
@@ -78,7 +74,7 @@ task :update_versions do
 end
 
 #
-# We have a webhook configured in Github that gets invoked after pushes.
+# We have a webhook configured in GitHub that gets invoked after pushes.
 # This hook triggers the following tasks:
 #
 #   * updates the local checkout

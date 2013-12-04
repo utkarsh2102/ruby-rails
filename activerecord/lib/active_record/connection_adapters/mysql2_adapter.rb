@@ -213,9 +213,11 @@ module ActiveRecord
 
       # Executes the SQL statement in the context of this connection.
       def execute(sql, name = nil)
-        # make sure we carry over any changes to ActiveRecord::Base.default_timezone that have been
-        # made since we established the connection
-        @connection.query_options[:database_timezone] = ActiveRecord::Base.default_timezone
+        if @connection
+          # make sure we carry over any changes to ActiveRecord::Base.default_timezone that have been
+          # made since we established the connection
+          @connection.query_options[:database_timezone] = ActiveRecord::Base.default_timezone
+        end
 
         super
       end
@@ -267,6 +269,10 @@ module ActiveRecord
 
       def version
         @version ||= @connection.info[:version].scan(/^(\d+)\.(\d+)\.(\d+)/).flatten.map { |v| v.to_i }
+      end
+
+      def set_field_encoding field_name
+        field_name
       end
     end
   end

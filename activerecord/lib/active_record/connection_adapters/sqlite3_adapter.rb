@@ -17,12 +17,14 @@ module ActiveRecord
       # Allow database path relative to Rails.root, but only if
       # the database path is not the special path that tells
       # Sqlite to build a database only in memory.
-      if defined?(Rails.root) && ':memory:' != config[:database]
-        config[:database] = File.expand_path(config[:database], Rails.root)
+      if ':memory:' != config[:database]
+        config[:database] = File.expand_path(config[:database], Rails.root) if defined?(Rails.root)
+        dirname = File.dirname(config[:database])
+        Dir.mkdir(dirname) unless File.directory?(dirname)
       end
 
       db = SQLite3::Database.new(
-        config[:database],
+        config[:database].to_s,
         :results_as_hash => true
       )
 
@@ -111,6 +113,7 @@ module ActiveRecord
         @config = config
 
         if self.class.type_cast_config_to_boolean(config.fetch(:prepared_statements) { true })
+          @prepared_statements = true
           @visitor = Arel::Visitors::SQLite.new self
         else
           @visitor = unprepared_visitor
@@ -291,8 +294,8 @@ module ActiveRecord
       def exec_query(sql, name = nil, binds = [])
         log(sql, name, binds) do
 
-          # Don't cache statements without bind values
-          if binds.empty?
+          # Don't cache statements if they are not prepared
+          if without_prepared_statement?(binds)
             stmt    = @connection.prepare(sql)
             cols    = stmt.columns
             records = stmt.to_a

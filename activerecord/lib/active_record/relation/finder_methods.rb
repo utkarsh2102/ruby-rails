@@ -130,21 +130,21 @@ module ActiveRecord
       last or raise RecordNotFound
     end
 
-    # Returns truthy if a record exists in the table that matches the +id+ or
-    # conditions given, or falsy otherwise. The argument can take six forms:
+    # Returns +true+ if a record exists in the table that matches the +id+ or
+    # conditions given, or +false+ otherwise. The argument can take six forms:
     #
     # * Integer - Finds the record with this primary key.
     # * String - Finds the record with a primary key corresponding to this
     #   string (such as <tt>'5'</tt>).
     # * Array - Finds the record that matches these +find+-style conditions
-    #   (such as <tt>['color = ?', 'red']</tt>).
+    #   (such as <tt>['name LIKE ?', "%#{query}%"]</tt>).
     # * Hash - Finds the record that matches these +find+-style conditions
-    #   (such as <tt>{color: 'red'}</tt>).
+    #   (such as <tt>{name: 'David'}</tt>).
     # * +false+ - Returns always +false+.
     # * No args - Returns +false+ if the table is empty, +true+ otherwise.
     #
-    # For more information about specifying conditions as a Hash or Array,
-    # see the Conditions section in the introduction to ActiveRecord::Base.
+    # For more information about specifying conditions as a hash or array,
+    # see the Conditions section in the introduction to <tt>ActiveRecord::Base</tt>.
     #
     # Note: You can't pass in a condition as a string (like <tt>name =
     # 'Jamie'</tt>), since it would be sanitized and then queried against
@@ -171,7 +171,7 @@ module ActiveRecord
         relation = relation.where(table[primary_key].eq(conditions)) if conditions != :none
       end
 
-      connection.select_value(relation, "#{name} Exists", relation.bind_values)
+      connection.select_value(relation, "#{name} Exists", relation.bind_values) ? true : false
     rescue ThrowResult
       false
     end
@@ -222,7 +222,7 @@ module ActiveRecord
     end
 
     def construct_relation_for_association_find(join_dependency)
-      relation = except(:includes, :eager_load, :preload, :select).select(join_dependency.columns)
+      relation = except(:includes, :eager_load, :preload, :select).select(join_dependency.columns + select_values)
       apply_join_dependency(relation, join_dependency)
     end
 
@@ -245,9 +245,9 @@ module ActiveRecord
 
     def construct_limited_ids_condition(relation)
       orders = relation.order_values.map { |val| val.presence }.compact
-      values = @klass.connection.distinct("#{quoted_table_name}.#{primary_key}", orders)
+      values = @klass.connection.columns_for_distinct("#{quoted_table_name}.#{quoted_primary_key}", orders)
 
-      relation = relation.dup.select(values)
+      relation = relation.dup.select(values).distinct!
 
       id_rows = @klass.connection.select_all(relation.arel, 'SQL', relation.bind_values)
       ids_array = id_rows.map {|row| row[primary_key]}

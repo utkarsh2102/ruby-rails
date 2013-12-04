@@ -81,15 +81,15 @@ module ActiveRecord
         else
           if options[:finder_sql]
             find_by_scan(*args)
-          elsif options[:inverse_of]
-            args = args.flatten
-            raise RecordNotFound, "Couldn't find #{scope.klass.name} without an ID" if args.blank?
+          elsif options[:inverse_of] && loaded?
+            args_flatten = args.flatten
+            raise RecordNotFound, "Couldn't find #{scope.klass.name} without an ID" if args_flatten.blank?
 
             result = find_by_scan(*args)
 
             result_size = Array(result).size
-            if !result || result_size != args.size
-              scope.raise_record_not_found_exception!(args, result_size, args.size)
+            if !result || result_size != args_flatten.size
+              scope.raise_record_not_found_exception!(args_flatten, result_size, args_flatten.size)
             else
               result
             end
@@ -583,14 +583,14 @@ module ActiveRecord
         # specified, then #find scans the entire collection.
         def find_by_scan(*args)
           expects_array = args.first.kind_of?(Array)
-          ids           = args.flatten.compact.map{ |arg| arg.to_i }.uniq
+          ids           = args.flatten.compact.map{ |arg| arg.to_s }.uniq
 
           if ids.size == 1
             id = ids.first
-            record = load_target.detect { |r| id == r.id }
+            record = load_target.detect { |r| id == r.id.to_s }
             expects_array ? [ record ] : record
           else
-            load_target.select { |r| ids.include?(r.id) }
+            load_target.select { |r| ids.include?(r.id.to_s) }
           end
         end
 

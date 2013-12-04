@@ -95,6 +95,31 @@ class TemplateDigestorTest < ActionView::TestCase
     end
   end
 
+  def test_recursion_in_renders
+    assert digest("level/recursion") # assert recursion is possible
+    assert_not_nil digest("level/recursion") # assert digest is stored
+  end
+
+  def test_chaning_the_top_templete_on_recursion
+    assert digest("level/recursion") # assert recursion is possible
+
+    assert_digest_difference("level/recursion") do
+      change_template("level/recursion")
+    end
+
+    assert_not_nil digest("level/recursion") # assert digest is stored
+  end
+
+  def test_chaning_the_partial_templete_on_recursion
+    assert digest("level/recursion") # assert recursion is possible
+
+    assert_digest_difference("level/recursion") do
+      change_template("level/_recursion")
+    end
+
+    assert_not_nil digest("level/recursion") # assert digest is stored
+  end
+
   def test_dont_generate_a_digest_for_missing_templates
     assert_equal '', digest("nothing/there")
   end
@@ -159,6 +184,40 @@ class TemplateDigestorTest < ActionView::TestCase
     assert_not_equal digest_phone, digest_fridge_phone
   end
 
+  def test_cache_template_loading
+    resolver_before = ActionView::Resolver.caching
+    ActionView::Resolver.caching = false
+    assert_digest_difference("messages/edit", true) do
+      change_template("comments/_comment")
+    end
+    ActionView::Resolver.caching = resolver_before
+  end
+
+  def test_digest_cache_cleanup_with_recursion
+    first_digest = digest("level/_recursion")
+    second_digest = digest("level/_recursion")
+
+    assert first_digest
+
+    # If the cache is cleaned up correctly, subsequent digests should return the same
+    assert_equal first_digest, second_digest
+  end
+
+  def test_digest_cache_cleanup_with_recursion_and_template_caching_off
+    resolver_before = ActionView::Resolver.caching
+    ActionView::Resolver.caching = false
+
+    first_digest = digest("level/_recursion")
+    second_digest = digest("level/_recursion")
+
+    assert first_digest
+
+    # If the cache is cleaned up correctly, subsequent digests should return the same
+    assert_equal first_digest, second_digest
+  ensure
+    ActionView::Resolver.caching = resolver_before
+  end
+
   private
     def assert_logged(message)
       old_logger = ActionView::Base.logger
@@ -175,9 +234,9 @@ class TemplateDigestorTest < ActionView::TestCase
       end
     end
 
-    def assert_digest_difference(template_name)
+    def assert_digest_difference(template_name, persistent = false)
       previous_digest = digest(template_name)
-      ActionView::Digestor.cache.clear
+      ActionView::Digestor.cache.clear unless persistent
 
       yield
 

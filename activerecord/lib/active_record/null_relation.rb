@@ -6,7 +6,7 @@ module ActiveRecord
       @records = []
     end
 
-    def pluck(_column_name)
+    def pluck(*column_names)
       []
     end
 
@@ -40,10 +40,6 @@ module ActiveRecord
 
     def to_sql
       @to_sql ||= ""
-    end
-
-    def where_values_hash
-      {}
     end
 
     def count(*)

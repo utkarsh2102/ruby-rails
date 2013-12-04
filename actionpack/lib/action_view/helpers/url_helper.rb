@@ -172,7 +172,7 @@ module ActionView
       #   link_to "Visit Other Site", "http://www.rubyonrails.org/", data: { confirm: "Are you sure?" }
       #   # => <a href="http://www.rubyonrails.org/" data-confirm="Are you sure?">Visit Other Site</a>
       def link_to(name = nil, options = nil, html_options = nil, &block)
-        html_options, options = options, name if block_given?
+        html_options, options, name = options, name, block if block_given?
         options ||= {}
 
         html_options = convert_options_to_data_attributes(options, html_options)
@@ -380,7 +380,7 @@ module ActionView
           if block_given?
             block.arity <= 1 ? capture(name, &block) : capture(name, options, html_options, &block)
           else
-            name
+            ERB::Util.html_escape(name)
           end
         else
           link_to(name, options, html_options)
@@ -528,12 +528,13 @@ module ActionView
 
         return false unless request.get? || request.head?
 
-        url_string = url_for(options)
+        url_string = URI.parser.unescape(url_for(options)).force_encoding(Encoding::BINARY)
 
         # We ignore any extra parameters in the request_uri if the
         # submitted url doesn't have any either. This lets the function
         # work with things like ?order=asc
         request_uri = url_string.index("?") ? request.fullpath : request.path
+        request_uri = URI.parser.unescape(request_uri).force_encoding(Encoding::BINARY)
 
         if url_string =~ /^\w+:\/\//
           url_string == "#{request.protocol}#{request.host_with_port}#{request_uri}"

@@ -676,6 +676,13 @@ class FormHelperTest < ActionView::TestCase
     )
   end
 
+  def test_text_area_with_nil_alternate_value
+    assert_dom_equal(
+      %{<textarea id="post_body" name="post[body]">\n</textarea>},
+      text_area("post", "body", value: nil)
+    )
+  end
+
   def test_text_area_with_html_entities
     @post.body = "The HTML Entity for & is &amp;"
     assert_dom_equal(
@@ -700,6 +707,11 @@ class FormHelperTest < ActionView::TestCase
     expected = %{<input id="car_color" name="car[color]" type="color" value="#000000" />}
     @car.color = "#1234TR"
     assert_dom_equal(expected, color_field("car", "color"))
+  end
+
+  def test_color_field_with_value_attr
+    expected = %{<input id="car_color" name="car[color]" type="color" value="#00FF00" />}
+    assert_dom_equal(expected, color_field("car", "color", value: "#00FF00"))
   end
 
   def test_search_field
@@ -730,6 +742,12 @@ class FormHelperTest < ActionView::TestCase
     max_value = DateTime.new(2010, 8, 15)
     step = 2
     assert_dom_equal(expected, date_field("post", "written_on", min: min_value, max: max_value, step: step))
+  end
+
+  def test_date_field_with_value_attr
+    expected = %{<input id="post_written_on" name="post[written_on]" type="date" value="2013-06-29" />}
+    value = Date.new(2013,6,29)
+    assert_dom_equal(expected, date_field("post", "written_on", value: value))
   end
 
   def test_date_field_with_timewithzone_value
@@ -800,6 +818,12 @@ class FormHelperTest < ActionView::TestCase
     max_value = DateTime.new(2010, 8, 15, 10, 25, 00)
     step = 60
     assert_dom_equal(expected, datetime_field("post", "written_on", min: min_value, max: max_value, step: step))
+  end
+
+  def test_datetime_field_with_value_attr
+    expected = %{<input id="post_written_on" name="post[written_on]" type="datetime" value="2013-06-29T13:37:00+00:00" />}
+    value = DateTime.new(2013,6,29,13,37)
+    assert_dom_equal(expected, datetime_field("post", "written_on", value: value))
   end
 
   def test_datetime_field_with_timewithzone_value
@@ -1258,6 +1282,24 @@ class FormHelperTest < ActionView::TestCase
     assert_dom_equal expected, output_buffer
   end
 
+  def test_form_with_namespace_and_with_collection_radio_buttons
+    post = Post.new
+    def post.active; false; end
+
+    form_for(post, namespace: 'foo') do |f|
+      concat f.collection_radio_buttons(:active, [true, false], :to_s, :to_s)
+    end
+
+    expected = whole_form("/posts", "foo_new_post", "new_post") do
+      "<input id='foo_post_active_true' name='post[active]' type='radio' value='true' />" +
+      "<label for='foo_post_active_true'>true</label>" +
+      "<input checked='checked' id='foo_post_active_false' name='post[active]' type='radio' value='false' />" +
+      "<label for='foo_post_active_false'>false</label>"
+    end
+
+    assert_dom_equal expected, output_buffer
+  end
+
   def test_form_for_with_collection_check_boxes
     post = Post.new
     def post.tag_ids; [1, 3]; end
@@ -1332,6 +1374,24 @@ class FormHelperTest < ActionView::TestCase
       "Tag 3</label>" +
       "<input name='post[tag_ids][]' type='hidden' value='' />"+
       "<input id='post_id' name='post[id]' type='hidden' value='1' />"
+    end
+
+    assert_dom_equal expected, output_buffer
+  end
+
+  def test_form_with_namespace_and_with_collection_check_boxes
+    post = Post.new
+    def post.tag_ids; [1]; end
+    collection = [[1, "Tag 1"]]
+
+    form_for(post, namespace: 'foo') do |f|
+      concat f.collection_check_boxes(:tag_ids, collection, :first, :last)
+    end
+
+    expected = whole_form("/posts", "foo_new_post", "new_post") do
+      "<input checked='checked' id='foo_post_tag_ids_1' name='post[tag_ids][]' type='checkbox' value='1' />" +
+      "<label for='foo_post_tag_ids_1'>Tag 1</label>" +
+      "<input name='post[tag_ids][]' type='hidden' value='' />"
     end
 
     assert_dom_equal expected, output_buffer

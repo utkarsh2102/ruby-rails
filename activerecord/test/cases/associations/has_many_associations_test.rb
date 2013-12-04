@@ -135,6 +135,13 @@ class HasManyAssociationsTest < ActiveRecord::TestCase
     assert_equal 'exotic', bulb.name
   end
 
+  def test_build_from_association_should_respect_scope
+    author = Author.new
+
+    post = author.thinking_posts.build
+    assert_equal 'So I was thinking', post.title
+  end
+
   def test_create_from_association_with_nil_values_should_work
     car = Car.create(:name => 'honda')
 
@@ -308,9 +315,9 @@ class HasManyAssociationsTest < ActiveRecord::TestCase
     assert_equal 2, companies(:first_firm).limited_clients.limit(nil).to_a.size
   end
 
-  def test_find_should_prepend_to_association_order
+  def test_find_should_append_to_association_order
     ordered_clients =  companies(:first_firm).clients_sorted_desc.order('companies.id')
-    assert_equal ['companies.id', 'id DESC'], ordered_clients.order_values
+    assert_equal ['id DESC', 'companies.id'], ordered_clients.order_values
   end
 
   def test_dynamic_find_should_respect_association_order
@@ -418,7 +425,19 @@ class HasManyAssociationsTest < ActiveRecord::TestCase
     client_ary = firm.clients_using_finder_sql.find("2", "3")
     assert_kind_of Array, client_ary
     assert_equal 2, client_ary.size
-    assert client_ary.include?(client)
+    assert_equal true, client_ary.include?(client)
+  end
+
+  def test_find_ids_and_inverse_of
+    force_signal37_to_load_all_clients_of_firm
+
+    firm = companies(:first_firm)
+    client = firm.clients_of_firm.find(3)
+    assert_kind_of Client, client
+
+    client_ary = firm.clients_of_firm.find([3])
+    assert_kind_of Array, client_ary
+    assert_equal client, client_ary.first
   end
 
   def test_find_all
@@ -599,6 +618,13 @@ class HasManyAssociationsTest < ActiveRecord::TestCase
     assert_no_queries do
       firm = Firm.new
       firm.clients_of_firm.concat(Client.new("name" => "Natural Company"))
+    end
+  end
+
+  def test_inverse_on_before_validate
+    firm = companies(:first_firm)
+    assert_queries(1) do
+      firm.clients_of_firm << Client.new("name" => "Natural Company")
     end
   end
 
@@ -1220,14 +1246,14 @@ class HasManyAssociationsTest < ActiveRecord::TestCase
   end
 
   def test_included_in_collection
-    assert companies(:first_firm).clients.include?(Client.find(2))
+    assert_equal true, companies(:first_firm).clients.include?(Client.find(2))
   end
 
   def test_included_in_collection_for_new_records
     client = Client.create(:name => 'Persisted')
     assert_nil client.client_of
-    assert !Firm.new.clients_of_firm.include?(client),
-           'includes a client that does not belong to any firm'
+    assert_equal false, Firm.new.clients_of_firm.include?(client),
+     'includes a client that does not belong to any firm'
   end
 
   def test_adding_array_and_collection
@@ -1254,7 +1280,7 @@ class HasManyAssociationsTest < ActiveRecord::TestCase
     firm.save
     firm.reload
     assert_equal 2, firm.clients.length
-    assert !firm.clients.include?(:first_client)
+    assert_equal false, firm.clients.include?(:first_client)
   end
 
   def test_replace_failure
@@ -1332,7 +1358,7 @@ class HasManyAssociationsTest < ActiveRecord::TestCase
     firm.save!
 
     assert_equal 2, firm.clients(true).size
-    assert firm.clients.include?(companies(:second_client))
+    assert_equal true, firm.clients.include?(companies(:second_client))
   end
 
   def test_get_ids_for_through
@@ -1366,7 +1392,7 @@ class HasManyAssociationsTest < ActiveRecord::TestCase
 
     assert_no_queries do
       assert firm.clients.loaded?
-      assert firm.clients.include?(client)
+      assert_equal true, firm.clients.include?(client)
     end
   end
 
@@ -1377,7 +1403,7 @@ class HasManyAssociationsTest < ActiveRecord::TestCase
     firm.reload
     assert ! firm.clients.loaded?
     assert_queries(1) do
-      assert firm.clients.include?(client)
+      assert_equal true, firm.clients.include?(client)
     end
     assert ! firm.clients.loaded?
   end
@@ -1388,7 +1414,7 @@ class HasManyAssociationsTest < ActiveRecord::TestCase
 
     firm.reload
     assert ! firm.clients_using_sql.loaded?
-    assert firm.clients_using_sql.include?(client)
+    assert_equal true, firm.clients_using_sql.include?(client)
     assert firm.clients_using_sql.loaded?
   end
 
@@ -1398,7 +1424,7 @@ class HasManyAssociationsTest < ActiveRecord::TestCase
     client = Client.create!(:name => 'Not Associated')
 
     assert ! firm.clients.loaded?
-    assert ! firm.clients.include?(client)
+    assert_equal false, firm.clients.include?(client)
   end
 
   def test_calling_first_or_last_on_association_should_not_load_association
@@ -1470,6 +1496,14 @@ class HasManyAssociationsTest < ActiveRecord::TestCase
   def test_has_many_custom_primary_key
     david = authors(:david)
     assert_equal david.essays, Essay.where(writer_id: "David")
+  end
+
+  def test_has_many_assignment_with_custom_primary_key
+    david = people(:david)
+
+    assert_equal ["A Modest Proposal"], david.essays.map(&:name)
+    david.essays = [Essay.create!(name: "Remote Work" )]
+    assert_equal ["Remote Work"], david.essays.map(&:name)
   end
 
   def test_blank_custom_primary_key_on_new_record_should_not_run_queries
@@ -1605,7 +1639,7 @@ class HasManyAssociationsTest < ActiveRecord::TestCase
   def test_include_method_in_has_many_association_should_return_true_for_instance_added_with_build
     post = Post.new
     comment = post.comments.build
-    assert post.comments.include?(comment)
+    assert_equal true, post.comments.include?(comment)
   end
 
   def test_load_target_respects_protected_attributes
@@ -1673,6 +1707,22 @@ class HasManyAssociationsTest < ActiveRecord::TestCase
     bulb = car.bulbs.build
 
     assert_equal car.id, bulb.attributes_after_initialize['car_id']
+  end
+
+  def test_attributes_are_set_when_initialized_from_has_many_null_relationship
+    car  = Car.new name: 'honda'
+    bulb = car.bulbs.where(name: 'headlight').first_or_initialize
+    assert_equal 'headlight', bulb.name
+  end
+
+  def test_attributes_are_set_when_initialized_from_polymorphic_has_many_null_relationship
+    post    = Post.new title: 'title', body: 'bar'
+    tag     = Tag.create!(name: 'foo')
+
+    tagging = post.taggings.where(tag: tag).first_or_initialize
+
+    assert_equal tag.id, tagging.tag_id
+    assert_equal 'Post', tagging.taggable_type
   end
 
   def test_replace

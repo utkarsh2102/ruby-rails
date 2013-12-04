@@ -106,9 +106,13 @@ HEADER
           end
 
           tbl.print "  create_table #{remove_prefix_and_suffix(table).inspect}"
-          if columns.detect { |c| c.name == pk }
+          pkcol = columns.detect { |c| c.name == pk }
+          if pkcol
             if pk != 'id'
               tbl.print %Q(, primary_key: "#{pk}")
+            elsif pkcol.sql_type == 'uuid'
+              tbl.print ", id: :uuid"
+              tbl.print %Q(, default: "#{pkcol.default_function}") if pkcol.default_function
             end
           else
             tbl.print ", id: false"
