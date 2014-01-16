@@ -1,0 +1,38 @@
+Description: Be careful with that bundler
+ on Debian, Rails must preferably use Debian packages, while not stopping the
+ users to get stuff from Rubygems if they want.
+ .
+ This way, when creating a new application, we run `bundle install --local`
+ instead of `bundle install`, to make sure bundler does not download anything
+ from Rubygems. That's not because I don't like Rubygems, but because
+ everything the user will need to run this new app (sqlite3, sass-rails,
+ coffee-rails) is already installed by means of Debian packages. If the user
+ does want to use Rubygems packages after that, she will just edit the Gemfile,
+ run `bundle install`, and bundler will do its thing as usual.
+ .
+ This is patch is most probably Debian-specific.
+Author: Antonio Terceiro <terceiro@debian.org>
+
+Index: rails-4.0/railties/lib/rails/generators/app_base.rb
+===================================================================
+--- rails-4.0.orig/railties/lib/rails/generators/app_base.rb	2014-01-16 16:39:12.293339784 +0100
++++ rails-4.0/railties/lib/rails/generators/app_base.rb	2014-01-16 16:40:24.876899621 +0100
+@@ -265,16 +265,14 @@ module Rails
+         # We unset temporary bundler variables to load proper bundler and Gemfile.
+         #
+         # Thanks to James Tucker for the Gem tricks involved in this call.
+-        _bundle_command = Gem.bin_path('bundler', 'bundle')
+-
+         require 'bundler'
+         Bundler.with_clean_env do
+-          print `"#{Gem.ruby}" "#{_bundle_command}" #{command}`
++          print `"#{Gem.ruby}" "/usr/bin/bundle" #{command}`
+         end
+       end
+ 
+       def run_bundle
+-        bundle_command('install') unless options[:skip_gemfile] || options[:skip_bundle] || options[:pretend]
++        bundle_command('install --local') unless options[:skip_gemfile] || options[:skip_bundle] || options[:pretend]
+       end
+ 
+       def empty_directory_with_keep_file(destination, config = {})
