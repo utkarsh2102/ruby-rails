@@ -11,11 +11,13 @@
 # If you need to specify the .gemspec (eg there is more than one)
 #export DH_RUBY_GEMSPEC=gem.gemspec
 
-UPSTREAM_PACKAGES=actionmailer activerecord activemodel activesupport railties actionpack
-
 %:
 	dh $@ --buildsystem=ruby --with ruby
 
 overrride_dh_auto_build:
 	racc -o actionpack/lib/action_dispatch/journey/parser.rb \
 		actionpack/lib/action_dispatch/journey/parser.y
+
+override_dh_clean:
+	dh_clean -X~ -X.bak
+	$(RM) -r railties/guides/output
