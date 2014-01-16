@@ -21,3 +21,8 @@ overrride_dh_auto_build:
 override_dh_clean:
 	dh_clean -X~ -X.bak
 	$(RM) -r railties/guides/output
+
+override_dh_auto_install:
+	dh_auto_install
+	$(RM) debian/ruby-activesupport/usr/bin/generate_tables
+	rmdir debian/ruby-activesupport/usr/bin || true
