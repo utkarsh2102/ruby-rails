@@ -1,1 +1,1 @@
-ruby-railties-4.1: extra-license-file usr/lib/ruby/vendor_ruby/rails/generators/rails/plugin_new/templates/MIT-LICENSE
+ruby-railties: extra-license-file usr/lib/ruby/vendor_ruby/rails/generators/rails/plugin_new/templates/MIT-LICENSE
