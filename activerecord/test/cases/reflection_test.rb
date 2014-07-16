@@ -40,18 +40,18 @@ class ReflectionTest < ActiveRecord::TestCase
 
   def test_read_attribute_names
     assert_equal(
-      %w( id title author_name author_email_address bonus_time written_on last_read content important group approved replies_count parent_id parent_title type created_at updated_at ).sort,
+      %w( id title author_name author_email_address bonus_time written_on last_read content important group approved replies_count unique_replies_count parent_id parent_title type created_at updated_at ).sort,
       @first.attribute_names.sort
     )
   end
 
   def test_columns
-    assert_equal 17, Topic.columns.length
+    assert_equal 18, Topic.columns.length
   end
 
   def test_columns_are_returned_in_the_order_they_were_declared
     column_names = Topic.columns.map { |column| column.name }
-    assert_equal %w(id title author_name author_email_address written_on bonus_time last_read content important approved replies_count parent_id parent_title type group created_at updated_at), column_names
+    assert_equal %w(id title author_name author_email_address written_on bonus_time last_read content important approved replies_count unique_replies_count parent_id parent_title type group created_at updated_at), column_names
   end
 
   def test_content_columns
@@ -85,6 +85,14 @@ class ReflectionTest < ActiveRecord::TestCase
     assert_nothing_raised do
       assert_equal MyApplication::Business::Company, reflection.klass
     end
+  end
+
+  def test_irregular_reflection_class_name
+    ActiveSupport::Inflector.inflections do |inflect|
+      inflect.irregular 'plural_irregular', 'plurales_irregulares'
+    end
+    reflection = AssociationReflection.new(:has_many, 'plurales_irregulares', nil, {}, ActiveRecord::Base)
+    assert_equal 'PluralIrregular', reflection.class_name
   end
 
   def test_aggregation_reflection
@@ -191,16 +199,13 @@ class ReflectionTest < ActiveRecord::TestCase
     ActiveRecord::Base.store_full_sti_class = true
   end
 
-  def test_reflection_of_all_associations
-    # FIXME these assertions bust a lot
-    assert_equal 39, Firm.reflect_on_all_associations.size
-    assert_equal 29, Firm.reflect_on_all_associations(:has_many).size
-    assert_equal 10, Firm.reflect_on_all_associations(:has_one).size
-    assert_equal 0, Firm.reflect_on_all_associations(:belongs_to).size
+  def test_reflection_should_not_raise_error_when_compared_to_other_object
+    assert_not_equal Object.new, Firm._reflections[:clients]
   end
 
-  def test_reflection_should_not_raise_error_when_compared_to_other_object
-    assert_nothing_raised { Firm.reflections[:clients] == Object.new }
+  def test_has_and_belongs_to_many_reflection
+    assert_equal :has_and_belongs_to_many, Category.reflections[:posts].macro
+    assert_equal :posts, Category.reflect_on_all_associations(:has_and_belongs_to_many).first.name
   end
 
   def test_has_many_through_reflection
@@ -276,8 +281,9 @@ class ReflectionTest < ActiveRecord::TestCase
     reflection = ActiveRecord::Reflection::AssociationReflection.new(:fuu, :edge, nil, {}, Author)
     assert_raises(ActiveRecord::UnknownPrimaryKey) { reflection.association_primary_key }
 
-    through = ActiveRecord::Reflection::ThroughReflection.new(:fuu, :edge, nil, {}, Author)
-    through.stubs(:source_reflection).returns(stub_everything(:options => {}, :class_name => 'Edge'))
+    through = Class.new(ActiveRecord::Reflection::ThroughReflection) {
+      define_method(:source_reflection) { reflection }
+    }.new(:fuu, :edge, nil, {}, Author)
     assert_raises(ActiveRecord::UnknownPrimaryKey) { through.association_primary_key }
   end
 

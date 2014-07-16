@@ -16,6 +16,8 @@ require 'models/essay'
 require 'models/toy'
 require 'models/invoice'
 require 'models/line_item'
+require 'models/column'
+require 'models/record'
 
 class BelongsToAssociationsTest < ActiveRecord::TestCase
   fixtures :accounts, :companies, :developers, :projects, :topics,
@@ -26,6 +28,13 @@ class BelongsToAssociationsTest < ActiveRecord::TestCase
     firm = Client.find(3).firm
     assert_not_nil firm
     assert_equal companies(:first_firm).name, firm.name
+  end
+
+  def test_belongs_to_does_not_use_order_by
+    ActiveRecord::SQLCounter.clear_log
+    Client.find(3).firm
+  ensure
+    assert ActiveRecord::SQLCounter.log_all.all? { |sql| /order by/i !~ sql }, 'ORDER BY was used in the query'
   end
 
   def test_belongs_to_with_primary_key
@@ -333,6 +342,17 @@ class BelongsToAssociationsTest < ActiveRecord::TestCase
     assert_queries(1) { line_item.touch }
   end
 
+  def test_belongs_to_with_touch_option_on_touch_without_updated_at_attributes
+    assert_not LineItem.column_names.include?("updated_at")
+
+    line_item = LineItem.create!
+    invoice = Invoice.create!(line_items: [line_item])
+    initial = invoice.updated_at
+    line_item.touch
+
+    assert_not_equal initial, invoice.reload.updated_at
+  end
+
   def test_belongs_to_with_touch_option_on_touch_and_removed_parent
     line_item = LineItem.create!
     Invoice.create!(line_items: [line_item])
@@ -354,6 +374,14 @@ class BelongsToAssociationsTest < ActiveRecord::TestCase
     Invoice.create!(line_items: [line_item])
 
     assert_queries(2) { line_item.destroy }
+  end
+
+  def test_belongs_to_with_touch_option_on_destroy_with_destroyed_parent
+    line_item = LineItem.create!
+    invoice   = Invoice.create!(line_items: [line_item])
+    invoice.destroy
+
+    assert_queries(1) { line_item.destroy }
   end
 
   def test_belongs_to_with_touch_option_on_touch_and_reassigned_parent
@@ -379,7 +407,7 @@ class BelongsToAssociationsTest < ActiveRecord::TestCase
     topic.replies.create!(:title => "re: 37s", :content => "rails")
     assert_equal 1, Topic.find(topic.id)[:replies_count]
 
-    topic.update_columns(content: "rails is wonderfull")
+    topic.update_columns(content: "rails is wonderful")
     assert_equal 1, Topic.find(topic.id)[:replies_count]
   end
 
@@ -432,8 +460,7 @@ class BelongsToAssociationsTest < ActiveRecord::TestCase
 
   def test_dont_find_target_when_foreign_key_is_null
     tagging = taggings(:thinking_general)
-    queries = assert_sql { tagging.super_tag }
-    assert_equal 0, queries.length
+    assert_queries(0) { tagging.super_tag }
   end
 
   def test_field_name_same_as_foreign_key
@@ -515,6 +542,19 @@ class BelongsToAssociationsTest < ActiveRecord::TestCase
     assert companies(:first_client).readonly_firm.readonly?
   end
 
+  def test_test_polymorphic_assignment_foreign_key_type_string
+    comment = Comment.first
+    comment.author   = Author.first
+    comment.resource = Member.first
+    comment.save
+
+    assert_equal Comment.all.to_a,
+      Comment.includes(:author).to_a
+
+    assert_equal Comment.all.to_a,
+      Comment.includes(:resource).to_a
+  end
+
   def test_polymorphic_assignment_foreign_type_field_updating
     # should update when assigning a saved record
     sponsor = Sponsor.new
@@ -579,6 +619,19 @@ class BelongsToAssociationsTest < ActiveRecord::TestCase
     assert_nil essay.writer_id
   end
 
+  def test_polymorphic_assignment_with_nil
+    essay = Essay.new
+    assert_nil essay.writer_id
+    assert_nil essay.writer_type
+
+    essay.writer_id = 1
+    essay.writer_type = 'Author'
+
+    essay.writer = nil
+    assert_nil essay.writer_id
+    assert_nil essay.writer_type
+  end
+
   def test_belongs_to_proxy_should_not_respond_to_private_methods
     assert_raise(NoMethodError) { companies(:first_firm).private_method }
     assert_raise(NoMethodError) { companies(:second_client).firm.private_method }
@@ -606,6 +659,8 @@ class BelongsToAssociationsTest < ActiveRecord::TestCase
   end
 
   def test_dependent_delete_and_destroy_with_belongs_to
+    AuthorAddress.destroyed_author_address_ids.clear
+
     author_address = author_addresses(:david_address)
     author_address_extra = author_addresses(:david_address_extra)
     assert_equal [], AuthorAddress.destroyed_author_address_ids
@@ -618,16 +673,11 @@ class BelongsToAssociationsTest < ActiveRecord::TestCase
     assert_equal [author_address.id], AuthorAddress.destroyed_author_address_ids
   end
 
-  def test_invalid_belongs_to_dependent_option_nullify_raises_exception
-    assert_raise ArgumentError do
+  def test_belongs_to_invalid_dependent_option_raises_exception
+    error = assert_raise ArgumentError do
       Class.new(Author).belongs_to :special_author_address, :dependent => :nullify
     end
-  end
-
-  def test_invalid_belongs_to_dependent_option_restrict_raises_exception
-    assert_raise ArgumentError do
-      Class.new(Author).belongs_to :special_author_address, :dependent => :restrict
-    end
+    assert_equal error.message, 'The :dependent option must be one of [:destroy, :delete], but is :nullify'
   end
 
   def test_attributes_are_being_set_when_initialized_from_belongs_to_association_with_where_clause
@@ -800,6 +850,17 @@ class BelongsToAssociationsTest < ActiveRecord::TestCase
     assert_equal 0, comments(:greetings).reload.children_count
   end
 
+  def test_belongs_to_with_id_assigning
+    post = posts(:welcome)
+    comment = Comment.create! body: "foo", post: post
+    parent = comments(:greetings)
+    assert_equal 0, parent.reload.children_count
+    comment.parent_id = parent.id
+
+    comment.save!
+    assert_equal 1, parent.reload.children_count
+  end
+
   def test_polymorphic_with_custom_primary_key
     toy = Toy.create!
     sponsor = Sponsor.create!(:sponsorable => toy)
@@ -828,5 +889,21 @@ class BelongsToAssociationsTest < ActiveRecord::TestCase
 
     assert post.save
     assert_equal post.author_id, author2.id
+  end
+
+  test 'dangerous association name raises ArgumentError' do
+    [:errors, 'errors', :save, 'save'].each do |name|
+      assert_raises(ArgumentError, "Association #{name} should not be allowed") do
+        Class.new(ActiveRecord::Base) do
+          belongs_to name
+        end
+      end
+    end
+  end
+
+  test 'belongs_to works with model called Record' do
+    record = Record.create!
+    Column.create! record: record
+    assert_equal 1, Column.count
   end
 end

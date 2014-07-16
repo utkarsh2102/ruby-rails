@@ -12,12 +12,6 @@ class Ab
   Constant3 = "Goodbye World"
 end
 
-module Xy
-  class Bc
-    include One
-  end
-end
-
 module Yz
   module Zy
     class Cd
@@ -224,7 +218,7 @@ class ModuleTest < ActiveSupport::TestCase
 
   def test_delegation_without_allow_nil_and_nil_value
     david = Someone.new("David")
-    assert_raise(RuntimeError) { david.street }
+    assert_raise(Module::DelegationError) { david.street }
   end
 
   def test_delegation_to_method_that_exists_on_nil
@@ -249,6 +243,16 @@ class ModuleTest < ActiveSupport::TestCase
         end
       end
     end
+  end
+
+  def test_delegation_line_number
+    _, line = Someone.instance_method(:foo).source_location
+    assert_equal Someone::FAILED_DELEGATE_LINE, line
+  end
+
+  def test_delegate_line_with_nil
+    _, line = Someone.instance_method(:bar).source_location
+    assert_equal Someone::FAILED_DELEGATE_LINE_2, line
   end
 
   def test_delegation_exception_backtrace
@@ -304,12 +308,6 @@ class ModuleTest < ActiveSupport::TestCase
 
   def test_local_constants
     assert_equal %w(Constant1 Constant3), Ab.local_constants.sort.map(&:to_s)
-  end
-
-  def test_local_constant_names
-    ActiveSupport::Deprecation.silence do
-      assert_equal %w(Constant1 Constant3), Ab.local_constant_names.sort.map(&:to_s)
-    end
   end
 end
 

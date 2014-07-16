@@ -55,7 +55,7 @@ class ModelTest < ActiveModel::TestCase
   end
 
   def test_persisted_is_always_false
-    object = BasicModel.new(:attr => "value")
+    object = BasicModel.new(attr: "value")
     assert object.persisted? == false
   end
 

@@ -8,10 +8,10 @@ require 'railties/lib/rails/api/task'
 desc "Build gem files for all projects"
 task :build => "all:build"
 
-desc "Release all gems to gemcutter and create a tag"
+desc "Release all gems to rubygems and create a tag"
 task :release => "all:release"
 
-PROJECTS = %w(activesupport activemodel actionpack actionmailer activerecord railties)
+PROJECTS = %w(activesupport activemodel actionpack actionview actionmailer activerecord railties)
 
 desc 'Run all tests by default'
 task :default => %w(test test:isolated)
@@ -45,35 +45,9 @@ else
   Rails::API::StableTask.new('rdoc')
 end
 
-desc 'Bump all versions to match version.rb'
-task :update_versions do
-  require File.dirname(__FILE__) + "/version"
+desc 'Bump all versions to match RAILS_VERSION'
+task :update_versions => "all:update_versions"
 
-  File.open("RAILS_VERSION", "w") do |f|
-    f.puts Rails.version
-  end
-
-  constants = {
-    "activesupport"   => "ActiveSupport",
-    "activemodel"     => "ActiveModel",
-    "actionpack"      => "ActionPack",
-    "actionmailer"    => "ActionMailer",
-    "activerecord"    => "ActiveRecord",
-    "railties"        => "Rails"
-  }
-
-  version_file = File.read("version.rb")
-
-  PROJECTS.each do |project|
-    Dir["#{project}/lib/*/version.rb"].each do |file|
-      File.open(file, "w") do |f|
-        f.write version_file.gsub(/Rails/, constants[project])
-      end
-    end
-  end
-end
-
-#
 # We have a webhook configured in GitHub that gets invoked after pushes.
 # This hook triggers the following tasks:
 #
@@ -83,11 +57,6 @@ end
 #   * if there's a new stable tag, generates and publishes stable docs
 #
 # Everything is automated and you do NOT need to run this task normally.
-#
-# We publish a new version by tagging, and pushing a tag does not trigger
-# that webhook. Stable docs would be updated by any subsequent regular
-# push, but if you want that to happen right away just run this.
-#
 desc 'Publishes docs, run this AFTER a new stable tag has been pushed'
 task :publish_docs do
   Net::HTTP.new('api.rubyonrails.org', 8080).start do |http|

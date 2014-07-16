@@ -3,7 +3,7 @@ require 'action_controller/metal/exceptions'
 module ActionDispatch
   module Journey
     # The Formatter class is used for formatting URLs. For example, parameters
-    # passed to +url_for+ in rails will eventually call Formatter#generate.
+    # passed to +url_for+ in Rails will eventually call Formatter#generate.
     class Formatter # :nodoc:
       attr_reader :routes
 
@@ -33,8 +33,8 @@ module ActionDispatch
           return [route.format(parameterized_parts), params]
         end
 
-        message = "No route matches #{constraints.inspect}"
-        message << " missing required keys: #{missing_keys.inspect}" if name
+        message = "No route matches #{Hash[constraints.sort].inspect}"
+        message << " missing required keys: #{missing_keys.sort.inspect}" if name
 
         raise ActionController::UrlGenerationError, message
       end

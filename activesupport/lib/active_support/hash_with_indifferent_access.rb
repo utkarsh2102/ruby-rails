@@ -72,6 +72,7 @@ module ActiveSupport
     end
 
     def self.new_from_hash_copying_default(hash)
+      hash = hash.to_hash
       new(hash).tap do |new_hash|
         new_hash.default = hash.default
       end
@@ -125,7 +126,7 @@ module ActiveSupport
       if other_hash.is_a? HashWithIndifferentAccess
         super(other_hash)
       else
-        other_hash.each_pair do |key, value|
+        other_hash.to_hash.each_pair do |key, value|
           if block_given? && key?(key)
             value = yield(convert_key(key), self[key], value)
           end
@@ -159,7 +160,7 @@ module ActiveSupport
     #
     #   counters.fetch('foo')          # => 1
     #   counters.fetch(:bar, 0)        # => 0
-    #   counters.fetch(:bar) {|key| 0} # => 0
+    #   counters.fetch(:bar) { |key| 0 } # => 0
     #   counters.fetch(:zoo)           # => KeyError: key not found: "zoo"
     def fetch(key, *extras)
       super(convert_key(key), *extras)
@@ -172,7 +173,7 @@ module ActiveSupport
     #   hash[:b] = 'y'
     #   hash.values_at('a', 'b') # => ["x", "y"]
     def values_at(*indices)
-      indices.collect {|key| self[convert_key(key)]}
+      indices.collect { |key| self[convert_key(key)] }
     end
 
     # Returns an exact copy of the hash.
@@ -207,7 +208,7 @@ module ActiveSupport
     # Replaces the contents of this hash with other_hash.
     #
     #   h = { "a" => 100, "b" => 200 }
-    #   h.replace({ "c" => 300, "d" => 400 }) #=> {"c"=>300, "d"=>400}
+    #   h.replace({ "c" => 300, "d" => 400 }) # => {"c"=>300, "d"=>400}
     def replace(other_hash)
       super(self.class.new_from_hash_copying_default(other_hash))
     end
@@ -224,8 +225,16 @@ module ActiveSupport
     undef :symbolize_keys!
     undef :deep_symbolize_keys!
     def symbolize_keys; to_hash.symbolize_keys! end
-    def deep_symbolize_keys; to_hash.deep_symbolize_keys end
+    def deep_symbolize_keys; to_hash.deep_symbolize_keys! end
     def to_options!; self end
+
+    def select(*args, &block)
+      dup.tap { |hash| hash.select!(*args, &block) }
+    end
+
+    def reject(*args, &block)
+      dup.tap { |hash| hash.reject!(*args, &block) }
+    end
 
     # Convert to a regular hash with string keys.
     def to_hash

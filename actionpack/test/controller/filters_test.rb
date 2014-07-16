@@ -10,7 +10,7 @@ class ActionController::Base
 
     def before_filters
       filters = _process_action_callbacks.select { |c| c.kind == :before }
-      filters.map! { |c| c.instance_variable_get(:@raw_filter) }
+      filters.map! { |c| c.raw_filter }
     end
   end
 
@@ -215,6 +215,18 @@ class FilterTest < ActionController::TestCase
   class ConditionalOptionsFilter < ConditionalFilterController
     before_filter :ensure_login, :if => Proc.new { |c| true }
     before_filter :clean_up_tmp, :if => Proc.new { |c| false }
+  end
+
+  class ConditionalOptionsSkipFilter < ConditionalFilterController
+    before_filter :ensure_login
+    before_filter :clean_up_tmp
+
+    skip_before_filter :ensure_login, if: -> { false }
+    skip_before_filter :clean_up_tmp, if: -> { true }
+  end
+
+  class ClassController < ConditionalFilterController
+    before_filter ConditionalClassFilter
   end
 
   class PrependingController < TestController
@@ -597,6 +609,23 @@ class FilterTest < ActionController::TestCase
     assert_equal %w( ensure_login ), assigns["ran_filter"]
   end
 
+  def test_running_conditional_skip_options
+    test_process(ConditionalOptionsSkipFilter)
+    assert_equal %w( ensure_login ), assigns["ran_filter"]
+  end
+
+  def test_skipping_class_filters
+    test_process(ClassController)
+    assert_equal true, assigns["ran_class_filter"]
+
+    skipping_class_controller = Class.new(ClassController) do
+      skip_before_filter ConditionalClassFilter
+    end
+
+    test_process(skipping_class_controller)
+    assert_nil assigns['ran_class_filter']
+  end
+
   def test_running_collection_condition_filters
     test_process(ConditionalCollectionFilterController)
     assert_equal %w( ensure_login ), assigns["ran_filter"]
@@ -878,17 +907,6 @@ class ControllerWithFilterInstance < PostsController
   end
 
   around_filter YieldingFilter.new, :only => :raises_after
-end
-
-class ControllerWithFilterMethod < PostsController
-  class YieldingFilter < DefaultFilter
-    def around(controller)
-      yield
-      raise After
-    end
-  end
-
-  around_filter YieldingFilter.new.method(:around), :only => :raises_after
 end
 
 class ControllerWithProcFilter < PostsController

@@ -18,11 +18,11 @@ module ActiveRecord
       end
 
       def create(attributes = {}, &block)
-        create_record(attributes, &block)
+        _create_record(attributes, &block)
       end
 
       def create!(attributes = {}, &block)
-        create_record(attributes, true, &block)
+        _create_record(attributes, true, &block)
       end
 
       def build(attributes = {})
@@ -39,10 +39,11 @@ module ActiveRecord
         end
 
         def find_target
-          scope.first.tap { |record| set_inverse_instance(record) }
+          if record = scope.take
+            set_inverse_instance record
+          end
         end
 
-        # Implemented by subclasses
         def replace(record)
           raise NotImplementedError, "Subclasses must implement a replace(record) method"
         end
@@ -51,7 +52,7 @@ module ActiveRecord
           replace(record)
         end
 
-        def create_record(attributes, raise_error = false)
+        def _create_record(attributes, raise_error = false)
           record = build_record(attributes)
           yield(record) if block_given?
           saved = record.save

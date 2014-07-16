@@ -12,7 +12,7 @@ class EachTest < ActiveRecord::TestCase
   end
 
   def test_each_should_execute_one_query_per_batch
-    assert_queries(Post.count + 1) do
+    assert_queries(@total + 1) do
       Post.find_each(:batch_size => 1) do |post|
         assert_kind_of Post, post
       end
@@ -26,9 +26,37 @@ class EachTest < ActiveRecord::TestCase
     end
   end
 
+  def test_each_should_return_an_enumerator_if_no_block_is_present
+    assert_queries(1) do
+      Post.find_each(:batch_size => 100000).with_index do |post, index|
+        assert_kind_of Post, post
+        assert_kind_of Integer, index
+      end
+    end
+  end
+
+  if Enumerator.method_defined? :size
+    def test_each_should_return_a_sized_enumerator
+      assert_equal 11, Post.find_each(:batch_size => 1).size
+      assert_equal 5, Post.find_each(:batch_size => 2, :start => 7).size
+      assert_equal 11, Post.find_each(:batch_size => 10_000).size
+    end
+  end
+
+  def test_each_enumerator_should_execute_one_query_per_batch
+    assert_queries(@total + 1) do
+      Post.find_each(:batch_size => 1).with_index do |post, index|
+        assert_kind_of Post, post
+        assert_kind_of Integer, index
+      end
+    end
+  end
+
   def test_each_should_raise_if_select_is_set_without_id
     assert_raise(RuntimeError) do
-      Post.select(:title).find_each(:batch_size => 1) { |post| post }
+      Post.select(:title).find_each(batch_size: 1) { |post|
+        flunk "should not call this block"
+      }
     end
   end
 
@@ -61,7 +89,7 @@ class EachTest < ActiveRecord::TestCase
   end
 
   def test_find_in_batches_should_return_batches
-    assert_queries(Post.count + 1) do
+    assert_queries(@total + 1) do
       Post.find_in_batches(:batch_size => 1) do |batch|
         assert_kind_of Array, batch
         assert_kind_of Post, batch.first
@@ -70,7 +98,7 @@ class EachTest < ActiveRecord::TestCase
   end
 
   def test_find_in_batches_should_start_from_the_start_option
-    assert_queries(Post.count) do
+    assert_queries(@total) do
       Post.find_in_batches(:batch_size => 1, :start => 2) do |batch|
         assert_kind_of Array, batch
         assert_kind_of Post, batch.first
@@ -79,14 +107,12 @@ class EachTest < ActiveRecord::TestCase
   end
 
   def test_find_in_batches_shouldnt_execute_query_unless_needed
-    post_count = Post.count
-
     assert_queries(2) do
-      Post.find_in_batches(:batch_size => post_count) {|batch| assert_kind_of Array, batch }
+      Post.find_in_batches(:batch_size => @total) {|batch| assert_kind_of Array, batch }
     end
 
     assert_queries(1) do
-      Post.find_in_batches(:batch_size => post_count + 1) {|batch| assert_kind_of Array, batch }
+      Post.find_in_batches(:batch_size => @total + 1) {|batch| assert_kind_of Array, batch }
     end
   end
 
@@ -135,6 +161,12 @@ class EachTest < ActiveRecord::TestCase
     assert_equal special_posts_ids, posts.map(&:id)
   end
 
+  def test_find_in_batches_should_not_modify_passed_options
+    assert_nothing_raised do
+      Post.find_in_batches({ batch_size: 42, start: 1 }.freeze){}
+    end
+  end
+
   def test_find_in_batches_should_use_any_column_as_primary_key
     nick_order_subscribers = Subscriber.order('nick asc')
     start_nick = nick_order_subscribers.second.nick
@@ -152,6 +184,29 @@ class EachTest < ActiveRecord::TestCase
       Subscriber.find_each(:batch_size => 1) do |subscriber|
         assert_kind_of Subscriber, subscriber
       end
+    end
+  end
+
+  def test_find_in_batches_should_return_an_enumerator
+    enum = nil
+    assert_queries(0) do
+      enum = Post.find_in_batches(:batch_size => 1)
+    end
+    assert_queries(4) do
+      enum.first(4) do |batch|
+        assert_kind_of Array, batch
+        assert_kind_of Post, batch.first
+      end
+    end
+  end
+
+  if Enumerator.method_defined? :size
+    def test_find_in_batches_should_return_a_sized_enumerator
+      assert_equal 11, Post.find_in_batches(:batch_size => 1).size
+      assert_equal 6, Post.find_in_batches(:batch_size => 2).size
+      assert_equal 4, Post.find_in_batches(:batch_size => 2, :start => 4).size
+      assert_equal 4, Post.find_in_batches(:batch_size => 3).size
+      assert_equal 1, Post.find_in_batches(:batch_size => 10_000).size
     end
   end
 end

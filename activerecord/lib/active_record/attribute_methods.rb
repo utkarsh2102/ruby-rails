@@ -1,5 +1,6 @@
 require 'active_support/core_ext/enumerable'
 require 'mutex_m'
+require 'thread_safe'
 
 module ActiveRecord
   # = Active Record Attribute Methods
@@ -19,6 +20,37 @@ module ActiveRecord
       include Serialization
     end
 
+    AttrNames = Module.new {
+      def self.set_name_cache(name, value)
+        const_name = "ATTR_#{name}"
+        unless const_defined? const_name
+          const_set const_name, value.dup.freeze
+        end
+      end
+    }
+
+    BLACKLISTED_CLASS_METHODS = %w(private public protected)
+
+    class AttributeMethodCache
+      def initialize
+        @module = Module.new
+        @method_cache = ThreadSafe::Cache.new
+      end
+
+      def [](name)
+        @method_cache.compute_if_absent(name) do
+          safe_name = name.unpack('h*').first
+          temp_method = "__temp__#{safe_name}"
+          ActiveRecord::AttributeMethods::AttrNames.set_name_cache safe_name, name
+          @module.module_eval method_body(temp_method, safe_name), __FILE__, __LINE__
+          @module.instance_method temp_method
+        end
+      end
+
+      private
+      def method_body; raise NotImplementedError; end
+    end
+
     module ClassMethods
       def inherited(child_class) #:nodoc:
         child_class.initialize_generated_modules
@@ -26,18 +58,7 @@ module ActiveRecord
       end
 
       def initialize_generated_modules # :nodoc:
-        @generated_attribute_methods = Module.new {
-          extend Mutex_m
-
-          const_set :AttrNames, Module.new {
-            def self.set_name_cache(name, value)
-              const_name = "ATTR_#{name}"
-              unless const_defined? const_name
-                const_set const_name, value.dup.freeze
-              end
-            end
-          }
-        }
+        @generated_attribute_methods = Module.new { extend Mutex_m }
         @attribute_methods_generated = false
         include @generated_attribute_methods
       end
@@ -45,23 +66,23 @@ module ActiveRecord
       # Generates all the attribute related methods for columns in the database
       # accessors, mutators and query methods.
       def define_attribute_methods # :nodoc:
+        return false if @attribute_methods_generated
         # Use a mutex; we don't want two thread simultaneously trying to define
         # attribute methods.
         generated_attribute_methods.synchronize do
-          return if attribute_methods_generated?
+          return false if @attribute_methods_generated
           superclass.define_attribute_methods unless self == base_class
           super(column_names)
           @attribute_methods_generated = true
         end
-      end
-
-      def attribute_methods_generated? # :nodoc:
-        @attribute_methods_generated
+        true
       end
 
       def undefine_attribute_methods # :nodoc:
-        super if attribute_methods_generated?
-        @attribute_methods_generated = false
+        generated_attribute_methods.synchronize do
+          super if @attribute_methods_generated
+          @attribute_methods_generated = false
+        end
       end
 
       # Raises a <tt>ActiveRecord::DangerousAttributeError</tt> exception when an
@@ -88,26 +109,55 @@ module ActiveRecord
         else
           # If B < A and A defines its own attribute method, then we don't want to overwrite that.
           defined = method_defined_within?(method_name, superclass, superclass.generated_attribute_methods)
-          defined && !ActiveRecord::Base.method_defined?(method_name) || super
+          base_defined = Base.method_defined?(method_name) || Base.private_method_defined?(method_name)
+          defined && !base_defined || super
         end
       end
 
-      # A method name is 'dangerous' if it is already defined by Active Record, but
+      # A method name is 'dangerous' if it is already (re)defined by Active Record, but
       # not by any ancestors. (So 'puts' is not dangerous but 'save' is.)
       def dangerous_attribute_method?(name) # :nodoc:
         method_defined_within?(name, Base)
       end
 
-      def method_defined_within?(name, klass, sup = klass.superclass) # :nodoc:
+      def method_defined_within?(name, klass, superklass = klass.superclass) # :nodoc:
         if klass.method_defined?(name) || klass.private_method_defined?(name)
-          if sup.method_defined?(name) || sup.private_method_defined?(name)
-            klass.instance_method(name).owner != sup.instance_method(name).owner
+          if superklass.method_defined?(name) || superklass.private_method_defined?(name)
+            klass.instance_method(name).owner != superklass.instance_method(name).owner
           else
             true
           end
         else
           false
         end
+      end
+
+      # A class method is 'dangerous' if it is already (re)defined by Active Record, but
+      # not by any ancestors. (So 'puts' is not dangerous but 'new' is.)
+      def dangerous_class_method?(method_name)
+        BLACKLISTED_CLASS_METHODS.include?(method_name.to_s) || class_method_defined_within?(method_name, Base)
+      end
+
+      def class_method_defined_within?(name, klass, superklass = klass.superclass) # :nodoc
+        if klass.respond_to?(name, true)
+          if superklass.respond_to?(name, true)
+            klass.method(name).owner != superklass.method(name).owner
+          else
+            true
+          end
+        else
+          false
+        end
+      end
+
+      def find_generated_attribute_method(method_name) # :nodoc:
+        klass = self
+        until klass == Base
+          gen_methods = klass.generated_attribute_methods
+          return gen_methods.instance_method(method_name) if method_defined_within?(method_name, gen_methods, Object)
+          klass = klass.superclass
+        end
+        nil
       end
 
       # Returns +true+ if +attribute+ is an attribute method and table exists,
@@ -143,31 +193,20 @@ module ActiveRecord
     # If we haven't generated any methods yet, generate them, then
     # see if we've created the method we're looking for.
     def method_missing(method, *args, &block) # :nodoc:
-      unless self.class.attribute_methods_generated?
-        self.class.define_attribute_methods
-
-        if respond_to_without_attributes?(method)
-          send(method, *args, &block)
+      self.class.define_attribute_methods
+      if respond_to_without_attributes?(method)
+        # make sure to invoke the correct attribute method, as we might have gotten here via a `super`
+        # call in a overwritten attribute method
+        if attribute_method = self.class.find_generated_attribute_method(method)
+          # this is probably horribly slow, but should only happen at most once for a given AR class
+          attribute_method.bind(self).call(*args, &block)
         else
-          super
+          return super unless respond_to_missing?(method, true)
+          send(method, *args, &block)
         end
       else
         super
       end
-    end
-
-    def attribute_missing(match, *args, &block) # :nodoc:
-      if self.class.columns_hash[match.attr_name]
-        ActiveSupport::Deprecation.warn(
-          "The method `#{match.method_name}', matching the attribute `#{match.attr_name}' has " \
-          "dispatched through method_missing. This shouldn't happen, because `#{match.attr_name}' " \
-          "is a column of the table. If this error has happened through normal usage of Active " \
-          "Record (rather than through your own code or external libraries), please report it as " \
-          "a bug."
-        )
-      end
-
-      super
     end
 
     # A Person object with a name attribute can ask <tt>person.respond_to?(:name)</tt>,
@@ -188,7 +227,7 @@ module ActiveRecord
     #   person.respond_to(:nothing) # => false
     def respond_to?(name, include_private = false)
       name = name.to_s
-      self.class.define_attribute_methods unless self.class.attribute_methods_generated?
+      self.class.define_attribute_methods
       result = super
 
       # If the result is false the answer is false.
@@ -198,7 +237,7 @@ module ActiveRecord
       # For queries selecting a subset of columns, return false for unselected columns.
       # We check defined?(@attributes) not to issue warnings if called on objects that
       # have been allocated but not yet initialized.
-      if defined?(@attributes) && @attributes.present? && self.class.column_names.include?(name)
+      if defined?(@attributes) && @attributes.any? && self.class.column_names.include?(name)
         return has_attribute?(name)
       end
 
@@ -244,26 +283,38 @@ module ActiveRecord
       }
     end
 
+    # Placeholder so it can be overriden when needed by serialization
+    def attributes_for_coder # :nodoc:
+      attributes
+    end
+
     # Returns an <tt>#inspect</tt>-like string for the value of the
     # attribute +attr_name+. String attributes are truncated upto 50
-    # characters, and Date and Time attributes are returned in the
-    # <tt>:db</tt> format. Other attributes return the value of
-    # <tt>#inspect</tt> without modification.
+    # characters, Date and Time attributes are returned in the
+    # <tt>:db</tt> format, Array attributes are truncated upto 10 values.
+    # Other attributes return the value of <tt>#inspect</tt> without
+    # modification.
     #
     #   person = Person.create!(name: 'David Heinemeier Hansson ' * 3)
     #
     #   person.attribute_for_inspect(:name)
-    #   # => "\"David Heinemeier Hansson David Heinemeier Hansson D...\""
+    #   # => "\"David Heinemeier Hansson David Heinemeier Hansson ...\""
     #
     #   person.attribute_for_inspect(:created_at)
     #   # => "\"2012-10-22 00:15:07\""
+    #
+    #   person.attribute_for_inspect(:tag_ids)
+    #   # => "[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, ...]"
     def attribute_for_inspect(attr_name)
       value = read_attribute(attr_name)
 
       if value.is_a?(String) && value.length > 50
-        "#{value[0..50]}...".inspect
+        "#{value[0, 50]}...".inspect
       elsif value.is_a?(Date) || value.is_a?(Time)
         %("#{value.to_s(:db)}")
+      elsif value.is_a?(Array) && value.size > 10
+        inspected = value.first(10).inspect
+        %(#{inspected[0...-1]}, ...])
       else
         value.inspect
       end
@@ -307,7 +358,7 @@ module ActiveRecord
     end
 
     # Returns the value of the attribute identified by <tt>attr_name</tt> after it has been typecast (for example,
-    # "2004-12-12" in a data column is cast to a date object, like Date.new(2004, 12, 12)). It raises
+    # "2004-12-12" in a date column is cast to a date object, like Date.new(2004, 12, 12)). It raises
     # <tt>ActiveModel::MissingAttributeError</tt> if the identified attribute is missing.
     #
     # Alias for the <tt>read_attribute</tt> method.

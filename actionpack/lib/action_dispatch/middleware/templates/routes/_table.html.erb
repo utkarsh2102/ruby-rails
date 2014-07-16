@@ -89,8 +89,8 @@
   }
 
   // takes an array of elements with a data-regexp attribute and
-  // passes their their parent <tr> into the callback function
-  // if the regexp matchs a given path
+  // passes their parent <tr> into the callback function
+  // if the regexp matches a given path
   function eachElemsForPath(elems, path, func) {
     each(elems, function(e){
       var reg = e.getAttribute("data-regexp");
@@ -122,7 +122,7 @@
     // On key press perform a search for matching paths
     pathElem.onkeyup = function(e){
       var path        = sanitizePath(pathElem.value),
-          defaultText = '<tr><th colspan="4">Paths Matching (' + path + '):</th></tr>';
+          defaultText = '<tr><th colspan="4">Paths Matching (' + escape(path) + '):</th></tr>';
 
       // Clear out results section
       selectedSection.innerHTML= defaultText;

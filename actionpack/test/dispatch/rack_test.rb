@@ -119,7 +119,7 @@ class RackRequestTest < BaseRackTest
     assert_equal "[2001:1234:5678:9abc:def0::dead:beef]", @request.host
   end
 
-  test "cgi environment variables" do
+  test "CGI environment variables" do
     assert_equal "Basic", @request.auth_type
     assert_equal 0, @request.content_length
     assert_equal nil, @request.content_mime_type
@@ -171,22 +171,6 @@ class RackRequestParamsParsingTest < BaseRackTest
   test "doesnt interpret request uri as query string when missing" do
     @request.env['REQUEST_URI'] = 'foo'
     assert_equal({}, @request.query_parameters)
-  end
-end
-
-class RackRequestContentTypeTest < BaseRackTest
-  test "html content type verification" do
-    assert_deprecated do
-      @request.env['CONTENT_TYPE'] = Mime::HTML.to_s
-      assert @request.content_mime_type.verify_request?
-    end
-  end
-
-  test "xml content type verification" do
-    assert_deprecated do
-      @request.env['CONTENT_TYPE'] = Mime::XML.to_s
-      assert !@request.content_mime_type.verify_request?
-    end
   end
 end
 

@@ -27,6 +27,14 @@ class AttributeMethodsTest < ActiveRecord::TestCase
     ActiveRecord::Base.send(:attribute_method_matchers).concat(@old_matchers)
   end
 
+  def test_attribute_for_inspect
+    t = topics(:first)
+    t.title = "The First Topic Now Has A Title With\nNewlines And More Than 50 Characters"
+
+    assert_equal %("#{t.written_on.to_s(:db)}"), t.attribute_for_inspect(:written_on)
+    assert_equal '"The First Topic Now Has A Title With\nNewlines And ..."', t.attribute_for_inspect(:title)
+  end
+
   def test_attribute_present
     t = Topic.new
     t.title = "hello there!"
@@ -84,7 +92,7 @@ class AttributeMethodsTest < ActiveRecord::TestCase
 
   def test_set_attributes_without_hash
     topic = Topic.new
-    assert_nothing_raised { topic.attributes = '' }
+    assert_raise(ArgumentError) { topic.attributes = '' }
   end
 
   def test_integers_as_nil
@@ -130,6 +138,7 @@ class AttributeMethodsTest < ActiveRecord::TestCase
     assert_equal '10', keyboard.id_before_type_cast
     assert_equal nil, keyboard.read_attribute_before_type_cast('id')
     assert_equal '10', keyboard.read_attribute_before_type_cast('key_number')
+    assert_equal '10', keyboard.read_attribute_before_type_cast(:key_number)
   end
 
   # Syck calls respond_to? before actually calling initialize
@@ -710,19 +719,49 @@ class AttributeMethodsTest < ActiveRecord::TestCase
     assert_raise(ActiveRecord::UnknownAttributeError) { @target.new.attributes = { :title => "Ants in pants" } }
   end
 
-  def test_read_attribute_overwrites_private_method_not_considered_implemented
-    # simulate a model with a db column that shares its name an inherited
-    # private method (e.g. Object#system)
-    #
-    Object.class_eval do
-      private
-      def title; "private!"; end
-    end
-    assert !@target.instance_method_already_implemented?(:title)
-    topic = @target.new
-    assert_nil topic.title
+  def test_bulk_update_raise_unknown_attribute_errro
+    error = assert_raises(ActiveRecord::UnknownAttributeError) {
+      @target.new(:hello => "world")
+    }
+    assert @target, error.record
+    assert "hello", error.attribute
+    assert "unknown attribute: hello", error.message
+  end
 
-    Object.send(:undef_method, :title) # remove test method from object
+  def test_methods_override_in_multi_level_subclass
+    klass = Class.new(Developer) do
+      def name
+        "dev:#{read_attribute(:name)}"
+      end
+    end
+
+    2.times { klass = Class.new klass }
+    dev = klass.new(name: 'arthurnn')
+    dev.save!
+    assert_equal 'dev:arthurnn', dev.reload.name
+  end
+
+  def test_global_methods_are_overwritten
+    klass = Class.new(ActiveRecord::Base) do
+      self.table_name = 'computers'
+    end
+
+    assert !klass.instance_method_already_implemented?(:system)
+    computer = klass.new
+    assert_nil computer.system
+  end
+
+  def test_global_methods_are_overwritte_when_subclassing
+    klass = Class.new(ActiveRecord::Base) { self.abstract_class = true }
+
+    subklass = Class.new(klass) do
+      self.table_name = 'computers'
+    end
+
+    assert !klass.instance_method_already_implemented?(:system)
+    assert !subklass.instance_method_already_implemented?(:system)
+    computer = subklass.new
+    assert_nil computer.system
   end
 
   def test_instance_method_should_be_defined_on_the_base_class
@@ -741,21 +780,6 @@ class AttributeMethodsTest < ActiveRecord::TestCase
     assert subklass.method_defined?(:id), "subklass is missing id method"
   end
 
-  def test_dispatching_column_attributes_through_method_missing_deprecated
-    Topic.define_attribute_methods
-
-    topic = Topic.new(:id => 5)
-    topic.id = 5
-
-    topic.method(:id).owner.send(:undef_method, :id)
-
-    assert_deprecated do
-      assert_equal 5, topic.id
-    end
-  ensure
-    Topic.undefine_attribute_methods
-  end
-
   def test_read_attribute_with_nil_should_not_asplode
     assert_equal nil, Topic.new.read_attribute(nil)
   end
@@ -764,8 +788,7 @@ class AttributeMethodsTest < ActiveRecord::TestCase
   # that by defining a 'foo' method in the generated methods module for B.
   # (That module will be inserted between the two, e.g. [B, <GeneratedAttributes>, A].)
   def test_inherited_custom_accessors
-    klass = Class.new(ActiveRecord::Base) do
-      self.table_name = "topics"
+    klass = new_topic_like_ar_class do
       self.abstract_class = true
       def title; "omg"; end
       def title=(val); self.author_name = val; end
@@ -780,7 +803,51 @@ class AttributeMethodsTest < ActiveRecord::TestCase
     assert_equal "lol", topic.author_name
   end
 
+  def test_on_the_fly_super_invokable_generated_attribute_methods_via_method_missing
+    klass = new_topic_like_ar_class do
+      def title
+        super + '!'
+      end
+    end
+
+    real_topic = topics(:first)
+    assert_equal real_topic.title + '!', klass.find(real_topic.id).title
+  end
+
+  def test_on_the_fly_super_invokable_generated_predicate_attribute_methods_via_method_missing
+    klass = new_topic_like_ar_class do
+      def title?
+        !super
+      end
+    end
+
+    real_topic = topics(:first)
+    assert_equal !real_topic.title?, klass.find(real_topic.id).title?
+  end
+
+  def test_calling_super_when_parent_does_not_define_method_raises_error
+    klass = new_topic_like_ar_class do
+      def some_method_that_is_not_on_super
+        super
+      end
+    end
+
+    assert_raise(NoMethodError) do
+      klass.new.some_method_that_is_not_on_super
+    end
+  end
+
   private
+
+  def new_topic_like_ar_class(&block)
+    klass = Class.new(ActiveRecord::Base) do
+      self.table_name = 'topics'
+      class_eval(&block)
+    end
+
+    assert_empty klass.generated_attribute_methods.instance_methods(false)
+    klass
+  end
 
   def cached_columns
     Topic.columns.map(&:name) - Topic.serialized_attributes.keys

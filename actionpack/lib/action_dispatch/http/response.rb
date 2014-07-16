@@ -1,4 +1,5 @@
-require 'active_support/core_ext/class/attribute_accessors'
+require 'active_support/core_ext/module/attribute_accessors'
+require 'action_dispatch/http/filter_redirect'
 require 'monitor'
 
 module ActionDispatch # :nodoc:
@@ -31,9 +32,16 @@ module ActionDispatch # :nodoc:
   #    end
   #  end
   class Response
-    attr_accessor :request, :header
+    # The request that the response is responding to.
+    attr_accessor :request
+
+    # The HTTP status code.
     attr_reader :status
+
     attr_writer :sending_file
+
+    # Get and set headers for this response.
+    attr_accessor :header
 
     alias_method :headers=, :header=
     alias_method :headers,  :header
@@ -49,8 +57,11 @@ module ActionDispatch # :nodoc:
     # If a character set has been defined for this response (see charset=) then
     # the character set information will also be included in the content type
     # information.
-    attr_accessor :charset
     attr_reader   :content_type
+
+    # The charset of the response. HTML wants to know the encoding of the
+    # content you're giving them, so we need to send that along.
+    attr_accessor :charset
 
     CONTENT_TYPE = "Content-Type".freeze
     SET_COOKIE   = "Set-Cookie".freeze
@@ -80,7 +91,10 @@ module ActionDispatch # :nodoc:
       end
 
       def each(&block)
-        @buf.each(&block)
+        @response.sending!
+        x = @buf.each(&block)
+        @response.sent!
+        x
       end
 
       def close
@@ -93,6 +107,7 @@ module ActionDispatch # :nodoc:
       end
     end
 
+    # The underlying body, as a streamable object.
     attr_reader :stream
 
     def initialize(status = 200, header = {}, body = [])
@@ -106,6 +121,8 @@ module ActionDispatch # :nodoc:
       @blank        = false
       @cv           = new_cond
       @committed    = false
+      @sending      = false
+      @sent         = false
       @content_type = nil
       @charset      = nil
 
@@ -126,22 +143,43 @@ module ActionDispatch # :nodoc:
       end
     end
 
+    def await_sent
+      synchronize { @cv.wait_until { @sent } }
+    end
+
     def commit!
       synchronize do
+        before_committed
         @committed = true
         @cv.broadcast
       end
     end
 
-    def committed?
-      @committed
+    def sending!
+      synchronize do
+        before_sending
+        @sending = true
+        @cv.broadcast
+      end
     end
+
+    def sent!
+      synchronize do
+        @sent = true
+        @cv.broadcast
+      end
+    end
+
+    def sending?;   synchronize { @sending };   end
+    def committed?; synchronize { @committed }; end
+    def sent?;      synchronize { @sent };      end
 
     # Sets the HTTP status code.
     def status=(status)
       @status = Rack::Utils.status_code(status)
     end
 
+    # Sets the HTTP content type.
     def content_type=(content_type)
       @content_type = content_type.to_s
     end
@@ -169,9 +207,9 @@ module ActionDispatch # :nodoc:
     end
     alias_method :status_message, :message
 
-    def respond_to?(method)
+    def respond_to?(method, include_private = false)
       if method.to_s == 'to_path'
-        stream.respond_to?(:to_path)
+        stream.respond_to?(method)
       else
         super
       end
@@ -218,11 +256,13 @@ module ActionDispatch # :nodoc:
       ::Rack::Utils.delete_cookie_header!(header, key, value)
     end
 
+    # The location header we'll be responding with.
     def location
       headers[LOCATION]
     end
     alias_method :redirect_url, :location
 
+    # Sets the location header we'll be responding with.
     def location=(url)
       headers[LOCATION] = url
     end
@@ -231,11 +271,13 @@ module ActionDispatch # :nodoc:
       stream.close if stream.respond_to?(:close)
     end
 
+    # Turns the Response into a Rack-compatible array of the status, headers,
+    # and body.
     def to_a
       rack_response @status, @header.to_hash
     end
     alias prepare! to_a
-    alias to_ary   to_a # For implicit splat on 1.9.2
+    alias to_ary   to_a
 
     # Returns the response cookies, converted to a Hash of (name => value) pairs
     #
@@ -254,7 +296,16 @@ module ActionDispatch # :nodoc:
       cookies
     end
 
+    def _status_code
+      @status
+    end
   private
+
+    def before_committed
+    end
+
+    def before_sending
+    end
 
     def merge_default_headers(original, default)
       return original unless default.respond_to?(:merge)
@@ -296,7 +347,7 @@ module ActionDispatch # :nodoc:
         header.delete CONTENT_TYPE
         [status, header, []]
       else
-        [status, header, self]
+        [status, header, Rack::BodyProxy.new(self){}]
       end
     end
   end

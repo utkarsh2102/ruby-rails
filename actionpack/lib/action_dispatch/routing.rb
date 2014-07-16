@@ -1,6 +1,7 @@
 # encoding: UTF-8
 require 'active_support/core_ext/object/to_param'
 require 'active_support/core_ext/regexp'
+require 'active_support/dependencies/autoload'
 
 module ActionDispatch
   # The routing module provides URL rewriting in native Ruby. It's a way to
@@ -246,11 +247,13 @@ module ActionDispatch
   # Target specific controllers by prefixing the command with <tt>CONTROLLER=x</tt>.
   #
   module Routing
-    autoload :Mapper, 'action_dispatch/routing/mapper'
-    autoload :RouteSet, 'action_dispatch/routing/route_set'
-    autoload :RoutesProxy, 'action_dispatch/routing/routes_proxy'
-    autoload :UrlFor, 'action_dispatch/routing/url_for'
-    autoload :PolymorphicRoutes, 'action_dispatch/routing/polymorphic_routes'
+    extend ActiveSupport::Autoload
+
+    autoload :Mapper
+    autoload :RouteSet
+    autoload :RoutesProxy
+    autoload :UrlFor
+    autoload :PolymorphicRoutes
 
     SEPARATORS = %w( / . ? ) #:nodoc:
     HTTP_METHODS = [:get, :head, :post, :patch, :put, :delete, :options] #:nodoc:

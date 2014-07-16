@@ -23,6 +23,13 @@ class JsonParamsParsingTest < ActionDispatch::IntegrationTest
     )
   end
 
+  test "parses boolean and number json params for application json" do
+    assert_parses(
+      {"item" => {"enabled" => false, "count" => 10}},
+      "{\"item\": {\"enabled\": false, \"count\": 10}}", { 'CONTENT_TYPE' => 'application/json' }
+    )
+  end
+
   test "parses json params for application jsonrequest" do
     assert_parses(
       {"person" => {"name" => "David"}},
@@ -62,7 +69,7 @@ class JsonParamsParsingTest < ActionDispatch::IntegrationTest
         $stderr = StringIO.new # suppress the log
         json = "[\"person]\": {\"name\": \"David\"}}"
         exception = assert_raise(ActionDispatch::ParamsParser::ParseError) { post "/parse", json, {'CONTENT_TYPE' => 'application/json', 'action_dispatch.show_exceptions' => false} }
-        assert_equal MultiJson::DecodeError, exception.original_exception.class
+        assert_equal JSON::ParserError, exception.original_exception.class
         assert_equal exception.original_exception.message, exception.message
       ensure
         $stderr = STDERR

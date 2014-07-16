@@ -42,7 +42,7 @@ class RangeTest < ActiveSupport::TestCase
     assert((1...10).include?(1...10))
   end
 
-  def test_should_include_other_with_exlusive_end
+  def test_should_include_other_with_exclusive_end
     assert((1..10).include?(1...10))
   end
 
@@ -112,4 +112,8 @@ class RangeTest < ActiveSupport::TestCase
     end
   end
 
+  def test_date_time_with_each
+    datetime = DateTime.now
+    assert ((datetime - 1.hour)..datetime).each {}
+  end
 end

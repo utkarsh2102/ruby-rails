@@ -9,7 +9,7 @@ module ActiveRecord
 
       def handle_dependency
         case options[:dependent]
-        when :restrict, :restrict_with_exception
+        when :restrict_with_exception
           raise ActiveRecord::DeleteRestrictionError.new(reflection.name) unless empty?
 
         when :restrict_with_error
@@ -59,8 +59,6 @@ module ActiveRecord
         def count_records
           count = if has_cached_counter?
             owner.send(:read_attribute, cached_counter_attribute_name)
-          elsif options[:counter_sql] || options[:finder_sql]
-            reflection.klass.count_by_sql(custom_counter_sql)
           else
             scope.count
           end
@@ -73,15 +71,15 @@ module ActiveRecord
           [association_scope.limit_value, count].compact.min
         end
 
-        def has_cached_counter?(reflection = reflection)
+        def has_cached_counter?(reflection = reflection())
           owner.attribute_present?(cached_counter_attribute_name(reflection))
         end
 
-        def cached_counter_attribute_name(reflection = reflection)
+        def cached_counter_attribute_name(reflection = reflection())
           options[:counter_cache] || "#{reflection.name}_count"
         end
 
-        def update_counter(difference, reflection = reflection)
+        def update_counter(difference, reflection = reflection())
           if has_cached_counter?(reflection)
             counter = cached_counter_attribute_name(reflection)
             owner.class.update_counters(owner.id, counter => difference)
@@ -100,9 +98,10 @@ module ActiveRecord
         #     it will be decremented twice.
         #
         # Hence this method.
-        def inverse_updates_counter_cache?(reflection = reflection)
+        def inverse_updates_counter_cache?(reflection = reflection())
           counter_name = cached_counter_attribute_name(reflection)
-          reflection.klass.reflect_on_all_associations(:belongs_to).any? { |inverse_reflection|
+          reflection.klass._reflections.values.any? { |inverse_reflection|
+            :belongs_to == inverse_reflection.macro &&
             inverse_reflection.counter_cache_column == counter_name
           }
         end
@@ -110,10 +109,10 @@ module ActiveRecord
         # Deletes the records according to the <tt>:dependent</tt> option.
         def delete_records(records, method)
           if method == :destroy
-            records.each { |r| r.destroy }
+            records.each(&:destroy!)
             update_counter(-records.length) unless inverse_updates_counter_cache?
           else
-            if records == :all
+            if records == :all || !reflection.klass.primary_key
               scope = self.scope
             else
               scope = self.scope.where(reflection.klass.primary_key => records)
@@ -128,7 +127,11 @@ module ActiveRecord
         end
 
         def foreign_key_present?
-          owner.attribute_present?(reflection.association_primary_key)
+          if reflection.klass.primary_key
+            owner.attribute_present?(reflection.association_primary_key)
+          else
+            false
+          end
         end
     end
   end

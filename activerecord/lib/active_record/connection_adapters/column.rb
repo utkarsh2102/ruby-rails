@@ -108,30 +108,6 @@ module ActiveRecord
         end
       end
 
-      def type_cast_code(var_name)
-        message = "Column#type_cast_code is deprecated in favor of using Column#type_cast only, " \
-                  "and it is going to be removed in future Rails versions."
-        ActiveSupport::Deprecation.warn message
-
-        klass = self.class.name
-
-        case type
-        when :string, :text        then var_name
-        when :integer              then "#{klass}.value_to_integer(#{var_name})"
-        when :float                then "#{var_name}.to_f"
-        when :decimal              then "#{klass}.value_to_decimal(#{var_name})"
-        when :datetime, :timestamp then "#{klass}.string_to_time(#{var_name})"
-        when :time                 then "#{klass}.string_to_dummy_time(#{var_name})"
-        when :date                 then "#{klass}.value_to_date(#{var_name})"
-        when :binary               then "#{klass}.binary_to_string(#{var_name})"
-        when :boolean              then "#{klass}.value_to_boolean(#{var_name})"
-        when :hstore               then "#{klass}.string_to_hstore(#{var_name})"
-        when :inet, :cidr          then "#{klass}.string_to_cidr(#{var_name})"
-        when :json                 then "#{klass}.string_to_json(#{var_name})"
-        else var_name
-        end
-      end
-
       # Returns the human name of the column name.
       #
       # ===== Examples
@@ -144,17 +120,7 @@ module ActiveRecord
         type_cast(default)
       end
 
-      # Used to convert from Strings to BLOBs
-      def string_to_binary(value)
-        self.class.string_to_binary(value)
-      end
-
       class << self
-        # Used to convert from Strings to BLOBs
-        def string_to_binary(value)
-          value
-        end
-
         # Used to convert from BLOBs to Strings
         def binary_to_string(value)
           value
@@ -238,11 +204,19 @@ module ActiveRecord
             end
           end
 
-          def new_time(year, mon, mday, hour, min, sec, microsec)
+          def new_time(year, mon, mday, hour, min, sec, microsec, offset = nil)
             # Treat 0000-00-00 00:00:00 as nil.
             return nil if year.nil? || (year == 0 && mon == 0 && mday == 0)
 
-            Time.send(Base.default_timezone, year, mon, mday, hour, min, sec, microsec) rescue nil
+            if offset
+              time = Time.utc(year, mon, mday, hour, min, sec, microsec) rescue nil
+              return nil unless time
+
+              time -= offset
+              Base.default_timezone == :utc ? time : time.getlocal
+            else
+              Time.public_send(Base.default_timezone, year, mon, mday, hour, min, sec, microsec) rescue nil
+            end
           end
 
           def fast_string_to_date(string)
@@ -267,7 +241,7 @@ module ActiveRecord
             time_hash = Date._parse(string)
             time_hash[:sec_fraction] = microseconds(time_hash)
 
-            new_time(*time_hash.values_at(:year, :mon, :mday, :hour, :min, :sec, :sec_fraction))
+            new_time(*time_hash.values_at(:year, :mon, :mday, :hour, :min, :sec, :sec_fraction, :offset))
           end
       end
 
@@ -307,7 +281,7 @@ module ActiveRecord
             :text
           when /blob/i, /binary/i
             :binary
-          when /char/i, /string/i
+          when /char/i
             :string
           when /boolean/i
             :boolean

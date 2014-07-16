@@ -17,7 +17,7 @@ module ActiveSupport
         $stderr.puts(message)
         $stderr.puts callstack.join("\n  ") if debug
       },
-      
+
       log: ->(message, callstack) {
         logger =
             if defined?(Rails) && Rails.logger
@@ -29,12 +29,12 @@ module ActiveSupport
         logger.warn message
         logger.debug callstack.join("\n  ") if debug
       },
-      
+
       notify: ->(message, callstack) {
         ActiveSupport::Notifications.instrument("deprecation.rails",
                                                 :message => message, :callstack => callstack)
       },
-      
+
       silence: ->(message, callstack) {},
     }
 
