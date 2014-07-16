@@ -1,6 +1,6 @@
---- rails-4.0.orig/actionpack/test/controller/test_case_test.rb
-+++ rails-4.0/actionpack/test/controller/test_case_test.rb
-@@ -780,80 +780,6 @@ XML
+--- rails.orig/actionpack/test/controller/test_case_test.rb
++++ rails/actionpack/test/controller/test_case_test.rb
+@@ -805,80 +805,6 @@ XML
    READ_BINARY = 'rb:binary'
    READ_PLAIN = 'r:binary'
  
@@ -81,9 +81,9 @@
    def test_test_uploaded_file_exception_when_file_doesnt_exist
      assert_raise(RuntimeError) { Rack::Test::UploadedFile.new('non_existent_file') }
    end
---- rails-4.0.orig/actionpack/test/dispatch/request/multipart_params_parsing_test.rb
-+++ rails-4.0/actionpack/test/dispatch/request/multipart_params_parsing_test.rb
-@@ -127,14 +127,6 @@ class MultipartParamsParsingTest < Actio
+--- rails.orig/actionpack/test/dispatch/request/multipart_params_parsing_test.rb
++++ rails/actionpack/test/dispatch/request/multipart_params_parsing_test.rb
+@@ -126,14 +126,6 @@ class MultipartParamsParsingTest < Actio
      assert_equal "", params['files'].read
    end
  
