@@ -7,7 +7,7 @@ module ActiveRecord
 
     MULTI_VALUE_METHODS  = [:includes, :eager_load, :preload, :select, :group,
                             :order, :joins, :where, :having, :bind, :references,
-                            :extending]
+                            :extending, :unscope]
 
     SINGLE_VALUE_METHODS = [:limit, :offset, :lock, :readonly, :from, :reordering,
                             :reverse_order, :distinct, :create_with, :uniq]
@@ -17,18 +17,15 @@ module ActiveRecord
     include FinderMethods, Calculations, SpawnMethods, QueryMethods, Batches, Explain, Delegation
 
     attr_reader :table, :klass, :loaded
-    attr_accessor :default_scoped
     alias :model :klass
     alias :loaded? :loaded
-    alias :default_scoped? :default_scoped
 
     def initialize(klass, table, values = {})
-      @klass             = klass
-      @table             = table
-      @values            = values
-      @implicit_readonly = nil
-      @loaded            = false
-      @default_scoped    = false
+      @klass  = klass
+      @table  = table
+      @values = values
+      @offsets = {}
+      @loaded = false
     end
 
     def initialize_copy(other)
@@ -39,7 +36,7 @@ module ActiveRecord
       reset
     end
 
-    def insert(values)
+    def insert(values) # :nodoc:
       primary_key_value = nil
 
       if primary_key && Hash === values
@@ -56,16 +53,7 @@ module ActiveRecord
       im = arel.create_insert
       im.into @table
 
-      conn = @klass.connection
-
-      substitutes = values.sort_by { |arel_attr,_| arel_attr.name }
-      binds       = substitutes.map do |arel_attr, value|
-        [@klass.columns_hash[arel_attr.name], value]
-      end
-
-      substitutes.each_with_index do |tuple, i|
-        tuple[1] = conn.substitute_at(binds[i][0], i)
-      end
+      substitutes, binds = substitute_values values
 
       if values.empty? # empty insert
         im.values = Arel.sql(connection.empty_insert_statement_value)
@@ -73,13 +61,36 @@ module ActiveRecord
         im.insert substitutes
       end
 
-      conn.insert(
+      @klass.connection.insert(
         im,
         'SQL',
         primary_key,
         primary_key_value,
         nil,
         binds)
+    end
+
+    def _update_record(values, id, id_was) # :nodoc:
+      substitutes, binds = substitute_values values
+      um = @klass.unscoped.where(@klass.arel_table[@klass.primary_key].eq(id_was || id)).arel.compile_update(substitutes, @klass.primary_key)
+
+      @klass.connection.update(
+        um,
+        'SQL',
+        binds)
+    end
+
+    def substitute_values(values) # :nodoc:
+      substitutes = values.sort_by { |arel_attr,_| arel_attr.name }
+      binds       = substitutes.map do |arel_attr, value|
+        [@klass.columns_hash[arel_attr.name], value]
+      end
+
+      substitutes.each_with_index do |tuple, i|
+        tuple[1] = @klass.connection.substitute_at(binds[i][0], i)
+      end
+
+      [substitutes, binds]
     end
 
     # Initializes new record from relation while maintaining the current
@@ -227,15 +238,19 @@ module ActiveRecord
 
     # Returns size of the records.
     def size
-      loaded? ? @records.length : count
+      loaded? ? @records.length : count(:all)
     end
 
     # Returns true if there are no records.
     def empty?
       return @records.empty? if loaded?
 
-      c = count
-      c.respond_to?(:zero?) ? c.zero? : c.empty?
+      if limit_value == 0
+        true
+      else
+        c = count(:all)
+        c.respond_to?(:zero?) ? c.zero? : c.empty?
+      end
     end
 
     # Returns true if there are any records.
@@ -300,7 +315,7 @@ module ActiveRecord
       stmt.table(table)
       stmt.key = table[primary_key]
 
-      if with_default_scope.joins_values.any?
+      if joins_values.any?
         @klass.connection.join_to_update(stmt, arel)
       else
         stmt.take(arel.limit)
@@ -425,7 +440,7 @@ module ActiveRecord
         stmt = Arel::DeleteManager.new(arel.engine)
         stmt.from(table)
 
-        if with_default_scope.joins_values.any?
+        if joins_values.any?
           @klass.connection.join_to_delete(stmt, arel, table[primary_key])
         else
           stmt.wheres = arel.constraints
@@ -480,9 +495,10 @@ module ActiveRecord
     end
 
     def reset
-      @first = @last = @to_sql = @order_clause = @scope_for_create = @arel = @loaded = nil
+      @last = @to_sql = @order_clause = @scope_for_create = @arel = @loaded = nil
       @should_eager_load = @join_dependency = nil
       @records = []
+      @offsets = {}
       self
     end
 
@@ -491,16 +507,30 @@ module ActiveRecord
     #   User.where(name: 'Oscar').to_sql
     #   # => SELECT "users".* FROM "users"  WHERE "users"."name" = 'Oscar'
     def to_sql
-      @to_sql ||= klass.connection.to_sql(arel, bind_values.dup)
+      @to_sql ||= begin
+                    relation   = self
+                    connection = klass.connection
+                    visitor    = connection.visitor
+
+                    if eager_loading?
+                      find_with_associations { |rel| relation = rel }
+                    end
+
+                    ast   = relation.arel.ast
+                    binds = relation.bind_values.dup
+                    visitor.accept(ast) do
+                      connection.quote(*binds.shift.reverse)
+                    end
+                  end
     end
 
     # Returns a hash of where conditions.
     #
     #   User.where(name: 'Oscar').where_values_hash
     #   # => {name: "Oscar"}
-    def where_values_hash
-      equalities = with_default_scope.where_values.grep(Arel::Nodes::Equality).find_all { |node|
-        node.left.relation.name == table_name
+    def where_values_hash(relation_table_name = table_name)
+      equalities = where_values.grep(Arel::Nodes::Equality).find_all { |node|
+        node.left.relation.name == relation_table_name
       }
 
       binds = Hash[bind_values.find_all(&:first).map { |column, v| [column.name, v] }]
@@ -539,6 +569,8 @@ module ActiveRecord
     # Compares two relations for equality.
     def ==(other)
       case other
+      when Associations::CollectionProxy, AssociationRelation
+        self == other.to_a
       when Relation
         other.to_sql == to_sql
       when Array
@@ -548,16 +580,6 @@ module ActiveRecord
 
     def pretty_print(q)
       q.pp(self.to_a)
-    end
-
-    def with_default_scope #:nodoc:
-      if default_scoped? && default_scope = klass.send(:build_default_scope)
-        default_scope = default_scope.merge(self)
-        default_scope.default_scoped = false
-        default_scope
-      else
-        self
-      end
     end
 
     # Returns true if relation is blank.
@@ -579,24 +601,16 @@ module ActiveRecord
     private
 
     def exec_queries
-      default_scoped = with_default_scope
+      @records = eager_loading? ? find_with_associations : @klass.find_by_sql(arel, bind_values)
 
-      if default_scoped.equal?(self)
-        @records = eager_loading? ? find_with_associations : @klass.find_by_sql(arel, bind_values)
-
-        preload = preload_values
-        preload +=  includes_values unless eager_loading?
-        preload.each do |associations|
-          ActiveRecord::Associations::Preloader.new(@records, associations).run
-        end
-
-        # @readonly_value is true only if set explicitly. @implicit_readonly is true if there
-        # are JOINS and no explicit SELECT.
-        readonly = readonly_value.nil? ? @implicit_readonly : readonly_value
-        @records.each { |record| record.readonly! } if readonly
-      else
-        @records = default_scoped.to_a
+      preload = preload_values
+      preload +=  includes_values unless eager_loading?
+      preloader = ActiveRecord::Associations::Preloader.new
+      preload.each do |associations|
+        preloader.preload @records, associations
       end
+
+      @records.each { |record| record.readonly! } if readonly_value
 
       @loaded = true
       @records
@@ -615,34 +629,8 @@ module ActiveRecord
 
       # always convert table names to downcase as in Oracle quoted table names are in uppercase
       joined_tables = joined_tables.flatten.compact.map { |t| t.downcase }.uniq
-      string_tables = tables_in_string(to_sql)
 
-      if (references_values - joined_tables).any?
-        true
-      elsif !ActiveRecord::Base.disable_implicit_join_references &&
-            (string_tables - joined_tables).any?
-        ActiveSupport::Deprecation.warn(
-          "It looks like you are eager loading table(s) (one of: #{string_tables.join(', ')}) " \
-          "that are referenced in a string SQL snippet. For example: \n" \
-          "\n" \
-          "    Post.includes(:comments).where(\"comments.title = 'foo'\")\n" \
-          "\n" \
-          "Currently, Active Record recognizes the table in the string, and knows to JOIN the " \
-          "comments table to the query, rather than loading comments in a separate query. " \
-          "However, doing this without writing a full-blown SQL parser is inherently flawed. " \
-          "Since we don't want to write an SQL parser, we are removing this functionality. " \
-          "From now on, you must explicitly tell Active Record when you are referencing a table " \
-          "from a string:\n" \
-          "\n" \
-          "    Post.includes(:comments).where(\"comments.title = 'foo'\").references(:comments)\n" \
-          "\n" \
-          "If you don't rely on implicit join references you can disable the feature entirely " \
-          "by setting `config.active_record.disable_implicit_join_references = true`."
-        )
-        true
-      else
-        false
-      end
+      (references_values - joined_tables).any?
     end
 
     def tables_in_string(string)

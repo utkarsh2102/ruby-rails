@@ -18,7 +18,7 @@ require 'models/pet'
 require 'models/toy'
 require 'rexml/document'
 
-class PersistencesTest < ActiveRecord::TestCase
+class PersistenceTest < ActiveRecord::TestCase
   fixtures :topics, :companies, :developers, :projects, :computers, :accounts, :minimalistics, 'warehouse-things', :authors, :categorizations, :categories, :posts, :minivans, :pets, :toys
 
   # Oracle UPDATE does not support ORDER BY
@@ -139,6 +139,33 @@ class PersistencesTest < ActiveRecord::TestCase
     end
   end
 
+  def test_becomes
+    assert_kind_of Reply, topics(:first).becomes(Reply)
+    assert_equal "The First Topic", topics(:first).becomes(Reply).title
+  end
+
+  def test_becomes_includes_errors
+    company = Company.new(:name => nil)
+    assert !company.valid?
+    original_errors = company.errors
+    client = company.becomes(Client)
+    assert_equal original_errors, client.errors
+  end
+
+  def test_dupd_becomes_persists_changes_from_the_original
+    original = topics(:first)
+    copy = original.dup.becomes(Reply)
+    copy.save!
+    assert_equal "The First Topic", Topic.find(copy.id).title
+  end
+
+  def test_becomes_includes_changed_attributes
+    company = Company.new(name: "37signals")
+    client = company.becomes(Client)
+    assert_equal "37signals", client.name
+    assert_equal %w{name}, client.changed
+  end
+
   def test_delete_many
     original_count = Topic.count
     Topic.delete(deleting = [1, 2])
@@ -204,6 +231,22 @@ class PersistencesTest < ActiveRecord::TestCase
 
   def test_save_for_record_with_only_primary_key_that_is_provided
     assert_nothing_raised { Minimalistic.create!(:id => 2) }
+  end
+
+  def test_save_with_duping_of_destroyed_object
+    developer = Developer.create(name: "Kuldeep")
+    developer.destroy
+    new_developer = developer.dup
+    new_developer.save
+    assert new_developer.persisted?
+  end
+
+  def test_dup_of_destroyed_object_is_not_destroyed
+    developer = Developer.create(name: "Kuldeep")
+    developer.destroy
+    new_developer = developer.dup
+    new_developer.save
+    assert_equal new_developer.destroyed?, false
   end
 
   def test_create_many
@@ -404,10 +447,6 @@ class PersistencesTest < ActiveRecord::TestCase
 
     Topic.find(1).update_attribute(:approved, false)
     assert !Topic.find(1).approved?
-  end
-
-  def test_update_attribute_does_not_choke_on_nil
-    assert Topic.find(1).update(nil)
   end
 
   def test_update_attribute_for_readonly_attribute
@@ -688,6 +727,17 @@ class PersistencesTest < ActiveRecord::TestCase
     assert_equal topic.title, Topic.find(1234).title
   end
 
+  def test_update_attributes_parameters
+    topic = Topic.find(1)
+    assert_nothing_raised do
+      topic.update_attributes({})
+    end
+
+    assert_raises(ArgumentError) do
+      topic.update_attributes(nil)
+    end
+  end
+
   def test_update!
     Reply.validates_presence_of(:title)
     reply = Reply.find(2)
@@ -706,7 +756,7 @@ class PersistencesTest < ActiveRecord::TestCase
 
     assert_raise(ActiveRecord::RecordInvalid) { reply.update!(title: nil, content: "Have a nice evening") }
   ensure
-    Reply.reset_callbacks(:validate)
+    Reply.clear_validators!
   end
 
   def test_update_attributes!
@@ -727,7 +777,7 @@ class PersistencesTest < ActiveRecord::TestCase
 
     assert_raise(ActiveRecord::RecordInvalid) { reply.update_attributes!(title: nil, content: "Have a nice evening") }
   ensure
-    Reply.reset_callbacks(:validate)
+    Reply.clear_validators!
   end
 
   def test_destroyed_returns_boolean
@@ -786,4 +836,14 @@ class PersistencesTest < ActiveRecord::TestCase
     end
   end
 
+  def test_instantiate_creates_a_new_instance
+    post = Post.instantiate("title" => "appropriate documentation", "type" => "SpecialPost")
+    assert_equal "appropriate documentation", post.title
+    assert_instance_of SpecialPost, post
+
+    # body was not initialized
+    assert_raises ActiveModel::MissingAttributeError do
+      post.body
+    end
+  end
 end

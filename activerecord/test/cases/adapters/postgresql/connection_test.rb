@@ -7,14 +7,14 @@ module ActiveRecord
 
     def setup
       super
+      @subscriber = SQLSubscriber.new
+      ActiveSupport::Notifications.subscribe('sql.active_record', @subscriber)
       @connection = ActiveRecord::Base.connection
-      @connection.extend(LogIntercepter)
-      @connection.intercepted = true
     end
 
     def teardown
-      @connection.intercepted = false
-      @connection.logged = []
+      ActiveSupport::Notifications.unsubscribe(@subscriber)
+      super
     end
 
     def test_encoding
@@ -47,58 +47,78 @@ module ActiveRecord
 
     def test_tables_logs_name
       @connection.tables('hello')
-      assert_equal 'SCHEMA', @connection.logged[0][1]
+      assert_equal 'SCHEMA', @subscriber.logged[0][1]
     end
 
     def test_indexes_logs_name
       @connection.indexes('items', 'hello')
-      assert_equal 'SCHEMA', @connection.logged[0][1]
+      assert_equal 'SCHEMA', @subscriber.logged[0][1]
     end
 
     def test_table_exists_logs_name
       @connection.table_exists?('items')
-      assert_equal 'SCHEMA', @connection.logged[0][1]
+      assert_equal 'SCHEMA', @subscriber.logged[0][1]
     end
 
     def test_table_alias_length_logs_name
       @connection.instance_variable_set("@table_alias_length", nil)
       @connection.table_alias_length
-      assert_equal 'SCHEMA', @connection.logged[0][1]
+      assert_equal 'SCHEMA', @subscriber.logged[0][1]
     end
 
     def test_current_database_logs_name
       @connection.current_database
-      assert_equal 'SCHEMA', @connection.logged[0][1]
+      assert_equal 'SCHEMA', @subscriber.logged[0][1]
     end
 
     def test_encoding_logs_name
       @connection.encoding
-      assert_equal 'SCHEMA', @connection.logged[0][1]
+      assert_equal 'SCHEMA', @subscriber.logged[0][1]
     end
 
     def test_schema_names_logs_name
       @connection.schema_names
-      assert_equal 'SCHEMA', @connection.logged[0][1]
+      assert_equal 'SCHEMA', @subscriber.logged[0][1]
     end
 
-    # Must have with_manual_interventions set to true for this
-    # test to run.
+    def test_statement_key_is_logged
+      bindval = 1
+      @connection.exec_query('SELECT $1::integer', 'SQL', [[nil, bindval]])
+      name = @subscriber.payloads.last[:statement_name]
+      assert name
+      res = @connection.exec_query("EXPLAIN (FORMAT JSON) EXECUTE #{name}(#{bindval})")
+      plan = res.column_types['QUERY PLAN'].type_cast res.rows.first.first
+      assert_operator plan.length, :>, 0
+    end
+
+    # Must have PostgreSQL >= 9.2, or with_manual_interventions set to
+    # true for this test to run.
+    #
     # When prompted, restart the PostgreSQL server with the
     # "-m fast" option or kill the individual connection assuming
     # you know the incantation to do that.
     # To restart PostgreSQL 9.1 on OS X, installed via MacPorts, ...
     # sudo su postgres -c "pg_ctl restart -D /opt/local/var/db/postgresql91/defaultdb/ -m fast"
     def test_reconnection_after_actual_disconnection_with_verify
-      skip "with_manual_interventions is false in configuration" unless ARTest.config['with_manual_interventions']
-
       original_connection_pid = @connection.query('select pg_backend_pid()')
 
       # Sanity check.
       assert @connection.active?
 
-      puts 'Kill the connection now (e.g. by restarting the PostgreSQL ' +
-           'server with the "-m fast" option) and then press enter.'
-      $stdin.gets
+      if @connection.send(:postgresql_version) >= 90200
+        secondary_connection = ActiveRecord::Base.connection_pool.checkout
+        secondary_connection.query("select pg_terminate_backend(#{original_connection_pid.first.first})")
+        ActiveRecord::Base.connection_pool.checkin(secondary_connection)
+      elsif ARTest.config['with_manual_interventions']
+        puts 'Kill the connection now (e.g. by restarting the PostgreSQL ' +
+          'server with the "-m fast" option) and then press enter.'
+        $stdin.gets
+      else
+        # We're not capable of terminating the backend ourselves, and
+        # we're not allowed to seek assistance; bail out without
+        # actually testing anything.
+        return
+      end
 
       @connection.verify!
 

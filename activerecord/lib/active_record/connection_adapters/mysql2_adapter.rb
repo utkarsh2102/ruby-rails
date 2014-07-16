@@ -1,6 +1,6 @@
 require 'active_record/connection_adapters/abstract_mysql_adapter'
 
-gem 'mysql2', '~> 0.3.10'
+gem 'mysql2', '~> 0.3.13'
 require 'mysql2'
 
 module ActiveRecord
@@ -18,6 +18,12 @@ module ActiveRecord
       client = Mysql2::Client.new(config)
       options = [config[:host], config[:username], config[:password], config[:database], config[:port], config[:socket], 0]
       ConnectionAdapters::Mysql2Adapter.new(client, logger, options, config)
+    rescue Mysql2::Error => error
+      if error.message.include?("Unknown database")
+        raise ActiveRecord::NoDatabaseError.new(error.message)
+      else
+        raise error
+      end
     end
   end
 
@@ -207,7 +213,7 @@ module ActiveRecord
 
       # Returns an array of arrays containing the field values.
       # Order is the same as that returned by +columns+.
-      def select_rows(sql, name = nil)
+      def select_rows(sql, name = nil, binds = [])
         execute(sql, name).to_a
       end
 
@@ -229,8 +235,7 @@ module ActiveRecord
 
       alias exec_without_stmt exec_query
 
-      # Returns an array of record hashes with the column names as keys and
-      # column values as values.
+      # Returns an ActiveRecord::Result instance.
       def select(sql, name = nil, binds = [])
         exec_query(sql, name)
       end

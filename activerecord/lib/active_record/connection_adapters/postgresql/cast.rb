@@ -17,8 +17,8 @@ module ActiveRecord
           return string unless String === string
 
           case string
-          when 'infinity'; 1.0 / 0.0
-          when '-infinity'; -1.0 / 0.0
+          when 'infinity'; Float::INFINITY
+          when '-infinity'; -Float::INFINITY
           when / BC$/
             super("-" + string.sub(/ BC$/, ""))
           else
@@ -35,11 +35,11 @@ module ActiveRecord
           end
         end
 
-        def hstore_to_string(object)
+        def hstore_to_string(object, array_member = false)
           if Hash === object
-            object.map { |k,v|
-              "#{escape_hstore(k)}=>#{escape_hstore(v)}"
-            }.join ','
+            string = object.map { |k, v| "#{escape_hstore(k)}=>#{escape_hstore(v)}" }.join(',')
+            string = escape_hstore(string) if array_member
+            string
           else
             object
           end
@@ -49,10 +49,10 @@ module ActiveRecord
           if string.nil?
             nil
           elsif String === string
-            Hash[string.scan(HstorePair).map { |k,v|
+            Hash[string.scan(HstorePair).map { |k, v|
               v = v.upcase == 'NULL' ? nil : v.gsub(/\A"(.*)"\Z/m,'\1').gsub(/\\(.)/, '\1')
               k = k.gsub(/\A"(.*)"\Z/m,'\1').gsub(/\\(.)/, '\1')
-              [k,v]
+              [k, v]
             }]
           else
             string
@@ -67,7 +67,7 @@ module ActiveRecord
           end
         end
 
-        def array_to_string(value, column, adapter, should_be_quoted = false)
+        def array_to_string(value, column, adapter)
           casted_values = value.map do |val|
             if String === val
               if val == "NULL"
@@ -100,7 +100,11 @@ module ActiveRecord
           if string.nil?
             nil
           elsif String === string
-            IPAddr.new(string)
+            begin
+              IPAddr.new(string)
+            rescue ArgumentError
+              nil
+            end
           else
             string
           end
@@ -115,7 +119,7 @@ module ActiveRecord
         end
 
         def string_to_array(string, oid)
-          parse_pg_array(string).map{|val| oid.type_cast val}
+          parse_pg_array(string).map {|val| type_cast_array(oid, val)}
         end
 
         private
@@ -138,12 +142,24 @@ module ActiveRecord
             end
           end
 
+          ARRAY_ESCAPE = "\\" * 2 * 2 # escape the backslash twice for PG arrays
+
           def quote_and_escape(value)
             case value
-            when "NULL"
+            when "NULL", Numeric
               value
             else
-              "\"#{value.gsub(/"/,"\\\"")}\""
+              value = value.gsub(/\\/, ARRAY_ESCAPE)
+              value.gsub!(/"/,"\\\"")
+              "\"#{value}\""
+            end
+          end
+
+          def type_cast_array(oid, value)
+            if ::Array === value
+              value.map {|item| type_cast_array(oid, item)}
+            else
+              oid.type_cast value
             end
           end
       end

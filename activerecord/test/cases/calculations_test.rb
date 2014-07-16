@@ -6,6 +6,7 @@ require 'models/edge'
 require 'models/organization'
 require 'models/possession'
 require 'models/topic'
+require 'models/reply'
 require 'models/minivan'
 require 'models/speedometer'
 require 'models/ship_part'
@@ -26,6 +27,10 @@ class CalculationsTest < ActiveRecord::TestCase
   def test_should_average_field
     value = Account.average(:credit_limit)
     assert_equal 53.0, value
+  end
+
+  def test_should_resolve_aliased_attributes
+    assert_equal 318, Account.sum(:available_credit)
   end
 
   def test_should_return_decimal_average_of_integer_field
@@ -162,6 +167,15 @@ class CalculationsTest < ActiveRecord::TestCase
     assert_no_match(/OFFSET/, queries.first)
   end
 
+  def test_count_on_invalid_columns_raises
+    e = assert_raises(ActiveRecord::StatementInvalid) {
+      Account.select("credit_limit, firm_name").count
+    }
+
+    assert_match %r{accounts}i, e.message
+    assert_match "credit_limit, firm_name", e.message
+  end
+
   def test_should_group_by_summed_field_having_condition
     c = Account.group(:firm_id).having('sum(credit_limit) > 50').sum(:credit_limit)
     assert_nil        c[1]
@@ -195,6 +209,10 @@ class CalculationsTest < ActiveRecord::TestCase
   def test_sum_should_return_valid_values_for_decimals
     NumericData.create(:bank_balance => 19.83)
     assert_equal 19.83, NumericData.sum(:bank_balance)
+  end
+
+  def test_should_return_type_casted_values_with_group_and_expression
+    assert_equal 0.5, Account.group(:firm_name).sum('0.01 * credit_limit')['37signals']
   end
 
   def test_should_group_by_summed_field_with_conditions
@@ -260,7 +278,7 @@ class CalculationsTest < ActiveRecord::TestCase
     c = Company.group("UPPER(#{QUOTED_TYPE})").count(:all)
     assert_equal 2, c[nil]
     assert_equal 1, c['DEPENDENTFIRM']
-    assert_equal 4, c['CLIENT']
+    assert_equal 5, c['CLIENT']
     assert_equal 2, c['FIRM']
   end
 
@@ -268,7 +286,7 @@ class CalculationsTest < ActiveRecord::TestCase
     c = Company.group("UPPER(companies.#{QUOTED_TYPE})").count(:all)
     assert_equal 2, c[nil]
     assert_equal 1, c['DEPENDENTFIRM']
-    assert_equal 4, c['CLIENT']
+    assert_equal 5, c['CLIENT']
     assert_equal 2, c['FIRM']
   end
 
@@ -337,19 +355,13 @@ class CalculationsTest < ActiveRecord::TestCase
     assert_equal 5, Account.count(:firm_id)
   end
 
-  def test_count_distinct_option_is_deprecated
-    assert_deprecated do
-      assert_equal 4, Account.select(:credit_limit).count(distinct: true)
-    end
-
-    assert_deprecated do
-      assert_equal 6, Account.select(:credit_limit).count(distinct: false)
-    end
-  end
-
   def test_count_with_distinct
     assert_equal 4, Account.select(:credit_limit).distinct.count
     assert_equal 4, Account.select(:credit_limit).uniq.count
+  end
+
+  def test_count_with_aliased_attribute
+    assert_equal 6, Account.count(:available_credit)
   end
 
   def test_count_with_column_and_options_parameter
@@ -373,6 +385,20 @@ class CalculationsTest < ActiveRecord::TestCase
 
   def test_count_with_too_many_parameters_raises
     assert_raise(ArgumentError) { Account.count(1, 2, 3) }
+  end
+
+  def test_count_with_order
+    assert_equal 6, Account.order(:credit_limit).count
+  end
+
+  def test_count_with_reverse_order
+    assert_equal 6, Account.order(:credit_limit).reverse_order.count
+  end
+
+  def test_count_with_where_and_order
+    assert_equal 1, Account.where(firm_name: '37signals').count
+    assert_equal 1, Account.where(firm_name: '37signals').order(:firm_name).count
+    assert_equal 1, Account.where(firm_name: '37signals').order(:firm_name).reverse_order.count
   end
 
   def test_should_sum_expression
@@ -400,12 +426,6 @@ class CalculationsTest < ActiveRecord::TestCase
     assert_equal Account.sum(:credit_limit), Account.from('accounts').sum(:credit_limit)
     assert_equal Account.where("credit_limit > 50").sum(:credit_limit),
         Account.where("credit_limit > 50").from('accounts').sum(:credit_limit)
-  end
-
-  def test_sum_array_compatibility_deprecation
-    assert_deprecated do
-      assert_equal Account.sum(:credit_limit), Account.sum(&:credit_limit)
-    end
   end
 
   def test_average_with_from_option
@@ -460,14 +480,19 @@ class CalculationsTest < ActiveRecord::TestCase
   def test_distinct_is_honored_when_used_with_count_operation_after_group
     # Count the number of authors for approved topics
     approved_topics_count = Topic.group(:approved).count(:author_name)[true]
-    assert_equal approved_topics_count, 3
+    assert_equal approved_topics_count, 4
     # Count the number of distinct authors for approved Topics
     distinct_authors_for_approved_count = Topic.group(:approved).distinct.count(:author_name)[true]
-    assert_equal distinct_authors_for_approved_count, 2
+    assert_equal distinct_authors_for_approved_count, 3
   end
 
   def test_pluck
-    assert_equal [1,2,3,4], Topic.order(:id).pluck(:id)
+    assert_equal [1,2,3,4,5], Topic.order(:id).pluck(:id)
+  end
+
+  def test_pluck_without_column_names
+    assert_equal [[1, "Firm", 1, nil, "37signals", nil, 1, nil, ""]],
+      Company.order(:id).limit(1).pluck
   end
 
   def test_pluck_type_cast
@@ -488,13 +513,17 @@ class CalculationsTest < ActiveRecord::TestCase
     assert_equal [contract.id], company.contracts.pluck(:id)
   end
 
+  def test_pluck_on_aliased_attribute
+    assert_equal 'The First Topic', Topic.order(:id).pluck(:heading).first
+  end
+
   def test_pluck_with_serialization
     t = Topic.create!(:content => { :foo => :bar })
     assert_equal [{:foo => :bar}], Topic.where(:id => t.id).pluck(:content)
   end
 
   def test_pluck_with_qualified_column_name
-    assert_equal [1,2,3,4], Topic.order(:id).pluck("topics.id")
+    assert_equal [1,2,3,4,5], Topic.order(:id).pluck("topics.id")
   end
 
   def test_pluck_auto_table_name_prefix
@@ -527,6 +556,11 @@ class CalculationsTest < ActiveRecord::TestCase
     assert_equal Company.all.map(&:id).sort, Company.ids.sort
   end
 
+  def test_pluck_with_includes_limit_and_empty_result
+    assert_equal [], Topic.includes(:replies).limit(0).pluck(:id)
+    assert_equal [], Topic.includes(:replies).limit(1).where('0 = 1').pluck(:id)
+  end
+
   def test_pluck_not_auto_table_name_prefix_if_column_included
     Company.create!(:name => "test", :contracts => [Contract.new(:developer_id => 7)])
     ids = Company.includes(:contracts).pluck(:developer_id)
@@ -537,11 +571,13 @@ class CalculationsTest < ActiveRecord::TestCase
   def test_pluck_multiple_columns
     assert_equal [
       [1, "The First Topic"], [2, "The Second Topic of the day"],
-      [3, "The Third Topic of the day"], [4, "The Fourth Topic of the day"]
+      [3, "The Third Topic of the day"], [4, "The Fourth Topic of the day"],
+      [5, "The Fifth Topic of the day"]
     ], Topic.order(:id).pluck(:id, :title)
     assert_equal [
       [1, "The First Topic", "David"], [2, "The Second Topic of the day", "Mary"],
-      [3, "The Third Topic of the day", "Carl"], [4, "The Fourth Topic of the day", "Carl"]
+      [3, "The Third Topic of the day", "Carl"], [4, "The Fourth Topic of the day", "Carl"],
+      [5, "The Fifth Topic of the day", "Jason"]
     ], Topic.order(:id).pluck(:id, :title, :author_name)
   end
 
@@ -567,7 +603,7 @@ class CalculationsTest < ActiveRecord::TestCase
 
   def test_pluck_replaces_select_clause
     taks_relation = Topic.select(:approved, :id).order(:id)
-    assert_equal [1,2,3,4], taks_relation.pluck(:id)
-    assert_equal [false, true, true, true], taks_relation.pluck(:approved)
+    assert_equal [1,2,3,4,5], taks_relation.pluck(:id)
+    assert_equal [false, true, true, true, true], taks_relation.pluck(:approved)
   end
 end

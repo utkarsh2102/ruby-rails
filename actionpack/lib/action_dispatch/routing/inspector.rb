@@ -69,7 +69,7 @@ module ActionDispatch
       end
 
       def internal?
-        controller.to_s =~ %r{\Arails/(info|welcome)} || path =~ %r{\A#{Rails.application.config.assets.prefix}}
+        controller.to_s =~ %r{\Arails/(info|mailers|welcome)} || path =~ %r{\A#{Rails.application.config.assets.prefix}\z}
       end
 
       def engine?
@@ -179,7 +179,8 @@ module ActionDispatch
 
       private
         def draw_section(routes)
-          name_width, verb_width, path_width = widths(routes)
+          header_lengths = ['Prefix', 'Verb', 'URI Pattern'].map(&:length)
+          name_width, verb_width, path_width = widths(routes).zip(header_lengths).map(&:max)
 
           routes.map do |r|
             "#{r[:name].rjust(name_width)} #{r[:verb].ljust(verb_width)} #{r[:path].ljust(path_width)} #{r[:reqs]}"
@@ -193,9 +194,9 @@ module ActionDispatch
         end
 
         def widths(routes)
-          [routes.map { |r| r[:name].length }.max,
-           routes.map { |r| r[:verb].length }.max,
-           routes.map { |r| r[:path].length }.max]
+          [routes.map { |r| r[:name].length }.max || 0,
+           routes.map { |r| r[:verb].length }.max || 0,
+           routes.map { |r| r[:path].length }.max || 0]
         end
     end
 

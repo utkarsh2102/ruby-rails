@@ -19,6 +19,8 @@ module ApplicationTests
     end
 
     test "default middleware stack" do
+      add_to_config "config.active_record.migration_error = :page_load"
+
       boot!
 
       assert_equal [
@@ -35,6 +37,7 @@ module ApplicationTests
         "ActionDispatch::RemoteIp",
         "ActionDispatch::Reloader",
         "ActionDispatch::Callbacks",
+        "ActiveRecord::Migration::CheckPending",
         "ActiveRecord::ConnectionAdapters::ConnectionManagement",
         "ActiveRecord::QueryCache",
         "ActionDispatch::Cookies",
@@ -58,7 +61,15 @@ module ApplicationTests
 
       boot!
 
-      assert_equal "Rack::Cache", middleware.first
+      assert middleware.include?("Rack::Cache")
+    end
+
+    test "ActiveRecord::Migration::CheckPending is present when active_record.migration_error is set to :page_load" do
+      add_to_config "config.active_record.migration_error = :page_load"
+
+      boot!
+
+      assert middleware.include?("ActiveRecord::Migration::CheckPending")
     end
 
     test "ActionDispatch::SSL is present when force_ssl is set" do
@@ -72,7 +83,7 @@ module ApplicationTests
       add_to_config "config.ssl_options = { host: 'example.com' }"
       boot!
 
-      assert_equal AppTemplate::Application.middleware.first.args, [{host: 'example.com'}]
+      assert_equal Rails.application.middleware.first.args, [{host: 'example.com'}]
     end
 
     test "removing Active Record omits its middleware" do
@@ -80,6 +91,7 @@ module ApplicationTests
       boot!
       assert !middleware.include?("ActiveRecord::ConnectionAdapters::ConnectionManagement")
       assert !middleware.include?("ActiveRecord::QueryCache")
+      assert !middleware.include?("ActiveRecord::Migration::CheckPending")
     end
 
     test "removes lock if cache classes is set" do
@@ -130,6 +142,12 @@ module ApplicationTests
       add_to_config "config.middleware.insert_after Rack::Sendfile, Rack::Config"
       boot!
       assert_equal "Rack::Config", middleware.second
+    end
+
+    test 'unshift middleware' do
+      add_to_config 'config.middleware.unshift Rack::Config'
+      boot!
+      assert_equal 'Rack::Config', middleware.first
     end
 
     test "Rails.cache does not respond to middleware" do
@@ -209,7 +227,7 @@ module ApplicationTests
       end
 
       def middleware
-        AppTemplate::Application.middleware.map(&:klass).map(&:name)
+        Rails.application.middleware.map(&:klass).map(&:name)
       end
   end
 end

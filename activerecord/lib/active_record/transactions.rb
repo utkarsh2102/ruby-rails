@@ -6,11 +6,10 @@ module ActiveRecord
     extend ActiveSupport::Concern
     ACTIONS = [:create, :destroy, :update]
 
-    class TransactionError < ActiveRecordError # :nodoc:
-    end
-
     included do
-      define_callbacks :commit, :rollback, :terminator => "result == false", :scope => [:kind, :name]
+      define_callbacks :commit, :rollback,
+                       terminator: ->(_, result) { result == false },
+                       scope: [:kind, :name]
     end
 
     # = Active Record Transactions
@@ -218,8 +217,8 @@ module ActiveRecord
       #   after_commit :do_bar, on: :update
       #   after_commit :do_baz, on: :destroy
       #
-      #   after_commit :do_foo_bar, :on [:create, :update]
-      #   after_commit :do_bar_baz, :on [:update, :destroy]
+      #   after_commit :do_foo_bar, on: [:create, :update]
+      #   after_commit :do_bar_baz, on: [:update, :destroy]
       #
       # Note that transactional fixtures do not play well with this feature. Please
       # use the +test_after_commit+ gem to have these hooks fired in tests.
@@ -241,15 +240,14 @@ module ActiveRecord
       def set_options_for_callbacks!(args)
         options = args.last
         if options.is_a?(Hash) && options[:on]
-          assert_valid_transaction_action(options[:on])
-          options[:if] = Array(options[:if])
           fire_on = Array(options[:on])
+          assert_valid_transaction_action(fire_on)
+          options[:if] = Array(options[:if])
           options[:if] << "transaction_include_any_action?(#{fire_on})"
         end
       end
 
       def assert_valid_transaction_action(actions)
-        actions = Array(actions)
         if (actions - ACTIONS).any?
           raise ArgumentError, ":on conditions for after_commit and after_rollback callbacks have to be one of #{ACTIONS.join(",")}"
         end
@@ -275,6 +273,10 @@ module ActiveRecord
       with_transaction_returning_status { super }
     end
 
+    def touch(*) #:nodoc:
+      with_transaction_returning_status { super }
+    end
+
     # Reset id and @new_record if the transaction rolls back.
     def rollback_active_record_state!
       remember_transaction_record_state
@@ -293,7 +295,7 @@ module ActiveRecord
     def committed! #:nodoc:
       run_callbacks :commit if destroyed? || persisted?
     ensure
-      clear_transaction_record_state
+      @_start_transaction_state.clear
     end
 
     # Call the +after_rollback+ callbacks. The +force_restore_state+ argument indicates if the record
@@ -302,6 +304,7 @@ module ActiveRecord
       run_callbacks :rollback
     ensure
       restore_transaction_record_state(force_restore_state)
+      clear_transaction_record_state
     end
 
     # Add the record to the current transaction so that the +after_rollback+ and +after_commit+ callbacks
@@ -358,21 +361,20 @@ module ActiveRecord
     # Restore the new record state and id of a record that was previously saved by a call to save_record_state.
     def restore_transaction_record_state(force = false) #:nodoc:
       unless @_start_transaction_state.empty?
-        @_start_transaction_state[:level] = (@_start_transaction_state[:level] || 0) - 1
-        if @_start_transaction_state[:level] < 1 || force
+        transaction_level = (@_start_transaction_state[:level] || 0) - 1
+        if transaction_level < 1 || force
           restore_state = @_start_transaction_state
           was_frozen = restore_state[:frozen?]
           @attributes = @attributes.dup if @attributes.frozen?
           @new_record = restore_state[:new_record]
           @destroyed  = restore_state[:destroyed]
           if restore_state.has_key?(:id)
-            self.id = restore_state[:id]
+            write_attribute(self.class.primary_key, restore_state[:id])
           else
             @attributes.delete(self.class.primary_key)
             @attributes_cache.delete(self.class.primary_key)
           end
           @attributes.freeze if was_frozen
-          @_start_transaction_state.clear
         end
       end
     end

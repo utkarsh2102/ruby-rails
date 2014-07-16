@@ -22,7 +22,7 @@ module ActiveRecord
         elsif loaded?
           target.size
         else
-          count
+          super
         end
       end
 
@@ -30,7 +30,6 @@ module ActiveRecord
         unless owner.new_record?
           records.flatten.each do |record|
             raise_on_type_mismatch!(record)
-            record.save! if record.new_record?
           end
         end
 
@@ -40,7 +39,7 @@ module ActiveRecord
       def concat_records(records)
         ensure_not_nested
 
-        records = super
+        records = super(records, true)
 
         if owner.new_record? && records
           records.flatten.each do |record|
@@ -84,10 +83,20 @@ module ActiveRecord
           @through_records[record.object_id] ||= begin
             ensure_mutable
 
-            through_record = through_association.build
+            through_record = through_association.build(*options_for_through_record)
             through_record.send("#{source_reflection.name}=", record)
             through_record
           end
+        end
+
+        def options_for_through_record
+          [through_scope_attributes]
+        end
+
+        def through_scope_attributes
+          scope.where_values_hash(through_association.reflection.name.to_s).
+            except!(through_association.reflection.foreign_key,
+                    through_association.reflection.klass.inheritance_column)
         end
 
         def save_through_record(record)
@@ -140,7 +149,21 @@ module ActiveRecord
 
           case method
           when :destroy
-            count = scope.destroy_all.length
+            if scope.klass.primary_key
+              count = scope.destroy_all.length
+            else
+              scope.to_a.each do |record|
+                record.run_callbacks :destroy
+              end
+
+              arel = scope.arel
+
+              stmt = Arel::DeleteManager.new arel.engine
+              stmt.from scope.klass.arel_table
+              stmt.wheres = arel.constraints
+
+              count = scope.klass.connection.delete(stmt, 'SQL', scope.bind_values)
+            end
           when :nullify
             count = scope.update_all(source_reflection.foreign_key => nil)
           else
@@ -149,7 +172,7 @@ module ActiveRecord
 
           delete_through_records(records)
 
-          if source_reflection.options[:counter_cache]
+          if source_reflection.options[:counter_cache] && method != :destroy
             counter = source_reflection.counter_cache_column
             klass.decrement_counter counter, records.map(&:id)
           end

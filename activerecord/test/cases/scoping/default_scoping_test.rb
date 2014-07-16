@@ -54,9 +54,14 @@ class DefaultScopingTest < ActiveRecord::TestCase
     assert_equal 'Jamis', DeveloperCalledJamis.create!.name
   end
 
-  def test_default_scoping_with_threads
-    2.times do
-      Thread.new { assert DeveloperOrderedBySalary.all.to_sql.include?('salary DESC') }.join
+  unless in_memory_db?
+    def test_default_scoping_with_threads
+      2.times do
+        Thread.new {
+          assert DeveloperOrderedBySalary.all.to_sql.include?('salary DESC')
+          DeveloperOrderedBySalary.connection.close
+        }.join
+      end
     end
   end
 
@@ -98,7 +103,7 @@ class DefaultScopingTest < ActiveRecord::TestCase
 
   def test_unscope_overrides_default_scope
     expected = Developer.all.collect { |dev| [dev.name, dev.id] }
-    received = Developer.order('name ASC, id DESC').unscope(:order).collect { |dev| [dev.name, dev.id] }
+    received = DeveloperCalledJamis.unscope(:where).collect { |dev| [dev.name, dev.id] }
     assert_equal expected, received
   end
 
@@ -117,22 +122,40 @@ class DefaultScopingTest < ActiveRecord::TestCase
   end
 
   def test_unscope_with_where_attributes
-    expected = Developer.order('salary DESC').collect { |dev| dev.name }
-    received = DeveloperOrderedBySalary.where(name: 'David').unscope(where: :name).collect { |dev| dev.name }
+    expected = Developer.order('salary DESC').collect(&:name)
+    received = DeveloperOrderedBySalary.where(name: 'David').unscope(where: :name).collect(&:name)
     assert_equal expected, received
 
-    expected_2 = Developer.order('salary DESC').collect { |dev| dev.name }
-    received_2 = DeveloperOrderedBySalary.select("id").where("name" => "Jamis").unscope({:where => :name}, :select).collect { |dev| dev.name }
+    expected_2 = Developer.order('salary DESC').collect(&:name)
+    received_2 = DeveloperOrderedBySalary.select("id").where("name" => "Jamis").unscope({:where => :name}, :select).collect(&:name)
     assert_equal expected_2, received_2
 
-    expected_3 = Developer.order('salary DESC').collect { |dev| dev.name }
-    received_3 = DeveloperOrderedBySalary.select("id").where("name" => "Jamis").unscope(:select, :where).collect { |dev| dev.name }
+    expected_3 = Developer.order('salary DESC').collect(&:name)
+    received_3 = DeveloperOrderedBySalary.select("id").where("name" => "Jamis").unscope(:select, :where).collect(&:name)
     assert_equal expected_3, received_3
+
+    expected_4 = Developer.order('salary DESC').collect(&:name)
+    received_4 = DeveloperOrderedBySalary.where.not("name" => "Jamis").unscope(where: :name).collect(&:name)
+    assert_equal expected_4, received_4
+
+    expected_5 = Developer.order('salary DESC').collect(&:name)
+    received_5 = DeveloperOrderedBySalary.where.not("name" => ["Jamis", "David"]).unscope(where: :name).collect(&:name)
+    assert_equal expected_5, received_5
   end
 
   def test_unscope_multiple_where_clauses
     expected = Developer.order('salary DESC').collect { |dev| dev.name }
     received = DeveloperOrderedBySalary.where(name: 'Jamis').where(id: 1).unscope(where: [:name, :id]).collect { |dev| dev.name }
+    assert_equal expected, received
+  end
+
+  def test_unscope_string_where_clauses_involved
+    dev_relation = Developer.order('salary DESC').where("created_at > ?", 1.year.ago)
+    expected = dev_relation.collect { |dev| dev.name }
+
+    dev_ordered_relation = DeveloperOrderedBySalary.where(name: 'Jamis').where("created_at > ?", 1.year.ago)
+    received = dev_ordered_relation.unscope(where: [:name]).collect { |dev| dev.name }
+
     assert_equal expected, received
   end
 
@@ -153,9 +176,8 @@ class DefaultScopingTest < ActiveRecord::TestCase
   end
 
   def test_order_to_unscope_reordering
-    expected = DeveloperOrderedBySalary.all.collect { |dev| [dev.name, dev.id] }
-    received = DeveloperOrderedBySalary.order('salary DESC, name ASC').reverse_order.unscope(:order).collect { |dev| [dev.name, dev.id] }
-    assert_equal expected, received
+    scope = DeveloperOrderedBySalary.order('salary DESC, name ASC').reverse_order.unscope(:order)
+    assert !(scope.to_sql =~ /order/i)
   end
 
   def test_unscope_reverse_order
@@ -166,7 +188,7 @@ class DefaultScopingTest < ActiveRecord::TestCase
 
   def test_unscope_select
     expected = Developer.order('salary ASC').collect { |dev| dev.name }
-    received = Developer.order('salary DESC').reverse_order.select(:name => "Jamis").unscope(:select).collect { |dev| dev.name }
+    received = Developer.order('salary DESC').reverse_order.select(:name).unscope(:select).collect { |dev| dev.name }
     assert_equal expected, received
 
     expected_2 = Developer.all.collect { |dev| dev.id }
@@ -248,6 +270,12 @@ class DefaultScopingTest < ActiveRecord::TestCase
     assert_raises(ArgumentError) do
       Developer.select("id").unscope(5)
     end
+  end
+
+  def test_unscope_merging
+    merged = Developer.where(name: "Jamis").merge(Developer.unscope(:where))
+    assert merged.where_values.empty?
+    assert !merged.where(name: "Jon").where_values.empty?
   end
 
   def test_order_in_default_scope_should_not_prevail
@@ -350,21 +378,39 @@ class DefaultScopingTest < ActiveRecord::TestCase
     assert_equal 1, DeveloperWithIncludes.where(:audit_logs => { :message => 'foo' }).count
   end
 
-  def test_default_scope_is_threadsafe
-    if in_memory_db?
-      skip "in memory db can't share a db between threads"
-    end
+  unless in_memory_db?
+    def test_default_scope_is_threadsafe
+      threads = []
+      assert_not_equal 1, ThreadsafeDeveloper.unscoped.count
 
-    threads = []
-    assert_not_equal 1, ThreadsafeDeveloper.unscoped.count
+      threads << Thread.new do
+        Thread.current[:long_default_scope] = true
+        assert_equal 1, ThreadsafeDeveloper.all.to_a.count
+        ThreadsafeDeveloper.connection.close
+      end
+      threads << Thread.new do
+        assert_equal 1, ThreadsafeDeveloper.all.to_a.count
+        ThreadsafeDeveloper.connection.close
+      end
+      threads.each(&:join)
+    end
+  end
 
-    threads << Thread.new do
-      Thread.current[:long_default_scope] = true
-      assert_equal 1, ThreadsafeDeveloper.all.to_a.count
-    end
-    threads << Thread.new do
-      assert_equal 1, ThreadsafeDeveloper.all.to_a.count
-    end
-    threads.each(&:join)
+  test "additional conditions are ANDed with the default scope" do
+    scope = DeveloperCalledJamis.where(name: "David")
+    assert_equal 2, scope.where_values.length
+    assert_equal [], scope.to_a
+  end
+
+  test "additional conditions in a scope are ANDed with the default scope" do
+    scope = DeveloperCalledJamis.david
+    assert_equal 2, scope.where_values.length
+    assert_equal [], scope.to_a
+  end
+
+  test "a scope can remove the condition from the default scope" do
+    scope = DeveloperCalledJamis.david2
+    assert_equal 1, scope.where_values.length
+    assert_equal Developer.where(name: "David").map(&:id), scope.map(&:id)
   end
 end

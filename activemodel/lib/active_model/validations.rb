@@ -4,7 +4,7 @@ require 'active_support/core_ext/hash/except'
 
 module ActiveModel
 
-  # == Active \Model Validations
+  # == Active \Model \Validations
   #
   # Provides a full validation framework to your objects.
   #
@@ -46,7 +46,7 @@ module ActiveModel
       include HelperMethods
 
       attr_accessor :validation_context
-      define_callbacks :validate, :scope => :name
+      define_callbacks :validate, scope: :name
 
       class_attribute :_validators
       self._validators = Hash.new { |h,k| h[k] = [] }
@@ -66,8 +66,10 @@ module ActiveModel
       #   end
       #
       # Options:
-      # * <tt>:on</tt> - Specifies the context where this validation is active
-      #   (e.g. <tt>on: :create</tt> or <tt>on: :custom_validation_context</tt>)
+      # * <tt>:on</tt> - Specifies the contexts where this validation is active.
+      #   You can pass a symbol or an array of symbols.
+      #   (e.g. <tt>on: :create</tt> or <tt>on: :custom_validation_context</tt> or
+      #   <tt>on: [:create, :custom_validation_context]</tt>)
       # * <tt>:allow_nil</tt> - Skip validation if attribute is +nil+.
       # * <tt>:allow_blank</tt> - Skip validation if attribute is blank.
       # * <tt>:if</tt> - Specifies a method, proc or string to call to determine
@@ -124,10 +126,10 @@ module ActiveModel
       #   end
       #
       # Options:
-      # * <tt>:on</tt> - Specifies the context where this validation is active
-      #   (e.g. <tt>on: :create</tt> or <tt>on: :custom_validation_context</tt>)
-      # * <tt>:allow_nil</tt> - Skip validation if attribute is +nil+.
-      # * <tt>:allow_blank</tt> - Skip validation if attribute is blank.
+      # * <tt>:on</tt> - Specifies the contexts where this validation is active.
+      #   You can pass a symbol or an array of symbols.
+      #   (e.g. <tt>on: :create</tt> or <tt>on: :custom_validation_context</tt> or
+      #   <tt>on: [:create, :custom_validation_context]</tt>)
       # * <tt>:if</tt> - Specifies a method, proc or string to call to determine
       #   if the validation should occur (e.g. <tt>if: :allow_validation</tt>,
       #   or <tt>if: Proc.new { |user| user.signup_step > 2 }</tt>). The method,
@@ -142,7 +144,9 @@ module ActiveModel
         if options.key?(:on)
           options = options.dup
           options[:if] = Array(options[:if])
-          options[:if].unshift("validation_context == :#{options[:on]}")
+          options[:if].unshift lambda { |o|
+            Array(options[:on]).include?(o.validation_context)
+          }
         end
         args << options
         set_callback(:validate, *args, &block)
@@ -197,12 +201,12 @@ module ActiveModel
       #   #      #<StrictValidator:0x007fbff3204a30 @options={strict:true}>
       #   #    ]
       #
-      # If one runs Person.clear_validators! and then checks to see what
+      # If one runs <tt>Person.clear_validators!</tt> and then checks to see what
       # validators this class has, you would obtain:
       #
       #   Person.validators # => []
       #
-      # Also, the callback set by +validate :cannot_be_robot+ will be erased
+      # Also, the callback set by <tt>validate :cannot_be_robot</tt> will be erased
       # so that:
       #
       #   Person._validate_callbacks.empty?  # => true
@@ -226,7 +230,6 @@ module ActiveModel
       #   Person.validators_on(:name)
       #   # => [
       #   #       #<ActiveModel::Validations::PresenceValidator:0x007fe604914e60 @attributes=[:name], @options={}>,
-      #   #       #<ActiveModel::Validations::InclusionValidator:0x007fe603bb8780 @attributes=[:age], @options={in:0..99}>
       #   #    ]
       def validators_on(*attributes)
         attributes.flat_map do |attribute|

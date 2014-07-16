@@ -18,17 +18,16 @@ module ActiveRecord
         end
       end
 
-      # Returns an array of record hashes with the column names as keys and
-      # column values as values.
+      # Returns an ActiveRecord::Result instance.
       def select_all(arel, name = nil, binds = [])
+        arel, binds = binds_from_relation arel, binds
         select(to_sql(arel, binds), name, binds)
       end
 
       # Returns a record hash with the column names as keys and column values
       # as values.
       def select_one(arel, name = nil, binds = [])
-        result = select_all(arel, name, binds)
-        result.first if result
+        select_all(arel, name, binds).first
       end
 
       # Returns a single value from a record
@@ -41,13 +40,13 @@ module ActiveRecord
       # Returns an array of the values of the first column in a select:
       #   select_values("SELECT id FROM companies LIMIT 3") => [1,2,3]
       def select_values(arel, name = nil)
-        result = select_rows(to_sql(arel, []), name)
-        result.map { |v| v[0] }
+        arel, binds = binds_from_relation arel, []
+        select_rows(to_sql(arel, binds), name, binds).map(&:first)
       end
 
       # Returns an array of arrays containing the field values.
       # Order is the same as that returned by +columns+.
-      def select_rows(sql, name = nil)
+      def select_rows(sql, name = nil, binds = [])
       end
       undef_method :select_rows
 
@@ -303,10 +302,6 @@ module ActiveRecord
         "DEFAULT VALUES"
       end
 
-      def case_sensitive_equality_operator
-        "="
-      end
-
       def limited_update_conditions(where_sql, quoted_table_name, quoted_primary_key)
         "WHERE #{quoted_primary_key} IN (SELECT #{quoted_primary_key} FROM #{quoted_table_name} #{where_sql})"
       end
@@ -323,7 +318,7 @@ module ActiveRecord
       def sanitize_limit(limit)
         if limit.is_a?(Integer) || limit.is_a?(Arel::Nodes::SqlLiteral)
           limit
-        elsif limit.to_s =~ /,/
+        elsif limit.to_s.include?(',')
           Arel.sql limit.to_s.split(',').map{ |i| Integer(i) }.join(',')
         else
           Integer(limit)
@@ -348,15 +343,14 @@ module ActiveRecord
 
       protected
 
-        # Return a subquery for the given key using the join information.
+        # Returns a subquery for the given key using the join information.
         def subquery_for(key, select)
           subselect = select.clone
           subselect.projections = [key]
           subselect
         end
 
-        # Returns an array of record hashes with the column names as keys and
-        # column values as values.
+        # Returns an ActiveRecord::Result instance.
         def select(sql, name = nil, binds = [])
         end
         undef_method :select
@@ -384,6 +378,13 @@ module ActiveRecord
         def last_inserted_id(result)
           row = result.rows.first
           row && row.first
+        end
+
+        def binds_from_relation(relation, binds)
+          if relation.is_a?(Relation) && binds.blank?
+            relation, binds = relation.arel, relation.bind_values
+          end
+          [relation, binds]
         end
     end
   end

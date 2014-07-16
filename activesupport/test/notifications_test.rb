@@ -113,7 +113,7 @@ module Notifications
       @notifier.publish :foo
       @notifier.publish :foo
 
-      @notifier.subscribe("not_existant") do |*args|
+      @notifier.subscribe("not_existent") do |*args|
         @events << ActiveSupport::Notifications::Event.new(*args)
       end
 

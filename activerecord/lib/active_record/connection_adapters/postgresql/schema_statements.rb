@@ -12,7 +12,7 @@ module ActiveRecord
 
         def visit_ColumnDefinition(o)
           sql = super
-          if o.primary_key? && o.type == :uuid
+          if o.primary_key? && o.type != :primary_key
             sql << " PRIMARY KEY "
             add_column_options!(sql, column_options(o))
           end
@@ -46,7 +46,7 @@ module ActiveRecord
         end
 
         # Create a new PostgreSQL database. Options include <tt>:owner</tt>, <tt>:template</tt>,
-        # <tt>:encoding</tt>, <tt>:collation</tt>, <tt>:ctype</tt>,
+        # <tt>:encoding</tt> (defaults to utf8), <tt>:collation</tt>, <tt>:ctype</tt>,
         # <tt>:tablespace</tt>, and <tt>:connection_limit</tt> (note that MySQL uses
         # <tt>:charset</tt> while PostgreSQL uses <tt>:encoding</tt>).
         #
@@ -126,6 +126,19 @@ module ActiveRecord
           SQL
         end
 
+        def index_name_exists?(table_name, index_name, default)
+          exec_query(<<-SQL, 'SCHEMA').rows.first[0].to_i > 0
+            SELECT COUNT(*)
+            FROM pg_class t
+            INNER JOIN pg_index d ON t.oid = d.indrelid
+            INNER JOIN pg_class i ON d.indexrelid = i.oid
+            WHERE i.relkind = 'i'
+              AND i.relname = '#{index_name}'
+              AND t.relname = '#{table_name}'
+              AND i.relnamespace IN (SELECT oid FROM pg_namespace WHERE nspname = ANY (current_schemas(false)) )
+          SQL
+        end
+
         # Returns an array of indexes for the given table.
         def indexes(table_name, name = nil)
            result = query(<<-SQL, 'SCHEMA')
@@ -172,11 +185,13 @@ module ActiveRecord
         def columns(table_name)
           # Limit, precision, and scale are all handled by the superclass.
           column_definitions(table_name).map do |column_name, type, default, notnull, oid, fmod|
-            oid = OID::TYPE_MAP.fetch(oid.to_i, fmod.to_i) {
-              OID::Identity.new
-            }
+            oid = get_oid_type(oid.to_i, fmod.to_i, column_name)
             PostgreSQLColumn.new(column_name, default, oid, type, notnull == 'f')
           end
+        end
+
+        def column_for(table_name, column_name) #:nodoc:
+          columns(table_name).detect { |c| c.name == column_name.to_s }
         end
 
         # Returns the current database name.
@@ -395,13 +410,16 @@ module ActiveRecord
         # Changes the default value of a table column.
         def change_column_default(table_name, column_name, default)
           clear_cache!
-          execute "ALTER TABLE #{quote_table_name(table_name)} ALTER COLUMN #{quote_column_name(column_name)} SET DEFAULT #{quote(default)}"
+          column = column_for(table_name, column_name)
+
+          execute "ALTER TABLE #{quote_table_name(table_name)} ALTER COLUMN #{quote_column_name(column_name)} SET DEFAULT #{quote_default_value(default, column)}" if column
         end
 
         def change_column_null(table_name, column_name, null, default = nil)
           clear_cache!
           unless null || default.nil?
-            execute("UPDATE #{quote_table_name(table_name)} SET #{quote_column_name(column_name)}=#{quote(default)} WHERE #{quote_column_name(column_name)} IS NULL")
+            column = column_for(table_name, column_name)
+            execute("UPDATE #{quote_table_name(table_name)} SET #{quote_column_name(column_name)}=#{quote_default_value(default, column)} WHERE #{quote_column_name(column_name)} IS NULL") if column
           end
           execute("ALTER TABLE #{quote_table_name(table_name)} ALTER #{quote_column_name(column_name)} #{null ? 'DROP' : 'SET'} NOT NULL")
         end
@@ -471,7 +489,7 @@ module ActiveRecord
         # PostgreSQL requires the ORDER BY columns in the select list for distinct queries, and
         # requires that the ORDER BY include the distinct column.
         def columns_for_distinct(columns, orders) #:nodoc:
-          order_columns = orders.map{ |s|
+          order_columns = orders.reject(&:blank?).map{ |s|
               # Convert Arel node to string
               s = s.to_sql unless s.is_a?(String)
               # Remove any ASC/DESC modifiers

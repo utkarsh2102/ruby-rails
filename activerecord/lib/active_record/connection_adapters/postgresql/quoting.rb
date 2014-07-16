@@ -23,7 +23,8 @@ module ActiveRecord
           case value
           when Range
             if /range$/ =~ sql_type
-              "'#{PostgreSQLColumn.range_to_string(value)}'::#{sql_type}"
+              escaped = quote_string(PostgreSQLColumn.range_to_string(value))
+              "'#{escaped}'::#{sql_type}"
             else
               super
             end
@@ -70,8 +71,8 @@ module ActiveRecord
             when 'xml'   then "xml '#{quote_string(value)}'"
             when /^bit/
               case value
-              when /^[01]*$/      then "B'#{value}'" # Bit-string notation
-              when /^[0-9A-F]*$/i then "X'#{value}'" # Hexadecimal notation
+              when /\A[01]*\Z/      then "B'#{value}'" # Bit-string notation
+              when /\A[0-9A-F]*\Z/i then "X'#{value}'" # Hexadecimal notation
               end
             else
               super
@@ -86,8 +87,11 @@ module ActiveRecord
 
           case value
           when Range
-            return super(value, column) unless /range$/ =~ column.sql_type
-            PostgreSQLColumn.range_to_string(value)
+            if /range$/ =~ column.sql_type
+              PostgreSQLColumn.range_to_string(value)
+            else
+              super(value, column)
+            end
           when NilClass
             if column.array && array_member
               'NULL'
@@ -101,21 +105,33 @@ module ActiveRecord
             when 'point' then PostgreSQLColumn.point_to_string(value)
             when 'json' then PostgreSQLColumn.json_to_string(value)
             else
-              return super(value, column) unless column.array
-              PostgreSQLColumn.array_to_string(value, column, self)
+              if column.array
+                PostgreSQLColumn.array_to_string(value, column, self)
+              else
+                super(value, column)
+              end
             end
           when String
-            return super(value, column) unless 'bytea' == column.sql_type
-            { :value => value, :format => 1 }
+            if 'bytea' == column.sql_type
+              # Return a bind param hash with format as binary.
+              # See http://deveiate.org/code/pg/PGconn.html#method-i-exec_prepared-doc
+              # for more information
+              { value: value, format: 1 }
+            else
+              super(value, column)
+            end
           when Hash
             case column.sql_type
-            when 'hstore' then PostgreSQLColumn.hstore_to_string(value)
+            when 'hstore' then PostgreSQLColumn.hstore_to_string(value, array_member)
             when 'json' then PostgreSQLColumn.json_to_string(value)
             else super(value, column)
             end
           when IPAddr
-            return super(value, column) unless ['inet','cidr'].include? column.sql_type
-            PostgreSQLColumn.cidr_to_string(value)
+            if %w(inet cidr).include? column.sql_type
+              PostgreSQLColumn.cidr_to_string(value)
+            else
+              super(value, column)
+            end
           else
             super(value, column)
           end
@@ -166,6 +182,15 @@ module ActiveRecord
             result = result.sub(/^-/, "") + " BC"
           end
           result
+        end
+
+        # Does not quote function default values for UUID columns
+        def quote_default_value(value, column) #:nodoc:
+          if column.type == :uuid && value =~ /\(\)/
+            value
+          else
+            quote(value, column)
+          end
         end
       end
     end

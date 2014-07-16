@@ -70,7 +70,8 @@ module ActionController
   # can do the following:
   #
   #   class HelloController < ActionController::Metal
-  #     include ActionController::Rendering
+  #     include AbstractController::Rendering
+  #     include ActionView::Layouts
   #     append_view_path "#{Rails.root}/app/views"
   #
   #     def index
@@ -230,6 +231,10 @@ module ActionController
       middleware_stack.build(name.to_s) do |env|
         new.dispatch(name, klass.new(env))
       end
+    end
+
+    def _status_code
+      @_status
     end
   end
 end

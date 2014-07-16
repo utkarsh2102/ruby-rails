@@ -2,7 +2,6 @@ require 'rails/railtie'
 require 'rails/engine/railties'
 require 'active_support/core_ext/module/delegation'
 require 'pathname'
-require 'rbconfig'
 
 module Rails
   # <tt>Rails::Engine</tt> allows you to wrap a specific Rails application or subset of
@@ -124,7 +123,7 @@ module Rails
   #
   # Now you can mount your engine in application's routes just like that:
   #
-  #   MyRailsApp::Application.routes.draw do
+  #   Rails.application.routes.draw do
   #     mount MyEngine::Engine => "/engine"
   #   end
   #
@@ -154,7 +153,7 @@ module Rails
   # Note that now there can be more than one router in your application, and it's better to avoid
   # passing requests through many routers. Consider this situation:
   #
-  #   MyRailsApp::Application.routes.draw do
+  #   Rails.application.routes.draw do
   #     mount MyEngine::Engine => "/blog"
   #     get "/blog/omg" => "main#omg"
   #   end
@@ -164,7 +163,7 @@ module Rails
   # and if there is no such route in +Engine+'s routes, it will be dispatched to <tt>main#omg</tt>.
   # It's much better to swap that:
   #
-  #   MyRailsApp::Application.routes.draw do
+  #   Rails.application.routes.draw do
   #     get "/blog/omg" => "main#omg"
   #     mount MyEngine::Engine => "/blog"
   #   end
@@ -251,7 +250,7 @@ module Rails
   # created to allow you to do that. Consider such a scenario:
   #
   #   # config/routes.rb
-  #   MyApplication::Application.routes.draw do
+  #   Rails.application.routes.draw do
   #     mount MyEngine::Engine => "/my_engine", as: "my_engine"
   #     get "/foo" => "foo#index"
   #   end
@@ -260,7 +259,7 @@ module Rails
   #
   #   class FooController < ApplicationController
   #     def index
-  #       my_engine.root_url #=> /my_engine/
+  #       my_engine.root_url # => /my_engine/
   #     end
   #   end
   #
@@ -269,7 +268,7 @@ module Rails
   #   module MyEngine
   #     class BarController
   #       def index
-  #         main_app.foo_path #=> /foo
+  #         main_app.foo_path # => /foo
   #       end
   #     end
   #   end
@@ -351,8 +350,13 @@ module Rails
           Rails::Railtie::Configuration.eager_load_namespaces << base
 
           base.called_from = begin
-            # Remove the line number from backtraces making sure we don't leave anything behind
-            call_stack = caller.map { |p| p.sub(/:\d+.*/, '') }
+            call_stack = if Kernel.respond_to?(:caller_locations)
+              caller_locations.map(&:path)
+            else
+              # Remove the line number from backtraces making sure we don't leave anything behind
+              caller.map { |p| p.sub(/:\d+.*/, '') }
+            end
+
             File.dirname(call_stack.detect { |p| p !~ %r[railties[\w.-]*/lib/rails|rack[\w.-]*/lib/rack] })
           end
         end
@@ -425,7 +429,6 @@ module Rails
     # Load console and invoke the registered hooks.
     # Check <tt>Rails::Railtie.console</tt> for more info.
     def load_console(app=self)
-      require "pp"
       require "rails/console/app"
       require "rails/console/helpers"
       run_console_blocks(app)
@@ -447,7 +450,7 @@ module Rails
       self
     end
 
-    # Load rails generators and invoke the registered hooks.
+    # Load Rails generators and invoke the registered hooks.
     # Check <tt>Rails::Railtie.generators</tt> for more info.
     def load_generators(app=self)
       require "rails/generators"
@@ -460,7 +463,7 @@ module Rails
     # files inside eager_load paths.
     def eager_load!
       config.eager_load_paths.each do |load_path|
-        matcher = /\A#{Regexp.escape(load_path)}\/(.*)\.rb\Z/
+        matcher = /\A#{Regexp.escape(load_path.to_s)}\/(.*)\.rb\Z/
         Dir.glob("#{load_path}/**/*.rb").sort.each do |file|
           require_dependency file.sub(matcher, '\1')
         end
@@ -606,7 +609,7 @@ module Rails
 
     initializer :load_config_initializers do
       config.paths["config/initializers"].existent.sort.each do |initializer|
-        load(initializer)
+        load_config_initializer(initializer)
       end
     end
 
@@ -634,15 +637,21 @@ module Rails
       end
     end
 
+    def routes? #:nodoc:
+      @routes
+    end
+
     protected
+
+    def load_config_initializer(initializer)
+      ActiveSupport::Notifications.instrument('load_config_initializer.railties', initializer: initializer) do
+        load(initializer)
+      end
+    end
 
     def run_tasks_blocks(*) #:nodoc:
       super
       paths["lib/tasks"].existent.sort.each { |ext| load(ext) }
-    end
-
-    def routes? #:nodoc:
-      @routes
     end
 
     def has_migrations? #:nodoc:

@@ -34,6 +34,12 @@ module ActiveRecord
       default_flags |= Mysql::CLIENT_FOUND_ROWS if Mysql.const_defined?(:CLIENT_FOUND_ROWS)
       options = [host, username, password, database, port, socket, default_flags]
       ConnectionAdapters::MysqlAdapter.new(mysql, logger, options, config)
+    rescue Mysql::Error => error
+      if error.message.include?("Unknown database")
+        raise ActiveRecord::NoDatabaseError.new(error.message)
+      else
+        raise error
+      end
     end
   end
 
@@ -160,12 +166,6 @@ module ActiveRecord
 
       # QUOTING ==================================================
 
-      def type_cast(value, column)
-        return super unless value == true || value == false
-
-        value ? 1 : 0
-      end
-
       def quote_string(string) #:nodoc:
         @connection.quote(string)
       end
@@ -213,9 +213,9 @@ module ActiveRecord
 
       # DATABASE STATEMENTS ======================================
 
-      def select_rows(sql, name = nil)
+      def select_rows(sql, name = nil, binds = [])
         @connection.query_with_result = true
-        rows = exec_query(sql, name).rows
+        rows = exec_query(sql, name, binds).rows
         @connection.more_results && @connection.next_result    # invoking stored procedures with CLIENT_MULTI_RESULTS requires this to tidy up else connection will be dropped
         rows
       end
@@ -425,14 +425,19 @@ module ActiveRecord
 
           if result
             types = {}
+            fields = []
             result.fetch_fields.each { |field|
+              field_name = field.name
+              fields << field_name
+
               if field.decimals > 0
-                types[field.name] = Fields::Decimal.new
+                types[field_name] = Fields::Decimal.new
               else
-                types[field.name] = Fields.find_type field
+                types[field_name] = Fields.find_type field
               end
             }
-            result_set = ActiveRecord::Result.new(types.keys, result.to_a, types)
+
+            result_set = ActiveRecord::Result.new(fields, result.to_a, types)
             result.free
           else
             result_set = ActiveRecord::Result.new([], [])
@@ -468,15 +473,17 @@ module ActiveRecord
 
       def begin_db_transaction #:nodoc:
         exec_query "BEGIN"
-      rescue Mysql::Error
-        # Transactions aren't supported
       end
 
       private
 
       def exec_stmt(sql, name, binds)
         cache = {}
-        log(sql, name, binds) do
+        type_casted_binds = binds.map { |col, val|
+          [col, type_cast(val, col)]
+        }
+
+        log(sql, name, type_casted_binds) do
           if binds.empty?
             stmt = @connection.prepare(sql)
           else
@@ -487,7 +494,7 @@ module ActiveRecord
           end
 
           begin
-            stmt.execute(*binds.map { |col, val| type_cast(val, col) })
+            stmt.execute(*type_casted_binds.map { |_, val| val })
           rescue Mysql::Error => e
             # Older versions of MySQL leave the prepared statement in a bad
             # place when an error occurs. To support older mysql versions, we

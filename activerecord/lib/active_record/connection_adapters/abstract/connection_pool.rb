@@ -86,7 +86,7 @@ module ActiveRecord
           end
         end
 
-        # Return the number of threads currently waiting on this
+        # Returns the number of threads currently waiting on this
         # queue.
         def num_waiting
           synchronize do
@@ -332,11 +332,6 @@ module ActiveRecord
         end
       end
 
-      def clear_stale_cached_connections! # :nodoc:
-        reap
-      end
-      deprecate :clear_stale_cached_connections! => "Please use #reap instead"
-
       # Check-out a database connection from the pool, indicating that you want
       # to use it. You should call #checkin when you no longer need this.
       #
@@ -398,7 +393,7 @@ module ActiveRecord
         synchronize do
           stale = Time.now - @dead_connection_timeout
           connections.dup.each do |conn|
-            if conn.in_use? && stale > conn.last_use && !conn.active?
+            if conn.in_use? && stale > conn.last_use && !conn.active_threadsafe?
               remove conn
             end
           end
@@ -629,7 +624,7 @@ module ActiveRecord
         end
 
         response
-      rescue
+      rescue Exception
         ActiveRecord::Base.clear_active_connections! unless testing
         raise
       end

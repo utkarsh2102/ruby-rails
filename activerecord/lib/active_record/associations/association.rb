@@ -13,7 +13,6 @@ module ActiveRecord
     #       BelongsToAssociation
     #         BelongsToPolymorphicAssociation
     #     CollectionAssociation
-    #       HasAndBelongsToManyAssociation
     #       HasManyAssociation
     #         HasManyThroughAssociation + ThroughAssociation
     class Association #:nodoc:
@@ -70,7 +69,7 @@ module ActiveRecord
       # The target is stale if the target no longer points to the record(s) that the
       # relevant foreign_key(s) refers to. If stale, the association accessor method
       # on the owner will reload the target. It's up to subclasses to implement the
-      # state_state method if relevant.
+      # stale_state method if relevant.
       #
       # Note that if the target has not been loaded, it is not considered stale.
       def stale_target?
@@ -87,11 +86,6 @@ module ActiveRecord
         target_scope.merge(association_scope)
       end
 
-      def scoped
-        ActiveSupport::Deprecation.warn "#scoped is deprecated. use #scope instead."
-        scope
-      end
-
       # The scope for this association.
       #
       # Note that the association_scope is merged into the target_scope only when the
@@ -100,7 +94,7 @@ module ActiveRecord
       # actually gets built.
       def association_scope
         if klass
-          @association_scope ||= AssociationScope.new(self).scope
+          @association_scope ||= AssociationScope.scope(self, klass.connection)
         end
       end
 
@@ -110,11 +104,12 @@ module ActiveRecord
 
       # Set the inverse association, if possible
       def set_inverse_instance(record)
-        if record && invertible_for?(record)
+        if invertible_for?(record)
           inverse = record.association(inverse_reflection_for(record).name)
           inverse.target = owner
           inverse.inversed = true
         end
+        record
       end
 
       # Returns the class of the target. belongs_to polymorphic overrides this to look at the
@@ -126,11 +121,7 @@ module ActiveRecord
       # Can be overridden (i.e. in ThroughAssociation) to merge in other scopes (i.e. the
       # through association's scope)
       def target_scope
-        all = klass.all
-        scope = AssociationRelation.new(klass, klass.arel_table, self)
-        scope.merge! all
-        scope.default_scoped = all.default_scoped?
-        scope
+        AssociationRelation.create(klass, klass.arel_table, self).merge!(klass.all)
       end
 
       # Loads the \target if needed and returns it.
@@ -169,7 +160,7 @@ module ActiveRecord
       def marshal_load(data)
         reflection_name, ivars = data
         ivars.each { |name, val| instance_variable_set(name, val) }
-        @reflection = @owner.class.reflect_on_association(reflection_name)
+        @reflection = @owner.class._reflect_on_association(reflection_name)
       end
 
       def initialize_attributes(record) #:nodoc:
@@ -204,13 +195,14 @@ module ActiveRecord
           creation_attributes.each { |key, value| record[key] = value }
         end
 
-        # Should be true if there is a foreign key present on the owner which
+        # Returns true if there is a foreign key present on the owner which
         # references the target. This is used to determine whether we can load
         # the target if the owner is currently a new record (and therefore
-        # without a key).
+        # without a key). If the owner is a new record then foreign_key must
+        # be present in order to load target.
         #
         # Currently implemented by belongs_to (vanilla and polymorphic) and
-        # has_one/has_many :through associations which go through a belongs_to
+        # has_one/has_many :through associations which go through a belongs_to.
         def foreign_key_present?
           false
         end
@@ -235,7 +227,12 @@ module ActiveRecord
         # Returns true if inverse association on the given record needs to be set.
         # This method is redefined by subclasses.
         def invertible_for?(record)
-          inverse_reflection_for(record)
+          foreign_key_for?(record) && inverse_reflection_for(record)
+        end
+
+        # Returns true if record contains the foreign_key
+        def foreign_key_for?(record)
+          record.has_attribute?(reflection.foreign_key)
         end
 
         # This should be implemented to return the values of the relevant key(s) on the owner,

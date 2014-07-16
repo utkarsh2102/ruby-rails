@@ -37,6 +37,8 @@ module ActiveRecord
       def not(opts, *rest)
         where_value = @scope.send(:build_where, opts, rest).map do |rel|
           case rel
+          when NilClass
+            raise ArgumentError, 'Invalid argument for .where.not(), got nil.'
           when Arel::Nodes::In
             Arel::Nodes::NotIn.new(rel.left, rel.right)
           when Arel::Nodes::Equality
@@ -47,6 +49,8 @@ module ActiveRecord
             Arel::Nodes::Not.new(rel)
           end
         end
+
+        @scope.references!(PredicateBuilder.references(opts)) if Hash === opts
         @scope.where_values += where_value
         @scope
       end
@@ -100,6 +104,14 @@ module ActiveRecord
     # firing an additional query. This will often result in a
     # performance improvement over a simple +join+.
     #
+    # You can also specify multiple relationships, like this:
+    #
+    #   users = User.includes(:address, :friends)
+    #
+    # Loading nested relationships is possible using a Hash:
+    #
+    #   users = User.includes(:address, friends: [:address, :followers])
+    #
     # === conditions
     #
     # If you want to add conditions to your included models you'll have
@@ -110,15 +122,19 @@ module ActiveRecord
     # Will throw an error, but this will work:
     #
     #   User.includes(:posts).where('posts.name = ?', 'example').references(:posts)
+    #
+    # Note that +includes+ works with association names while +references+ needs
+    # the actual table name.
     def includes(*args)
-      check_if_method_has_arguments!("includes", args)
+      check_if_method_has_arguments!(:includes, args)
       spawn.includes!(*args)
     end
 
     def includes!(*args) # :nodoc:
-      args.reject! {|a| a.blank? }
+      args.reject!(&:blank?)
+      args.flatten!
 
-      self.includes_values = (includes_values + args).flatten.uniq
+      self.includes_values |= args
       self
     end
 
@@ -129,7 +145,7 @@ module ActiveRecord
     #   FROM "users" LEFT OUTER JOIN "posts" ON "posts"."user_id" =
     #   "users"."id"
     def eager_load(*args)
-      check_if_method_has_arguments!("eager_load", args)
+      check_if_method_has_arguments!(:eager_load, args)
       spawn.eager_load!(*args)
     end
 
@@ -143,7 +159,7 @@ module ActiveRecord
     #   User.preload(:posts)
     #   => SELECT "posts".* FROM "posts" WHERE "posts"."user_id" IN (1, 2, 3)
     def preload(*args)
-      check_if_method_has_arguments!("preload", args)
+      check_if_method_has_arguments!(:preload, args)
       spawn.preload!(*args)
     end
 
@@ -152,23 +168,26 @@ module ActiveRecord
       self
     end
 
-    # Used to indicate that an association is referenced by an SQL string, and should
-    # therefore be JOINed in any query rather than loaded separately.
+    # Use to indicate that the given +table_names+ are referenced by an SQL string,
+    # and should therefore be JOINed in any query rather than loaded separately.
+    # This method only works in conjuction with +includes+.
+    # See #includes for more details.
     #
     #   User.includes(:posts).where("posts.name = 'foo'")
     #   # => Doesn't JOIN the posts table, resulting in an error.
     #
     #   User.includes(:posts).where("posts.name = 'foo'").references(:posts)
     #   # => Query now knows the string references posts, so adds a JOIN
-    def references(*args)
-      check_if_method_has_arguments!("references", args)
-      spawn.references!(*args)
+    def references(*table_names)
+      check_if_method_has_arguments!(:references, table_names)
+      spawn.references!(*table_names)
     end
 
-    def references!(*args) # :nodoc:
-      args.flatten!
+    def references!(*table_names) # :nodoc:
+      table_names.flatten!
+      table_names.map!(&:to_s)
 
-      self.references_values = (references_values + args.map!(&:to_s)).uniq
+      self.references_values |= table_names
       self
     end
 
@@ -216,12 +235,16 @@ module ActiveRecord
         to_a.select { |*block_args| yield(*block_args) }
       else
         raise ArgumentError, 'Call this with at least one field' if fields.empty?
-        spawn.select!(*fields)
+        spawn._select!(*fields)
       end
     end
 
-    def select!(*fields) # :nodoc:
-      self.select_values += fields.flatten
+    def _select!(*fields) # :nodoc:
+      fields.flatten!
+      fields.map! do |field|
+        klass.attribute_alias?(field) ? klass.attribute_alias(field) : field
+      end
+      self.select_values += fields
       self
     end
 
@@ -241,7 +264,7 @@ module ActiveRecord
     #   User.group('name AS grouped_name, age')
     #   => [#<User id: 3, name: "Foo", age: 21, ...>, #<User id: 2, name: "Oscar", age: 21, ...>, #<User id: 5, name: "Foo", age: 23, ...>]
     def group(*args)
-      check_if_method_has_arguments!("group", args)
+      check_if_method_has_arguments!(:group, args)
       spawn.group!(*args)
     end
 
@@ -272,24 +295,12 @@ module ActiveRecord
     #   User.order(:name, email: :desc)
     #   => SELECT "users".* FROM "users" ORDER BY "users"."name" ASC, "users"."email" DESC
     def order(*args)
-      check_if_method_has_arguments!("order", args)
+      check_if_method_has_arguments!(:order, args)
       spawn.order!(*args)
     end
 
     def order!(*args) # :nodoc:
-      args.flatten!
-      validate_order_args args
-
-      references = args.reject { |arg| Arel::Node === arg }
-      references.map! { |arg| arg =~ /^([a-zA-Z]\w*)\.(\w+)/ && $1 }.compact!
-      references!(references) if references.any?
-
-      # if a symbol is given we prepend the quoted table name
-      args = args.map! { |arg|
-        arg.is_a?(Symbol) ?
-          Arel::Nodes::Ascending.new(klass.arel_table[arg]) :
-          arg
-      }
+      preprocess_order_args(args)
 
       self.order_values += args
       self
@@ -305,13 +316,12 @@ module ActiveRecord
     #
     # generates a query with 'ORDER BY id ASC, name ASC'.
     def reorder(*args)
-      check_if_method_has_arguments!("reorder", args)
+      check_if_method_has_arguments!(:reorder, args)
       spawn.reorder!(*args)
     end
 
     def reorder!(*args) # :nodoc:
-      args.flatten!
-      validate_order_args args
+      preprocess_order_args(args)
 
       self.reordering_value = true
       self.order_values = args
@@ -342,20 +352,27 @@ module ActiveRecord
     #   User.where(name: "John", active: true).unscope(where: :name)
     #       == User.where(active: true)
     #
-    # Note that this method is more generalized than ActiveRecord::SpawnMethods#except
-    # because #except will only affect a particular relation's values. It won't wipe
-    # the order, grouping, etc. when that relation is merged. For example:
+    # This method is similar to <tt>except</tt>, but unlike
+    # <tt>except</tt>, it persists across merges:
     #
-    #   Post.comments.except(:order)
+    #   User.order('email').merge(User.except(:order))
+    #       == User.order('email')
     #
-    # will still have an order if it comes from the default_scope on Comment.
+    #   User.order('email').merge(User.unscope(:order))
+    #       == User.all
+    #
+    # This means it can be used in association definitions:
+    #
+    #   has_many :comments, -> { unscope where: :trashed }
+    #
     def unscope(*args)
-      check_if_method_has_arguments!("unscope", args)
+      check_if_method_has_arguments!(:unscope, args)
       spawn.unscope!(*args)
     end
 
     def unscope!(*args) # :nodoc:
       args.flatten!
+      self.unscope_values += args
 
       args.each do |scope|
         case scope
@@ -389,8 +406,12 @@ module ActiveRecord
     #   User.joins("LEFT JOIN bookmarks ON bookmarks.bookmarkable_type = 'Post' AND bookmarks.user_id = users.id")
     #   => SELECT "users".* FROM "users" LEFT JOIN bookmarks ON bookmarks.bookmarkable_type = 'Post' AND bookmarks.user_id = users.id
     def joins(*args)
-      check_if_method_has_arguments!("joins", args)
-      spawn.joins!(*args.compact.flatten)
+      check_if_method_has_arguments!(:joins, args)
+
+      args.compact!
+      args.flatten!
+
+      spawn.joins!(*args)
     end
 
     def joins!(*args) # :nodoc:
@@ -417,7 +438,7 @@ module ActiveRecord
     # === string
     #
     # A single string, without additional arguments, is passed to the query
-    # constructor as a SQL fragment, and used in the where clause of the query.
+    # constructor as an SQL fragment, and used in the where clause of the query.
     #
     #    Client.where("orders_count = '2'")
     #    # SELECT * from clients where orders_count = '2';
@@ -547,6 +568,18 @@ module ActiveRecord
       end
     end
 
+    # Allows you to change a previously set where condition for a given attribute, instead of appending to that condition.
+    #
+    #   Post.where(trashed: true).where(trashed: false)                       # => WHERE `trashed` = 1 AND `trashed` = 0
+    #   Post.where(trashed: true).rewhere(trashed: false)                     # => WHERE `trashed` = 0
+    #   Post.where(active: true).where(trashed: true).rewhere(trashed: false) # => WHERE `active` = 1 AND `trashed` = 0
+    #
+    # This is short-hand for unscope(where: conditions.keys).where(conditions). Note that unlike reorder, we're only unscoping
+    # the named conditions -- not the entire where statement.
+    def rewhere(conditions)
+      unscope(where: conditions.keys).where(conditions)
+    end
+
     # Allows to specify a HAVING clause. Note that you can't use HAVING
     # without also specifying a GROUP clause.
     #
@@ -609,12 +642,11 @@ module ActiveRecord
       self
     end
 
-    # Returns a chainable relation with zero records, specifically an
-    # instance of the <tt>ActiveRecord::NullRelation</tt> class.
+    # Returns a chainable relation with zero records.
     #
-    # The returned <tt>ActiveRecord::NullRelation</tt> inherits from Relation and implements the
-    # Null Object pattern. It is an object with defined null behavior and always returns an empty
-    # array of records without querying the database.
+    # The returned relation implements the Null Object pattern. It is an
+    # object with defined null behavior and always returns an empty array of
+    # records without querying the database.
     #
     # Any subsequent condition chained to the returned relation will continue
     # generating an empty relation and will not fire any query to the database.
@@ -634,7 +666,7 @@ module ActiveRecord
     #     when 'Reviewer'
     #       Post.published
     #     when 'Bad User'
-    #       Post.none # => returning [] instead breaks the previous code
+    #       Post.none # It can't be chained if [] is returned.
     #     end
     #   end
     #
@@ -686,7 +718,7 @@ module ActiveRecord
     # Specifies table from which the records will be fetched. For example:
     #
     #   Topic.select('title').from('posts')
-    #   #=> SELECT title FROM posts
+    #   # => SELECT title FROM posts
     #
     # Can accept other relation objects. For example:
     #
@@ -772,9 +804,10 @@ module ActiveRecord
     end
 
     def extending!(*modules, &block) # :nodoc:
-      modules << Module.new(&block) if block_given?
+      modules << Module.new(&block) if block
+      modules.flatten!
 
-      self.extending_values += modules.flatten
+      self.extending_values += modules
       extend(*extending_values) if extending_values.any?
 
       self
@@ -793,11 +826,12 @@ module ActiveRecord
     end
 
     # Returns the Arel object associated with the relation.
-    def arel
-      @arel ||= with_default_scope.build_arel
+    def arel # :nodoc:
+      @arel ||= build_arel
     end
 
-    # Like #arel, but ignores the default scope of the model.
+    private
+
     def build_arel
       arel = Arel::SelectManager.new(table.engine, table)
 
@@ -805,12 +839,12 @@ module ActiveRecord
 
       collapse_wheres(arel, (where_values - ['']).uniq)
 
-      arel.having(*having_values.uniq.reject{|h| h.blank?}) unless having_values.empty?
+      arel.having(*having_values.uniq.reject(&:blank?)) unless having_values.empty?
 
       arel.take(connection.sanitize_limit(limit_value)) if limit_value
       arel.skip(offset_value.to_i) if offset_value
 
-      arel.group(*group_values.uniq.reject{|g| g.blank?}) unless group_values.empty?
+      arel.group(*group_values.uniq.reject(&:blank?)) unless group_values.empty?
 
       build_order(arel)
 
@@ -823,19 +857,17 @@ module ActiveRecord
       arel
     end
 
-    private
-
     def symbol_unscoping(scope)
       if !VALID_UNSCOPING_VALUES.include?(scope)
         raise ArgumentError, "Called unscope() with invalid unscoping argument ':#{scope}'. Valid arguments are :#{VALID_UNSCOPING_VALUES.to_a.join(", :")}."
       end
 
       single_val_method = Relation::SINGLE_VALUE_METHODS.include?(scope)
-      unscope_code = :"#{scope}_value#{'s' unless single_val_method}="
+      unscope_code = "#{scope}_value#{'s' unless single_val_method}="
 
       case scope
       when :order
-        self.send(:reverse_order_value=, false)
+        self.reverse_order_value = false
         result = []
       else
         result = [] unless single_val_method
@@ -845,27 +877,25 @@ module ActiveRecord
     end
 
     def where_unscoping(target_value)
-      target_value_sym = target_value.to_sym
+      target_value = target_value.to_s
 
       where_values.reject! do |rel|
         case rel
-        when Arel::Nodes::In, Arel::Nodes::Equality
+        when Arel::Nodes::In, Arel::Nodes::NotIn, Arel::Nodes::Equality, Arel::Nodes::NotEqual
           subrelation = (rel.left.kind_of?(Arel::Attributes::Attribute) ? rel.left : rel.right)
-          subrelation.name.to_sym == target_value_sym
-        else
-          raise "unscope(where: #{target_value.inspect}) failed: unscoping #{rel.class} is unimplemented."
+          subrelation.name == target_value
         end
       end
+
+      bind_values.reject! { |col,_| col.name == target_value }
     end
 
     def custom_join_ast(table, joins)
-      joins = joins.reject { |join| join.blank? }
+      joins = joins.reject(&:blank?)
 
       return [] if joins.empty?
 
-      @implicit_readonly = true
-
-      joins.map do |join|
+      joins.map! do |join|
         case join
         when Array
           join = Arel.sql(join.join(' ')) if array_of_strings?(join)
@@ -898,6 +928,7 @@ module ActiveRecord
 
         [@klass.send(:sanitize_sql, other.empty? ? opts : ([opts] + other))]
       when Hash
+        opts = PredicateBuilder.resolve_column_aliases(klass, opts)
         attributes = @klass.send(:expand_hash_conditions_for_aggregates, opts)
 
         attributes.values.grep(ActiveRecord::Relation) do |rel|
@@ -929,7 +960,7 @@ module ActiveRecord
           :string_join
         when Hash, Symbol, Array
           :association_join
-        when ActiveRecord::Associations::JoinDependency::JoinAssociation
+        when ActiveRecord::Associations::JoinDependency
           :stashed_join
         when Arel::Nodes::Join
           :join_node
@@ -941,7 +972,7 @@ module ActiveRecord
       association_joins         = buckets[:association_join] || []
       stashed_association_joins = buckets[:stashed_join] || []
       join_nodes                = (buckets[:join_node] || []).uniq
-      string_joins              = (buckets[:string_join] || []).map { |x| x.strip }.uniq
+      string_joins              = (buckets[:string_join] || []).map(&:strip).uniq
 
       join_list = join_nodes + custom_join_ast(manager, string_joins)
 
@@ -951,24 +982,21 @@ module ActiveRecord
         join_list
       )
 
-      join_dependency.graft(*stashed_association_joins)
+      joins = join_dependency.join_constraints stashed_association_joins
 
-      @implicit_readonly = true unless association_joins.empty? && stashed_association_joins.empty?
+      joins.each { |join| manager.from(join) }
 
-      # FIXME: refactor this to build an AST
-      join_dependency.join_associations.each do |association|
-        association.join_to(manager)
-      end
-
-      manager.join_sources.concat join_list
+      manager.join_sources.concat(join_list)
 
       manager
     end
 
     def build_select(arel, selects)
-      unless selects.empty?
-        @implicit_readonly = false
-        arel.project(*selects)
+      if !selects.empty?
+        expanded_select = selects.map do |field|
+          columns_hash.key?(field.to_s) ? arel_table[field] : field
+        end
+        arel.project(*expanded_select)
       else
         arel.project(@klass.arel_table[Arel.star])
       end
@@ -982,15 +1010,9 @@ module ActiveRecord
         when Arel::Nodes::Ordering
           o.reverse
         when String
-          o.to_s.split(',').collect do |s|
+          o.to_s.split(',').map! do |s|
             s.strip!
             s.gsub!(/\sasc\Z/i, ' DESC') || s.gsub!(/\sdesc\Z/i, ' ASC') || s.concat(' DESC')
-          end
-        when Symbol
-          { o => :desc }
-        when Hash
-          o.each_with_object({}) do |(field, dir), memo|
-            memo[field] = (dir == :asc ? :desc : :asc )
           end
         else
           o
@@ -999,33 +1021,48 @@ module ActiveRecord
     end
 
     def array_of_strings?(o)
-      o.is_a?(Array) && o.all?{|obj| obj.is_a?(String)}
+      o.is_a?(Array) && o.all? { |obj| obj.is_a?(String) }
     end
 
     def build_order(arel)
-      orders = order_values
+      orders = order_values.uniq
+      orders.reject!(&:blank?)
       orders = reverse_sql_order(orders) if reverse_order_value
-
-      orders = orders.uniq.reject(&:blank?).flat_map do |order|
-        case order
-        when Symbol
-          table[order].asc
-        when Hash
-          order.map { |field, dir| table[field].send(dir) }
-        else
-          order
-        end
-      end
 
       arel.order(*orders) unless orders.empty?
     end
 
     def validate_order_args(args)
-      args.select { |a| Hash === a  }.each do |h|
+      args.grep(Hash) do |h|
         unless (h.values - [:asc, :desc]).empty?
           raise ArgumentError, 'Direction should be :asc or :desc'
         end
       end
+    end
+
+    def preprocess_order_args(order_args)
+      order_args.flatten!
+      validate_order_args(order_args)
+
+      references = order_args.grep(String)
+      references.map! { |arg| arg =~ /^([a-zA-Z]\w*)\.(\w+)/ && $1 }.compact!
+      references!(references) if references.any?
+
+      # if a symbol is given we prepend the quoted table name
+      order_args.map! do |arg|
+        case arg
+        when Symbol
+          arg = klass.attribute_alias(arg) if klass.attribute_alias?(arg)
+          table[arg].asc
+        when Hash
+          arg.map { |field, dir|
+            field = klass.attribute_alias(field) if klass.attribute_alias?(field)
+            table[field].send(dir)
+          }
+        else
+          arg
+        end
+      end.flatten!
     end
 
     # Checks to make sure that the arguments are not blank. Note that if some

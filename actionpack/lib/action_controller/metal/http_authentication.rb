@@ -11,11 +11,11 @@ module ActionController
     #     http_basic_authenticate_with name: "dhh", password: "secret", except: :index
     #
     #     def index
-    #       render text: "Everyone can see me!"
+    #       render plain: "Everyone can see me!"
     #     end
     #
     #     def edit
-    #       render text: "I'm only accessible if you know the password"
+    #       render plain: "I'm only accessible if you know the password"
     #     end
     #  end
     #
@@ -90,17 +90,29 @@ module ActionController
       end
 
       def authenticate(request, &login_procedure)
-        unless request.authorization.blank?
+        if has_basic_credentials?(request)
           login_procedure.call(*user_name_and_password(request))
         end
       end
 
+      def has_basic_credentials?(request)
+        request.authorization.present? && (auth_scheme(request) == 'Basic')
+      end
+
       def user_name_and_password(request)
-        decode_credentials(request).split(/:/, 2)
+        decode_credentials(request).split(':', 2)
       end
 
       def decode_credentials(request)
-        ::Base64.decode64(request.authorization.split(' ', 2).last || '')
+        ::Base64.decode64(auth_param(request) || '')
+      end
+
+      def auth_scheme(request)
+        request.authorization.split(' ', 2).first
+      end
+
+      def auth_param(request)
+        request.authorization.split(' ', 2).second
       end
 
       def encode_credentials(user_name, password)
@@ -127,11 +139,11 @@ module ActionController
     #     before_action :authenticate, except: [:index]
     #
     #     def index
-    #       render text: "Everyone can see me!"
+    #       render plain: "Everyone can see me!"
     #     end
     #
     #     def edit
-    #       render text: "I'm only accessible if you know the password"
+    #       render plain: "I'm only accessible if you know the password"
     #     end
     #
     #     private
@@ -321,11 +333,11 @@ module ActionController
     #     before_action :authenticate, except: [ :index ]
     #
     #     def index
-    #       render text: "Everyone can see me!"
+    #       render plain: "Everyone can see me!"
     #     end
     #
     #     def edit
-    #       render text: "I'm only accessible if you know the password"
+    #       render plain: "I'm only accessible if you know the password"
     #     end
     #
     #     private

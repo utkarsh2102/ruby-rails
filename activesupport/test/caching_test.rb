@@ -3,6 +3,42 @@ require 'abstract_unit'
 require 'active_support/cache'
 require 'dependencies_test_helpers'
 
+module ActiveSupport
+  module Cache
+    module Strategy
+      module LocalCache
+        class MiddlewareTest < ActiveSupport::TestCase
+          def test_local_cache_cleared_on_close
+            key = "super awesome key"
+            assert_nil LocalCacheRegistry.cache_for key
+            middleware = Middleware.new('<3', key).new(->(env) {
+              assert LocalCacheRegistry.cache_for(key), 'should have a cache'
+              [200, {}, []]
+            })
+            _, _, body = middleware.call({})
+            assert LocalCacheRegistry.cache_for(key), 'should still have a cache'
+            body.each { }
+            assert LocalCacheRegistry.cache_for(key), 'should still have a cache'
+            body.close
+            assert_nil LocalCacheRegistry.cache_for(key)
+          end
+
+          def test_local_cache_cleared_on_exception
+            key = "super awesome key"
+            assert_nil LocalCacheRegistry.cache_for key
+            middleware = Middleware.new('<3', key).new(->(env) {
+              assert LocalCacheRegistry.cache_for(key), 'should have a cache'
+              raise
+            })
+            assert_raises(RuntimeError) { middleware.call({}) }
+            assert_nil LocalCacheRegistry.cache_for(key)
+          end
+        end
+      end
+    end
+  end
+end
+
 class CacheKeyTest < ActiveSupport::TestCase
   def test_entry_legacy_optional_ivars
     legacy = Class.new(ActiveSupport::Cache::Entry) do
@@ -110,12 +146,12 @@ class CacheStoreSettingTest < ActiveSupport::TestCase
     assert_kind_of(ActiveSupport::Cache::MemCacheStore, store)
   end
 
-  def test_mem_cache_fragment_cache_store_with_given_mem_cache_like_object
+  def test_mem_cache_fragment_cache_store_with_not_dalli_client
     Dalli::Client.expects(:new).never
     memcache = Object.new
-    def memcache.get() true end
-    store = ActiveSupport::Cache.lookup_store :mem_cache_store, memcache
-    assert_kind_of(ActiveSupport::Cache::MemCacheStore, store)
+    assert_raises(ArgumentError) do
+      ActiveSupport::Cache.lookup_store :mem_cache_store, memcache
+    end
   end
 
   def test_mem_cache_fragment_cache_store_with_multiple_servers
@@ -257,6 +293,26 @@ module CacheStoreBehavior
     assert_equal({"fu" => "baz"}, @cache.read_multi('foo', 'fu'))
   end
 
+  def test_fetch_multi
+    @cache.write('foo', 'bar')
+    @cache.write('fud', 'biz')
+
+    values = @cache.fetch_multi('foo', 'fu', 'fud') {|value| value * 2 }
+
+    assert_equal(["bar", "fufu", "biz"], values)
+    assert_equal("fufu", @cache.read('fu'))
+  end
+
+  def test_multi_with_objects
+    foo = stub(:title => "FOO!", :cache_key => "foo")
+    bar = stub(:cache_key => "bar")
+
+    @cache.write('bar', "BAM!")
+
+    values = @cache.fetch_multi(foo, bar) {|object| object.title }
+    assert_equal(["FOO!", "BAM!"], values)
+  end
+
   def test_read_and_write_compressed_small_data
     @cache.write('foo', 'bar', :compress => true)
     assert_equal 'bar', @cache.read('foo')
@@ -307,8 +363,8 @@ module CacheStoreBehavior
 
   def test_exist
     @cache.write('foo', 'bar')
-    assert @cache.exist?('foo')
-    assert !@cache.exist?('bar')
+    assert_equal true, @cache.exist?('foo')
+    assert_equal false, @cache.exist?('bar')
   end
 
   def test_nil_exist
@@ -557,6 +613,7 @@ module LocalCacheBehavior
       result = @cache.write('foo', 'bar')
       assert_equal 'bar', @cache.read('foo') # make sure 'foo' was written
       assert result
+      [200, {}, []]
     }
     app = @cache.middleware.new(app)
     app.call({})
@@ -700,6 +757,13 @@ class FileStoreTest < ActiveSupport::TestCase
     assert_not @cache.exist?('foo')
     assert @cache.exist?('baz')
     assert @cache.exist?('quux')
+  end
+
+  def test_write_with_unless_exist
+    assert_equal true, @cache.write(1, "aaaaaaaaaa")
+    assert_equal false, @cache.write(1, "aaaaaaaaaa", unless_exist: true)
+    @cache.write(1, nil)
+    assert_equal false, @cache.write(1, "aaaaaaaaaa", unless_exist: true)
   end
 end
 
