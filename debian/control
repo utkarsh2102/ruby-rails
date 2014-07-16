@@ -169,6 +169,7 @@ Depends: ${shlibs:Depends},
 	 ruby-sprockets-rails (<< 3.0)
 Breaks: ruby-rails-2.3, ruby-rails-3.2, ruby-activeresource-3.2, ruby-rails-4.0
 Replaces: ruby-rails-2.3, ruby-rails-3.2, ruby-rails-4.0
+Conflicts: rails (<< 2:4.1)
 Description: MVC ruby based framework geared for web application development
  Rails is a full-stack, open-source web framework in Ruby for writing
  real-world applications.
