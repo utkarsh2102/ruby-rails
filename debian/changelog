@@ -1,3 +1,25 @@
+rails (2:4.1.4-1) experimental; urgency=medium
+
+  [ Antonio Terceiro ]
+  * debian/rules: adapt dh_clean call
+
+  [ Christian Hofstaedtler ]
+  * Relax dependencies
+  * Run bundle install --local, as in Debian Rails 3.2
+
+  [ Ondřej Surý ]
+  * New upstream version 4.1.4
+  * Drop versioning from rails package, we won't to provide just the last
+    stable upstream major version
+  * Update dependencies in d/control based on information from gemspec files
+  * Add ruby-actionview documentation
+  * Add conflict with old rails package
+  * Bump epoch to 2: to replace old virtual packages
+  * Update patches for 4.1.4 release
+  * Upload to experimental, so we can let the dust settle...
+
+ -- Ondřej Surý <ondrej@debian.org>  Wed, 16 Jul 2014 15:22:28 +0200
+
 rails-4.0 (4.0.2+dfsg-2) unstable; urgency=low
 
   * Fix dependency -- ruby-rack doesn't have epoch (Closes: #731347)
