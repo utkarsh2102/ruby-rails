@@ -1,0 +1,2 @@
+rails source: source-is-missing guides/assets/javascripts/jquery.min.js
+rails source: source-is-missing guides/assets/javascripts/syntaxhighlighter/shCore.js
