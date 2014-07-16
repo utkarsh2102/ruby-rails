@@ -1,0 +1,17 @@
+rails for Debian
+----------------
+
+ * There are number of non-free files in rails sources that we remove
+   and repack the tarball by running:
+   # debian/repack.sh --upstream-version <version> <orig_tarball>
+
+ * I have switched the repack.sh script to one from pkg-perl-tools
+   because it's easy to use.  You can either install pkg-perl-tools
+   or just download the repack.sh from:
+
+   http://anonscm.debian.org/gitweb/?p=pkg-perl/packages/pkg-perl-tools.git;\
+                                     a=blob_plain;f=scripts/repack.sh;hb=HEAD
+
+   and put it into PATH or ../../scripts/repack.sh
+
+ -- Ondřej Surý <ondrej@debian.org>, Wed, 16 Jul 2014 17:02:54 +0200
