@@ -1,3 +1,14 @@
+rails (2:4.1.4-2) unstable; urgency=medium
+
+  * Upload to unstable since no objections were raised to the RoR Debian
+    transition plan
+  * Remove repack script since there's nothing non-free in the upstream
+    tarball (Closes: #742407)
+  * Keep the guides/ (CC-BY-SA-3.0) and mona_lisa.jpg (PD), but document
+    that in d/copyright
+
+ -- Ondřej Surý <ondrej@debian.org>  Wed, 16 Jul 2014 17:19:07 +0200
+
 rails (2:4.1.4-1) experimental; urgency=medium
 
   [ Antonio Terceiro ]
