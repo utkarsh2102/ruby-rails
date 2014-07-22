@@ -1,5 +1,11 @@
 rails (2:4.1.4-2) unstable; urgency=medium
 
+  [ Antonio Terceiro ]
+  * Don't install nonsensical binary from activesupport
+
+  [ Ondřej Surý ]
+  * Merge autopkgtests from rails-3.2
+  * Add missing sources for shCore.js and jquery.min.js
   * Upload to unstable since no objections were raised to the RoR Debian
     transition plan
   * Remove repack script since there's nothing non-free in the upstream
