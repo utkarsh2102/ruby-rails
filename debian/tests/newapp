@@ -1,0 +1,22 @@
+#!/bin/sh
+
+set -ex
+
+exec 2>&1
+
+ruby -v
+gem list
+
+cd $ADTTMP
+
+rails new foo
+cd foo
+
+# Does the empty app boots? This should catch dependency problems with gemspecs
+rails runner 'puts "Empty Rails %s app booted correctly" % Rails.version'
+
+# quick smoke test
+rails generate scaffold Product title
+rake db:migrate
+rake test
+

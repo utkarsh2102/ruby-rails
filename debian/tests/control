@@ -1,0 +1,3 @@
+Tests: newapp
+Depends: ruby-rails-3.2, ruby-jquery-rails, ruby-coffee-rails, ruby-sqlite3, ruby-sass-rails, ruby-uglifier
+Restrictions: allow-stderr
