@@ -142,14 +142,9 @@ Depends: ${misc:Depends},
 	 ruby-actionpack (= ${source:Version})
 Breaks: ruby-rails-2.3, ruby-railties-3.2, rails (<< 3:3.2.0), rails3, ruby-railties-4.0
 Replaces: ruby-rails-2.3, ruby-railties-3.2, ruby-railties-4.0
-Description: MVC ruby based framework geared for web application development
- Rails is a full-stack, open-source web framework in Ruby for writing
- real-world applications.
- .
- Being a full-stack framework means that all layers are built to work
- seamlessly together. That way you don't repeat yourself and you can
- use a single language from top to bottom. Everything from templates to
- control flow to business logic is written in Ruby.
+Description: tools for creating, working with, and running Rails applications
+ This package contains the Rails internals, i.e. components that implement
+ and/or control application bootup, plugins, generators, and rake tasks.
 
 Package: ruby-rails
 Architecture: all
@@ -191,3 +186,5 @@ Description: MVC ruby based framework geared for web application development
  seamlessly together. That way you don't repeat yourself and you can
  use a single language from top to bottom. Everything from templates to
  control flow to business logic is written in Ruby.
+ .
+ This is a metapackage.

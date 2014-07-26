@@ -1,6 +1,7 @@
 rails (2:4.1.4-3) unstable; urgency=medium
 
   * Re-add `rails` binary package
+  * Improve description for ruby-railties
 
  -- Antonio Terceiro <terceiro@debian.org>  Sat, 26 Jul 2014 10:12:46 -0300
 
