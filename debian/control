@@ -179,5 +179,15 @@ Description: MVC ruby based framework geared for web application development
  seamlessly together. That way you don't repeat yourself and you can
  use a single language from top to bottom. Everything from templates to
  control flow to business logic is written in Ruby.
+
+Package: rails
+Architecture: all
+Depends: ruby-rails (= ${source:Version})
+Description: MVC ruby based framework geared for web application development
+ Rails is a full-stack, open-source web framework in Ruby for writing
+ real-world applications.
  .
- This package provides Rails version 4.1.
+ Being a full-stack framework means that all layers are built to work
+ seamlessly together. That way you don't repeat yourself and you can
+ use a single language from top to bottom. Everything from templates to
+ control flow to business logic is written in Ruby.
