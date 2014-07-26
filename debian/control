@@ -7,7 +7,7 @@ Uploaders: Ondřej Surý <ondrej@debian.org>,
 Build-Depends: debhelper (>= 9),
 	       gem2deb (>= 0.4.0~),
 	       racc
-Standards-Version: 3.9.4
+Standards-Version: 3.9.5
 Vcs-Git: git://anonscm.debian.org/pkg-ruby-extras/rails.git
 Vcs-Browser: http://anonscm.debian.org/git/?p=pkg-ruby-extras/rails.git;a=summary
 Homepage: http://www.rubyonrails.org
@@ -177,8 +177,10 @@ Description: MVC ruby based framework geared for web application development
 
 Package: rails
 Architecture: all
-Depends: ruby-rails (= ${source:Version})
-Description: MVC ruby based framework geared for web application development
+Depends:
+	 ruby-rails (= ${source:Version}),
+	 ${misc:Depends},
+Description: MVC ruby based framework geared for web application development (metapackage)
  Rails is a full-stack, open-source web framework in Ruby for writing
  real-world applications.
  .
