@@ -162,7 +162,13 @@ Depends: ${shlibs:Depends},
 	 bundler (>= 1.3.0),
 	 bundler (<< 2.0),
 	 ruby-sprockets-rails (>= 2.0),
-	 ruby-sprockets-rails (<< 3.0)
+	 ruby-sprockets-rails (<< 3.0),
+Recommends:
+	 ruby-jquery-rails,
+	 ruby-coffee-rails,
+	 ruby-sqlite3,
+	 ruby-sass-rails,
+	 ruby-uglifier,
 Breaks: ruby-rails-2.3, ruby-rails-3.2, ruby-activeresource-3.2, ruby-rails-4.0
 Replaces: ruby-rails-2.3, ruby-rails-3.2, ruby-rails-4.0
 Conflicts: rails (<< 2:4.1)
