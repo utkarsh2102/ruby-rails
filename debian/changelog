@@ -1,14 +1,15 @@
-rails (2:4.1.4-4~2) UNRELEASED; urgency=medium
+rails (2:4.1.4-4~3) UNRELEASED; urgency=medium
 
-  * ruby-rails: add Recommends:
-    - ruby-jquery-rails
-    - ruby-coffee-rails
-    - ruby-sqlite3
-    - ruby-sass-rails
-    - ruby-uglifier
+  * ruby-rails:
+    - add Recommends:
+      - ruby-jquery-rails
+      - ruby-coffee-rails
+      - ruby-sqlite3
+      - ruby-sass-rails
+      - ruby-uglifier
+    - add Breaks/Replaces: rails3
   * ruby-railties:
-    - fix Breaks: on rails (<< 3:3.2.0); the correct is 2:3.2.0
-      (note the epoch)
+    - remove Breaks: rails (<< 3:3.2.0)
     - add Depends: ruby-spring
   * ruby-actionmailer:
     - drop Depends: ruby-mail (<< 2.6)
