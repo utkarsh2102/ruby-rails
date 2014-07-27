@@ -1,4 +1,4 @@
-rails (2:4.1.4-4~6) UNRELEASED; urgency=medium
+rails (2:4.1.4-4~7) UNRELEASED; urgency=medium
 
   * ruby-rails:
     - add Recommends:
@@ -10,6 +10,7 @@ rails (2:4.1.4-4~6) UNRELEASED; urgency=medium
       - ruby-spring
       - ruby-turbolinks
       - ruby-jbuilder
+      - ruby-sdoc
     - add Breaks/Replaces: rails3
     - bump Depends: ruby-sprockets-rails to (>= 2.1.3-1~)
   * ruby-railties:
