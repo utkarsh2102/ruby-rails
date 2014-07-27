@@ -1,4 +1,4 @@
-rails (2:4.1.4-4) UNRELEASED; urgency=medium
+rails (2:4.1.4-4~1) UNRELEASED; urgency=medium
 
   * ruby-rails: add Recommends:
     - ruby-jquery-rails
@@ -6,8 +6,10 @@ rails (2:4.1.4-4) UNRELEASED; urgency=medium
     - ruby-sqlite3
     - ruby-sass-rails
     - ruby-uglifier
-  * ruby-railties: fix Breaks: on rails (<< 3:3.2.0); the correct is 2:3.2.0
-    (note the epoch)
+  * ruby-railties:
+    - fix Breaks: on rails (<< 3:3.2.0); the correct is 2:3.2.0
+      (note the epoch)
+    - add Depends: ruby-spring
 
  -- Antonio Terceiro <terceiro@debian.org>  Sat, 26 Jul 2014 17:43:06 -0300
 
