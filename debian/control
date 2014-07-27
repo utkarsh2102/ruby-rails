@@ -120,7 +120,6 @@ Depends: ${shlibs:Depends},
 	 ruby-actionpack (= ${source:Version}),
 	 ruby-actionview (= ${source:Version}),
 	 ruby-mail (>= 2.5.4),
-	 ruby-mail (<< 2.6)
 Breaks: ruby-actionmailer-2.3, ruby-actionmailer-3.2, ruby-actionmailer-4.0
 Replaces: ruby-actionmailer-2.3, ruby-actionmailer-3.2, ruby-actionmailer-4.0
 Description: email composition, delivery, and receiving framework (part of Rails)
