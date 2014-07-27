@@ -1,4 +1,4 @@
-rails (2:4.1.4-4~4) UNRELEASED; urgency=medium
+rails (2:4.1.4-4~5) UNRELEASED; urgency=medium
 
   * ruby-rails:
     - add Recommends:
@@ -12,6 +12,7 @@ rails (2:4.1.4-4~4) UNRELEASED; urgency=medium
   * ruby-railties:
     - remove Breaks: rails (<< 3:3.2.0)
     - add Depends: ruby-spring
+    - add Depends: ruby-turbolinks
   * ruby-actionmailer:
     - drop Depends: ruby-mail (<< 2.6)
       cfe https://github.com/rails/rails/commit/bb0890d

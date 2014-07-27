@@ -140,6 +140,7 @@ Depends: ${misc:Depends},
 	 ruby-activesupport (= ${source:Version}),
 	 ruby-actionpack (= ${source:Version}),
 	 ruby-spring,
+	 ruby-turbolinks,
 Breaks: ruby-rails-2.3, ruby-railties-3.2, ruby-railties-4.0
 Replaces: ruby-rails-2.3, ruby-railties-3.2, ruby-railties-4.0
 Description: tools for creating, working with, and running Rails applications
