@@ -139,8 +139,6 @@ Depends: ${misc:Depends},
 	 ruby-thor (<< 2.0),
 	 ruby-activesupport (= ${source:Version}),
 	 ruby-actionpack (= ${source:Version}),
-	 ruby-spring,
-	 ruby-turbolinks,
 Breaks: ruby-rails-2.3, ruby-railties-3.2, ruby-railties-4.0
 Replaces: ruby-rails-2.3, ruby-railties-3.2, ruby-railties-4.0
 Description: tools for creating, working with, and running Rails applications
@@ -170,6 +168,9 @@ Recommends:
 	 ruby-sqlite3,
 	 ruby-sass-rails,
 	 ruby-uglifier,
+	 ruby-spring,
+	 ruby-turbolinks,
+	 ruby-jbuilder,
 Breaks: ruby-rails-2.3, ruby-rails-3.2, ruby-activeresource-3.2, ruby-rails-4.0
 Replaces: ruby-rails-2.3, ruby-rails-3.2, ruby-rails-4.0
 Conflicts: rails (<< 2:4.1)

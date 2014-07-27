@@ -1,4 +1,4 @@
-rails (2:4.1.4-4~5) UNRELEASED; urgency=medium
+rails (2:4.1.4-4~6) UNRELEASED; urgency=medium
 
   * ruby-rails:
     - add Recommends:
@@ -7,12 +7,13 @@ rails (2:4.1.4-4~5) UNRELEASED; urgency=medium
       - ruby-sqlite3
       - ruby-sass-rails
       - ruby-uglifier
+      - ruby-spring
+      - ruby-turbolinks
+      - ruby-jbuilder
     - add Breaks/Replaces: rails3
     - bump Depends: ruby-sprockets-rails to (>= 2.1.3-1~)
   * ruby-railties:
     - remove Breaks: rails (<< 3:3.2.0)
-    - add Depends: ruby-spring
-    - add Depends: ruby-turbolinks
   * ruby-actionmailer:
     - drop Depends: ruby-mail (<< 2.6)
       cfe https://github.com/rails/rails/commit/bb0890d
