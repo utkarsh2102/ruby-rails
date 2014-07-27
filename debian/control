@@ -140,7 +140,7 @@ Depends: ${misc:Depends},
 	 ruby-thor (<< 2.0),
 	 ruby-activesupport (= ${source:Version}),
 	 ruby-actionpack (= ${source:Version})
-Breaks: ruby-rails-2.3, ruby-railties-3.2, rails (<< 3:3.2.0), rails3, ruby-railties-4.0
+Breaks: ruby-rails-2.3, ruby-railties-3.2, rails (<< 2:3.2.0), rails3, ruby-railties-4.0
 Replaces: ruby-rails-2.3, ruby-railties-3.2, ruby-railties-4.0
 Description: tools for creating, working with, and running Rails applications
  This package contains the Rails internals, i.e. components that implement
