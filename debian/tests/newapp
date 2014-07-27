@@ -7,6 +7,9 @@ exec 2>&1
 ruby -v
 gem list
 
+if [ -z "$ADTTMP" ]; then
+  ADTTMP=$(mktemp -d)
+fi
 cd $ADTTMP
 
 rails new foo
