@@ -1,4 +1,4 @@
-rails (2:4.1.4-4~8) UNRELEASED; urgency=medium
+rails (2:4.1.4-4) unstable; urgency=medium
 
   * ruby-rails:
     - add Recommends:
@@ -23,7 +23,7 @@ rails (2:4.1.4-4~8) UNRELEASED; urgency=medium
     add needs-recommends instead of explicitly listing the recommended
     packages
 
- -- Antonio Terceiro <terceiro@debian.org>  Sat, 26 Jul 2014 17:43:06 -0300
+ -- Antonio Terceiro <terceiro@debian.org>  Sun, 03 Aug 2014 00:24:26 -0300
 
 rails (2:4.1.4-3) unstable; urgency=medium
 
