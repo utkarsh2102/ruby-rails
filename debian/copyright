@@ -26,6 +26,7 @@ License: Expat or CC-BY-3.0
 Files: actionpack/test/fixtures/multipart/mona_lisa.jpg
 Copyright: Musée du Louvre
 License: Public Domain
+ This work is in the public domain
 
 Files: debian/*
 Copyright: Copyright 2011 Ondřej Surý <ondrej@debian.org>

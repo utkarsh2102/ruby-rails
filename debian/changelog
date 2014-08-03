@@ -25,6 +25,8 @@ rails (2:4.1.4-4) unstable; urgency=medium
   * debian/tests/control: fix test dependencies to rails and *not* rails-3.2;
     add needs-recommends instead of explicitly listing the recommended
     packages
+  * debian/patches/mona_lisa.jpg_is_PD-Art_and_has_been_removed.patch: removed
+    as it does not make sense anymore (mona_lisa.jpg is just there).
 
  -- Antonio Terceiro <terceiro@debian.org>  Sun, 03 Aug 2014 00:24:26 -0300
 
