@@ -14,6 +14,9 @@ rails (2:4.1.4-4) unstable; urgency=medium
     - add Breaks/Replaces: rails3
     - bump Depends: ruby-sprockets-rails to (>= 2.1.3-1~)
     - add Depends: ruby-treetop
+    - move ruby-activesuppport-3.2 from Breaks: to Conflicts:
+    - remove Breaks: rails (<< 2:4.1) since we now also provide a
+      `rails`` binary
   * ruby-railties:
     - remove Breaks: rails (<< 3:3.2.0)
   * ruby-actionmailer:
