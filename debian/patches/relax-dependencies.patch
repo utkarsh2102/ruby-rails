@@ -1,0 +1,16 @@
+Description: relax dependencies
+ In Debian we will sometimes have dependencies that are newer than the ones
+ specified in the rails gemspecs. When reasonable, we will relax the
+ dependencies to allow using those versions
+Author: Antonio Terceiro <terceiro@debian.org>
+Forwarded: not-needed
+
+--- rails-4.1.4.orig/actionmailer/actionmailer.gemspec
++++ rails-4.1.4/actionmailer/actionmailer.gemspec
+@@ -22,5 +22,5 @@ Gem::Specification.new do |s|
+   s.add_dependency 'actionpack', version
+   s.add_dependency 'actionview', version
+ 
+-  s.add_dependency 'mail', '~> 2.5.4'
++  s.add_dependency 'mail', '~> 2.5'
+ end
