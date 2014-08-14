@@ -2,8 +2,7 @@ Source: rails
 Section: ruby
 Priority: optional
 Maintainer: Debian Ruby Extras Maintainers <pkg-ruby-extras-maintainers@lists.alioth.debian.org>
-Uploaders: Ondřej Surý <ondrej@debian.org>,
-           Antonio Terceiro <terceiro@debian.org>,
+Uploaders: Antonio Terceiro <terceiro@debian.org>,
 Build-Depends: debhelper (>= 9), gem2deb (>= 0.4.0~), racc
 Standards-Version: 3.9.5
 Vcs-Git: git://anonscm.debian.org/pkg-ruby-extras/rails.git
