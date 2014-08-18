@@ -1,3 +1,9 @@
+rails (2:4.1.4-6) UNRELEASED; urgency=medium
+
+  * debian/watch: update to fetch new releases from github.
+
+ -- Antonio Terceiro <terceiro@debian.org>  Mon, 18 Aug 2014 15:14:59 -0300
+
 rails (2:4.1.4-5) unstable; urgency=medium
 
   * ruby-actionmailer: relax dependency on ruby-mail to work with the 2.6.x

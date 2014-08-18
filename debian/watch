@@ -1,3 +1,2 @@
 version=3
-opts=dversionmangle=s/\+dfsg$// \
-http://pkg-ruby-extras.alioth.debian.org/cgi-bin/gemwatch/rails .*/rails-(.*).tar.gz
+https://github.com/rails/rails/tags .*/v(.*).tar.gz
