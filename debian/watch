@@ -1,2 +1,2 @@
 version=3
-https://github.com/rails/rails/tags .*/v(.*).tar.gz
+https://github.com/rails/rails/tags .*/v([0-9.]+).tar.gz
