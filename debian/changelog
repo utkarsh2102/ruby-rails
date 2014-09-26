@@ -1,6 +1,7 @@
 rails (2:4.1.6-1) unstable; urgency=medium
 
   * New upstream release
+  * debian/patches/relax-dependencies.patch: dropped, not necessary anymore
 
  -- Antonio Terceiro <terceiro@debian.org>  Fri, 26 Sep 2014 15:59:24 -0300
 
