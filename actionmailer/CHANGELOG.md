@@ -1,3 +1,26 @@
+## Rails 4.1.6 (September 11, 2014) ##
+
+*   Make ActionMailer::Previews methods class methods. Previously they were
+    instance methods and ActionMailer tries to render a message when they
+    are called.
+
+    *Cristian Bica*
+
+*   Raise an exception when attachments are added after `mail` was called.
+    This is a safeguard to prevent invalid emails.
+
+    Fixes #16163.
+
+    *Yves Senn*
+
+*   Allow preview interceptors to be registered through
+    `config.action_mailer.preview_interceptors`.
+
+    See #15739.
+
+    *Yves Senn*
+
+
 ## Rails 4.1.5 (August 18, 2014) ##
 
 *   No changes.

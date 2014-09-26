@@ -3,6 +3,8 @@ A Guide for Upgrading Ruby on Rails
 
 This guide provides steps to be followed when you upgrade your applications to a newer version of Ruby on Rails. These steps are also available in individual release guides.
 
+--------------------------------------------------------------------------------
+
 General Advice
 --------------
 
@@ -210,6 +212,16 @@ If your application depends on one of these features, you can get them back by
 adding the [`activesupport-json_encoder`](https://github.com/rails/activesupport-json_encoder)
 gem to your Gemfile.
 
+#### JSON representation of Time objects
+
+`#as_json` for objects with time component (`Time`, `DateTime`, `ActiveSupport::TimeWithZone`)
+now returns millisecond precision by default. If you need to keep old behavior with no millisecond
+precision, set the following in an initializer:
+
+```
+ActiveSupport::JSON::Encoding.time_precision = 0
+```
+
 ### Usage of `return` within inline callback blocks
 
 Previously, Rails allowed inline callback blocks to use `return` this way:
@@ -401,6 +413,20 @@ symbol access is no longer supported. This is also the case for
 `store_accessors` based on top of `json` or `hstore` columns. Make sure to use
 string keys consistently.
 
+### Explicit block use for `ActiveSupport::Callbacks`
+
+Rails 4.1 now expects an explicit block to be passed when calling
+`ActiveSupport::Callbacks.set_callback`. This change stems from
+`ActiveSupport::Callbacks` being largely rewritten for the 4.1 release.
+
+```ruby
+# Previously in Rails 4.0
+set_callback :save, :around, ->(r, &block) { stuff; result = block.call; stuff }
+
+# Now in Rails 4.1
+set_callback :save, :around, ->(r, block) { stuff; result = block.call; stuff }
+```
+
 Upgrading from Rails 3.2 to Rails 4.0
 -------------------------------------
 
@@ -472,7 +498,7 @@ being used, you can update your form to use the `PUT` method instead:
 <%= form_for [ :update_name, @user ], method: :put do |f| %>
 ```
 
-For more on PATCH and why this change was made, see [this post](http://weblog.rubyonrails.org/2012/2/25/edge-rails-patch-is-the-new-primary-http-method-for-updates/)
+For more on PATCH and why this change was made, see [this post](http://weblog.rubyonrails.org/2012/2/26/edge-rails-patch-is-the-new-primary-http-method-for-updates/)
 on the Rails blog.
 
 #### A note about media types
@@ -531,6 +557,9 @@ Rails 4.0 no longer supports loading plugins from `vendor/plugins`. You must rep
 * In Rails 4.0 when a column or a table is renamed the related indexes are also renamed. If you have migrations which rename the indexes, they are no longer needed.
 
 * Rails 4.0 has changed `serialized_attributes` and `attr_readonly` to class methods only. You shouldn't use instance methods since it's now deprecated. You should change them to use class methods, e.g. `self.serialized_attributes` to `self.class.serialized_attributes`.
+
+* When using the default coder, assigning `nil` to a serialized attribute will save it
+to the database as `NULL` instead of passing the `nil` value through YAML (`"--- \n...\n"`).
 
 * Rails 4.0 has removed `attr_accessible` and `attr_protected` feature in favor of Strong Parameters. You can use the [Protected Attributes gem](https://github.com/rails/protected_attributes) for a smooth upgrade path.
 

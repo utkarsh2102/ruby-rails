@@ -1,3 +1,23 @@
+## Rails 4.1.6 (September 11, 2014) ##
+
+*   Fix that render layout: 'messages/layout' should also be added to the dependency tracker tree.
+
+    *DHH*
+
+*   Return an absolute instead of relative path from an asset url in the case
+    of the `asset_host` proc returning nil
+
+    *Jolyon Pawlyn*
+
+*   Fix `html_escape_once` to properly handle hex escape sequences (e.g. &#x1a2b;)
+
+    *John F. Douthat*
+
+*   Bring `cache_digest` rake tasks up-to-date with the latest API changes
+
+    *Jiri Pospisil*
+
+
 ## Rails 4.1.5 (August 18, 2014) ##
 
 *   No changes.

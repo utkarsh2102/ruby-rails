@@ -1,3 +1,52 @@
+## Rails 4.1.6 (September 11, 2014) ##
+
+*   Prepend a JS comment to JSONP callbacks. Addresses CVE-2014-4671
+    ("Rosetta Flash")
+
+    *Greg Campbell*
+
+*   Because URI paths may contain non US-ASCII characters we need to force
+    the encoding of any unescaped URIs to UTF-8 if they are US-ASCII.
+    This essentially replicates the functionality of the monkey patch to
+    URI.parser.unescape in active_support/core_ext/uri.rb.
+
+    Fixes #16104.
+
+    *Karl Entwistle*
+
+*   Generate shallow paths for all children of shallow resources.
+
+    Fixes #15783.
+
+    *Seb Jacobs*
+
+*   JSONP responses are now rendered with the `text/javascript` content type
+    when rendering through a `respond_to` block.
+
+    Fixes #15081.
+
+    *Lucas Mazza*
+
+*   Fix env['PATH_INFO'] missing leading slash when a rack app mounted at '/'.
+
+    Fixes #15511.
+
+    *Larry Lv*
+
+*   ActionController::Parameters#require now accepts `false` values.
+
+    Fixes #15685.
+
+    *Sergio Romano*
+
+*   With authorization header `Authorization: Token token=`, `authenticate` now
+    recognize token as nil, instead of "token".
+
+    Fixes #14846.
+
+    *Larry Lv*
+
+
 ## Rails 4.1.4 (July 2, 2014) ##
 
 *   No changes.

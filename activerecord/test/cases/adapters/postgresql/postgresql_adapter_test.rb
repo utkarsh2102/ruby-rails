@@ -284,6 +284,14 @@ module ActiveRecord
           @connection.columns_for_distinct("posts.id", ["posts.created_at desc", "posts.position asc"])
       end
 
+      def test_columns_for_distinct_with_case
+        assert_equal(
+          'posts.id, CASE WHEN author.is_active THEN UPPER(author.name) ELSE UPPER(author.email) END AS alias_0',
+          @connection.columns_for_distinct('posts.id',
+            ["CASE WHEN author.is_active THEN UPPER(author.name) ELSE UPPER(author.email) END"])
+        )
+      end
+
       def test_columns_for_distinct_blank_not_nil_orders
         assert_equal "posts.id, posts.created_at AS alias_0",
           @connection.columns_for_distinct("posts.id", ["posts.created_at desc", "", "   "])
@@ -301,6 +309,17 @@ module ActiveRecord
       def test_columns_for_distinct_with_nulls
         assert_equal "posts.title, posts.updater_id AS alias_0", @connection.columns_for_distinct("posts.title", ["posts.updater_id desc nulls first"])
         assert_equal "posts.title, posts.updater_id AS alias_0", @connection.columns_for_distinct("posts.title", ["posts.updater_id desc nulls last"])
+      end
+
+      def test_columns_for_distinct_without_order_specifiers
+        assert_equal "posts.title, posts.updater_id AS alias_0",
+          @connection.columns_for_distinct("posts.title", ["posts.updater_id"])
+
+        assert_equal "posts.title, posts.updater_id AS alias_0",
+          @connection.columns_for_distinct("posts.title", ["posts.updater_id nulls last"])
+
+        assert_equal "posts.title, posts.updater_id AS alias_0",
+          @connection.columns_for_distinct("posts.title", ["posts.updater_id nulls first"])
       end
 
       def test_raise_error_when_cannot_translate_exception

@@ -1422,7 +1422,7 @@ module ActiveRecord
       #   belongs_to :firm, foreign_key: "client_of"
       #   belongs_to :person, primary_key: "name", foreign_key: "person_name"
       #   belongs_to :author, class_name: "Person", foreign_key: "author_id"
-      #   belongs_to :valid_coupon, ->(o) { where "discounts > #{o.payments_count}" },
+      #   belongs_to :valid_coupon, ->(o) { where "discounts > ?", o.payments_count },
       #                             class_name: "Coupon", foreign_key: "coupon_id"
       #   belongs_to :attachable, polymorphic: true
       #   belongs_to :project, readonly: true
@@ -1588,7 +1588,7 @@ module ActiveRecord
 
         Builder::HasMany.define_callbacks self, middle_reflection
         Reflection.add_reflection self, middle_reflection.name, middle_reflection
-        middle_reflection.parent_reflection = [name, habtm_reflection]
+        middle_reflection.parent_reflection = [name.to_sym, habtm_reflection]
 
         include Module.new {
           class_eval <<-RUBY, __FILE__, __LINE__ + 1
@@ -1609,7 +1609,7 @@ module ActiveRecord
         end
 
         has_many name, scope, hm_options, &extension
-        self._reflections[name].parent_reflection = [name, habtm_reflection]
+        self._reflections[name.to_sym].parent_reflection = [name.to_sym, habtm_reflection]
       end
     end
   end

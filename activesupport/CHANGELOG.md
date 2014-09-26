@@ -1,3 +1,34 @@
+## Rails 4.1.6 (September 11, 2014) ##
+
+*   Fix DateTime comparison with DateTime::Infinity object.
+
+    *Rafael Mendonça França*
+
+*   Fixed a compatibility issue with the `Oj` gem when cherry-picking the file
+    `active_support/core_ext/object/json` without requiring `active_support/json`.
+
+    Fixes #16131.
+
+    *Godfrey Chan*
+
+*   Make Dependencies pass a name to NameError error.
+
+    *arthurnn*, *Yuki Nishijima*
+
+*   Fixed precision error in NumberHelper when using Rationals.
+
+    before:
+        ActiveSupport::NumberHelper.number_to_rounded Rational(1000, 3), precision: 2
+        #=> "330.00"
+    after:
+        ActiveSupport::NumberHelper.number_to_rounded Rational(1000, 3), precision: 2
+        #=> "333.33"
+
+    See #15379.
+
+    *Juanjo Bazán*
+
+
 ## Rails 4.1.5 (August 18, 2014) ##
 
 *   No changes.

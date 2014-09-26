@@ -111,6 +111,74 @@ module RailtiesTest
       end
     end
 
+    test 'respects the order of railties when installing migrations' do
+      @blog = engine "blog" do |plugin|
+        plugin.write "lib/blog.rb", <<-RUBY
+          module Blog
+            class Engine < ::Rails::Engine
+            end
+          end
+        RUBY
+      end
+
+      @plugin.write "db/migrate/1_create_users.rb", <<-RUBY
+        class CreateUsers < ActiveRecord::Migration
+        end
+      RUBY
+
+      @blog.write "db/migrate/2_create_blogs.rb", <<-RUBY
+        class CreateBlogs < ActiveRecord::Migration
+        end
+      RUBY
+
+      add_to_config("config.railties_order = [Bukkits::Engine, Blog::Engine, :all, :main_app]")
+
+      boot_rails
+
+      Dir.chdir(app_path) do
+        output  = `bundle exec rake railties:install:migrations`.split("\n")
+
+        assert_match(/Copied migration \d+_create_users.bukkits.rb from bukkits/, output.first)
+        assert_match(/Copied migration \d+_create_blogs.blog_engine.rb from blog_engine/, output.last)
+      end
+    end
+
+    test "dont reverse default railties order" do
+      @api = engine "api" do |plugin|
+        plugin.write "lib/api.rb", <<-RUBY
+          module Api
+            class Engine < ::Rails::Engine; end
+          end
+        RUBY
+      end
+
+      # added last but here is loaded before api engine
+      @core = engine "core" do |plugin|
+        plugin.write "lib/core.rb", <<-RUBY
+          module Core
+            class Engine < ::Rails::Engine; end
+          end
+        RUBY
+      end
+
+      @core.write "db/migrate/1_create_users.rb", <<-RUBY
+        class CreateUsers < ActiveRecord::Migration; end
+      RUBY
+
+      @api.write "db/migrate/2_create_keys.rb", <<-RUBY
+        class CreateKeys < ActiveRecord::Migration; end
+      RUBY
+
+      boot_rails
+
+      Dir.chdir(app_path) do
+        output  = `bundle exec rake railties:install:migrations`.split("\n")
+
+        assert_match(/Copied migration \d+_create_users.core_engine.rb from core_engine/, output.first)
+        assert_match(/Copied migration \d+_create_keys.api_engine.rb from api_engine/, output.last)
+      end
+    end
+
     test "mountable engine should copy migrations within engine_path" do
       @plugin.write "lib/bukkits.rb", <<-RUBY
         module Bukkits
