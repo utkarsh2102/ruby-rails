@@ -404,6 +404,12 @@ module ActionDispatch
         # [:action]
         #   The route's action.
         #
+        # [:param]
+        #   Overrides the default resource identifier `:id` (name of the
+        #   dynamic segment used to generate the routes).
+        #   You can access that segment from your controller using
+        #   <tt>params[<:param>]</tt>.
+        #
         # [:path]
         #   The path prefix for the routes.
         #
@@ -1382,7 +1388,7 @@ module ActionDispatch
           end
 
           with_scope_level(:nested) do
-            if shallow? && shallow_nesting_depth > 1
+            if shallow? && shallow_nesting_depth >= 1
               shallow_scope(parent_resource.nested_scope, nested_options) { yield }
             else
               scope(parent_resource.nested_scope, nested_options) { yield }

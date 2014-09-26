@@ -3,10 +3,11 @@ require 'models/topic'
 require 'models/reply'
 require 'models/person'
 require 'models/traffic_light'
+require 'models/post'
 require 'bcrypt'
 
 class SerializedAttributeTest < ActiveRecord::TestCase
-  fixtures :topics
+  fixtures :topics, :posts
 
   MyObject = Struct.new :attribute1, :attribute2
 
@@ -75,6 +76,37 @@ class SerializedAttributeTest < ActiveRecord::TestCase
 
     t = Topic.new(:content => { :foo => :bar }).dup
     assert_equal({ :foo => :bar }, t.content_before_type_cast)
+  end
+
+  def test_serialized_json_attribute_returns_unserialized_value
+    Topic.serialize :content, JSON
+    my_post = posts(:welcome)
+
+    t = Topic.new(content: my_post)
+    t.save!
+    t.reload
+
+    assert_instance_of(Hash, t.content)
+    assert_equal(my_post.id, t.content["id"])
+    assert_equal(my_post.title, t.content["title"])
+  end
+
+  # This is to ensure that the JSON coder is behaving the same way as 4.0, but
+  # we can consider changing this in the future.
+  def test_json_db_null
+    Topic.serialize :content, JSON
+
+    # Force a row to have a database NULL instead of a JSON "null"
+    id = Topic.connection.insert "INSERT INTO topics (content) VALUES(NULL)"
+    t = Topic.find(id)
+
+    assert_nil t.content
+
+    t.save!
+
+    # On 4.0, re-saving a row with a database NULL will turn that into a JSON
+    # "null"
+    assert_equal 1, Topic.where("content = 'null'").count
   end
 
   def test_serialized_attribute_declared_in_subclass

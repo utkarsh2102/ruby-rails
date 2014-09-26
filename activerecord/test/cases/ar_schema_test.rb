@@ -17,6 +17,20 @@ if ActiveRecord::Base.connection.supports_migrations?
       ActiveRecord::SchemaMigration.delete_all rescue nil
     end
 
+    def test_has_no_primary_key
+      old_primary_key_prefix_type = ActiveRecord::Base.primary_key_prefix_type
+      ActiveRecord::Base.primary_key_prefix_type = :table_name_with_underscore
+      assert_nil ActiveRecord::SchemaMigration.primary_key
+
+      ActiveRecord::SchemaMigration.create_table
+      assert_difference "ActiveRecord::SchemaMigration.count", 1 do
+        ActiveRecord::SchemaMigration.create version: 12
+      end
+    ensure
+      ActiveRecord::SchemaMigration.drop_table
+      ActiveRecord::Base.primary_key_prefix_type = old_primary_key_prefix_type
+    end
+
     def test_schema_define
       ActiveRecord::Schema.define(:version => 7) do
         create_table :fruits do |t|
@@ -65,6 +79,13 @@ if ActiveRecord::Base.connection.supports_migrations?
         create_table :fruits
       end
       assert_nothing_raised { @connection.select_all "SELECT * FROM fruits" }
+    end
+
+    def test_normalize_version
+      assert_equal "118", ActiveRecord::SchemaMigration.normalize_migration_number("0000118")
+      assert_equal "002", ActiveRecord::SchemaMigration.normalize_migration_number("2")
+      assert_equal "017", ActiveRecord::SchemaMigration.normalize_migration_number("0017")
+      assert_equal "20131219224947", ActiveRecord::SchemaMigration.normalize_migration_number("20131219224947")
     end
   end
 end

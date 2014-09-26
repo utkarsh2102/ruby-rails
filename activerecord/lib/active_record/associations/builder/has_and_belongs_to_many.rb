@@ -72,6 +72,15 @@ module ActiveRecord::Associations::Builder
           self.right_reflection = _reflect_on_association(rhs_name)
         end
 
+        def hash
+          object_id.hash
+        end
+
+        def ==(other)
+          equal?(other)
+        end
+        alias :eql? :==
+
       }
 
       join_model.name                = "HABTM_#{association_name.to_s.camelize}"

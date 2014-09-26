@@ -1,3 +1,20 @@
+## Rails 4.1.6 (September 11, 2014) ##
+
+*   Scaffold generator `_form` partial adds `class="field"` for password
+    confirmation fields.
+
+    *noinkling*
+
+*   Avoid namespacing routes inside engines.
+
+    Mountable engines are namespaced by default so the generated routes
+    were too while they should not.
+
+    Fixes #14079.
+
+    *Yves Senn*, *Carlos Antonio da Silva*, *Robin Dupret*
+
+
 ## Rails 4.1.5 (August 18, 2014) ##
 
 *   Check attributes passed to `create_with` and `where`.

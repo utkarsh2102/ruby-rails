@@ -339,6 +339,15 @@ class PersistenceTest < ActiveRecord::TestCase
     assert_equal "Reply", topic.type
   end
 
+  def test_update_sti_subclass_type
+    assert_instance_of Topic, topics(:first)
+
+    reply = topics(:first).becomes!(Reply)
+    assert_instance_of Reply, reply
+    reply.save!
+    assert_instance_of Reply, Reply.find(reply.id)
+  end
+
   def test_update_after_create
     klass = Class.new(Topic) do
       def self.name; 'Topic'; end
@@ -845,5 +854,17 @@ class PersistenceTest < ActiveRecord::TestCase
     assert_raises ActiveModel::MissingAttributeError do
       post.body
     end
+  end
+
+  def test_find_via_reload
+    post = Post.new
+
+    assert post.new_record?
+
+    post.id = 1
+    post.reload
+
+    assert_equal "Welcome to the weblog", post.title
+    assert_not post.new_record?
   end
 end

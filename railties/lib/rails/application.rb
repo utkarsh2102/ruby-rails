@@ -365,6 +365,16 @@ module Rails
       end
     end
 
+    # Return an array of railties respecting the order they're loaded
+    # and the order specified by the +railties_order+ config.
+    #
+    # While when running initializers we need engines in reverse
+    # order here when copying migrations from railties we need then in the same
+    # order as given by +railties_order+
+    def migration_railties # :nodoc:
+      ordered_railties.flatten - [self]
+    end
+
   protected
 
     alias :build_middleware_stack :app
@@ -414,13 +424,13 @@ module Rails
 
         index = order.index(:all)
         order[index] = all
-        order.reverse.flatten
+        order
       end
     end
 
     def railties_initializers(current) #:nodoc:
       initializers = []
-      ordered_railties.each do |r|
+      ordered_railties.reverse.flatten.each do |r|
         if r == self
           initializers += current
         else
