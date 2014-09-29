@@ -1,3 +1,16 @@
+rails (2:4.1.6-2) UNRELEASED; urgency=medium
+
+  * fix upgrades from wheezy:
+    - Remove Breaks: against old packages provided by previous versions of
+      Rails The Replaces: fields, left untouched, outght to be enough.
+    - ruby-actionview: Replaces ruby-actionpack-{2.3,3.2} since
+      ruby-actionview contains files that used to be in ruby-actionpack-*
+    - ruby-railties: Breaks/Replaces rails (<< 2:4) since ruby-railties
+      contains /usr/bin/rails which used to be in rails.
+  * debian/copyright: minor updates
+
+ -- Antonio Terceiro <terceiro@debian.org>  Sun, 28 Sep 2014 22:28:50 -0300
+
 rails (2:4.1.6-1) unstable; urgency=medium
 
   * New upstream release

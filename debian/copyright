@@ -18,15 +18,16 @@ License: GPL or Expat
 
 Files: actionpack/test/controller/selector_test.rb
        actionpack/test/controller/assert_select_test.rb
-       actionpack/lib/action_view/vendor/html-scanner/html/selector.rb
+       actionview/lib/action_view/vendor/html-scanner/html/selector.rb
        actionpack/lib/action_dispatch/testing/assertions/selector.rb
 Copyright: 2006 Assaf Arkin (http://labnotes.org)
 License: Expat or CC-BY-3.0
 
 Files: actionpack/test/fixtures/multipart/mona_lisa.jpg
 Copyright: Musée du Louvre
-License: Public Domain
- This work is in the public domain
+License: public-domain
+ This files is a reproduction of the famous Mona Lisa, a painting from the
+ 16th century which is already the public domain.
 
 Files: debian/*
 Copyright: Copyright 2011 Ondřej Surý <ondrej@debian.org>
