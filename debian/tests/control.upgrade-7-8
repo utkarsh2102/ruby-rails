@@ -1,0 +1,3 @@
+Tests: newapp
+Restrictions: allow-stderr, needs-recommends
+Depends: rails3
