@@ -3,6 +3,7 @@ rails (2:4.1.7-1) UNRELEASED; urgency=medium
   * New upstream release
     - Includes only a fix for [CVE-2014-7818] (Arbitrary file existence
       disclosure in Action Pack)
+  * Add Breaks: for all packages that we have in Replaces: (Closes: #768850)
 
  -- Antonio Terceiro <terceiro@debian.org>  Fri, 14 Nov 2014 16:03:52 -0200
 

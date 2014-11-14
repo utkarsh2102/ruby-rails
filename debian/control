@@ -29,6 +29,7 @@ Depends: ruby | ruby-interpreter,
          ${misc:Depends},
          ${shlibs:Depends}
 Replaces: ruby-activesupport-2.3, ruby-activesupport-3.2, ruby-activesupport-4.0
+Breaks: ruby-activesupport-2.3, ruby-activesupport-3.2, ruby-activesupport-4.0
 Description: Support and utility classes used by the Rails 4.1 framework
  ActiveSupport consists of utility classes and extensions to the Ruby
  standard library that were required for Rails but found to be
@@ -45,6 +46,7 @@ Depends: ruby | ruby-interpreter,
          ruby-arel (>= 5.0.0),
          ${misc:Depends}
 Replaces: ruby-activerecord-2.3, ruby-activerecord-3.2, ruby-activerecord-4.0
+Breaks: ruby-activerecord-2.3, ruby-activerecord-3.2, ruby-activerecord-4.0
 Description: object-relational mapper framework (part of Rails)
  Active Records is a framework to work with databases on Rails.  Build
  a persistent domain model by mapping database tables to Ruby classes.
@@ -61,6 +63,7 @@ Depends: ruby | ruby-interpreter,
          ruby-builder (>= 3.1),
          ${misc:Depends}
 Replaces: ruby-activemodel-3.2, ruby-activemodel-4.0
+Breaks: ruby-activemodel-3.2, ruby-activemodel-4.0
 Description: toolkit for building modeling frameworks (part of Rails)
  Active Model is a toolkit for building modeling frameworks like
  Active Record and Active Resource.  This includes a rich support for
@@ -79,6 +82,7 @@ Depends: ruby | ruby-interpreter,
          ruby-erubis (>= 2.7.0),
          ${misc:Depends}
 Replaces: ruby-actionpack-2.3, ruby-actionpack-3.2
+Breaks: ruby-actionpack-2.3, ruby-actionpack-3.2
 Description: framework for handling view template lookup and rendering (part of Rails)
  Action View is a framework for handling view template lookup and
  rendering, and provides view helpers that assist when building HTML
@@ -115,6 +119,7 @@ Depends: ruby | ruby-interpreter,
          ${misc:Depends},
          ${shlibs:Depends}
 Replaces: ruby-actionmailer-2.3, ruby-actionmailer-3.2, ruby-actionmailer-4.0
+Breaks: ruby-actionmailer-2.3, ruby-actionmailer-3.2, ruby-actionmailer-4.0
 Description: email composition, delivery, and receiving framework (part of Rails)
  Action Mailer is a framework for working with email on Rails.
  Compose, deliver, receive, and test emails using the familiar
@@ -132,8 +137,8 @@ Depends: rake (>= 0.8.7),
          ruby-thor (<< 2.0),
          ruby-thor (>= 0.18.1),
          ${misc:Depends}
-Breaks: rails (<< 2:4)
 Replaces: rails (<< 2:4), ruby-rails-2.3, ruby-railties-3.2, ruby-railties-4.0
+Breaks: rails (<< 2:4), ruby-rails-2.3, ruby-railties-3.2, ruby-railties-4.0
 Description: tools for creating, working with, and running Rails applications
  This package contains the Rails internals, i.e. components that implement
  and/or control application bootup, plugins, generators, and rake tasks.
@@ -165,8 +170,8 @@ Recommends: ruby-coffee-rails,
             ruby-sqlite3,
             ruby-turbolinks,
             ruby-uglifier
-Breaks: ruby-activeresource-3.2
 Replaces: ruby-rails-2.3, ruby-rails-3.2, ruby-rails-4.0
+Breaks: ruby-activeresource-3.2, ruby-rails-2.3, ruby-rails-3.2, ruby-rails-4.0
 Description: MVC ruby based framework geared for web application development
  Rails is a full-stack, open-source web framework in Ruby for writing
  real-world applications.
@@ -180,6 +185,7 @@ Package: rails
 Architecture: all
 Depends: ruby-rails (= ${source:Version}), ${misc:Depends}
 Replaces: rails3
+Breaks: rails3
 Description: MVC ruby based framework geared for web application development (metapackage)
  Rails is a full-stack, open-source web framework in Ruby for writing
  real-world applications.
