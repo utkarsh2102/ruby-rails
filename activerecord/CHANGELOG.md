@@ -1,3 +1,41 @@
+*   Do not use `RENAME INDEX` syntax for MariaDB 10.0.
+
+    Fixes #15931.
+
+    *Jeff Browning*
+
+*   Allow included modules to override association methods.
+
+    Fixes #16684.
+
+    *Yves Senn*
+
+*   Schema loading rake tasks (like `db:schema:load` and `db:setup`) maintain
+    the database connection to the current environment.
+
+    Fixes #16757.
+
+    *Joshua Cody*, *Yves Senn*
+
+*   `db:purge` with MySQL respects `Rails.env`.
+
+    *Yves Senn*
+
+*   Fixed automatic maintaining test schema to properly handle sql structure
+    schema format.
+
+    Fixes #15394.
+
+    *Wojciech Wnętrzak*
+
+*   Fix has_many :through relation merging failing when dynamic conditions are
+    passed as a lambda with an arity of one.
+
+    Fixes #16128.
+
+    *Agis Anastasopoulos*
+
+
 ## Rails 4.1.6 (September 11, 2014) ##
 
 *   Fixed a regression where whitespaces were stripped from DISTINCT queries in
