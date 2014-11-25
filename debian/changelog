@@ -1,4 +1,4 @@
-rails (2:4.1.7-1) UNRELEASED; urgency=medium
+rails (2:4.1.8-1) UNRELEASED; urgency=medium
 
   * New upstream release
     - Includes only a fix for [CVE-2014-7818] (Arbitrary file existence
