@@ -1,4 +1,4 @@
-rails (2:4.1.8-1) UNRELEASED; urgency=medium
+rails (2:4.1.8-1) unstable; urgency=medium
 
   * New upstream release
     - Includes only bug fixes and no behavior changes. In special, includes
@@ -9,7 +9,7 @@ rails (2:4.1.8-1) UNRELEASED; urgency=medium
     upgrades from wheezy work (Closes: #768850)
     - Many thanks to Andreas Beckmann for helping debug the upgrade issue.
 
- -- Antonio Terceiro <terceiro@debian.org>  Fri, 14 Nov 2014 16:03:52 -0200
+ -- Antonio Terceiro <terceiro@debian.org>  Tue, 25 Nov 2014 16:51:50 -0200
 
 rails (2:4.1.6-2) unstable; urgency=medium
 
