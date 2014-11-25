@@ -1,9 +1,13 @@
 rails (2:4.1.8-1) UNRELEASED; urgency=medium
 
   * New upstream release
-    - Includes only a fix for [CVE-2014-7818] (Arbitrary file existence
-      disclosure in Action Pack)
-  * Add Breaks: for all packages that we have in Replaces: (Closes: #768850)
+    - Includes only bug fixes and no behavior changes. In special, includes
+      fix for [CVE-2014-7818] and [CVE-2014-7829] (Arbitrary file existence
+      disclosure in Action Pack) (Closes: #770934)
+  * Add new transitional binary package ruby-activesupport-2.3 plus
+    appropriate Breaks:/Replaces: fieds in all binary packages to ensure
+    upgrades from wheezy work (Closes: #768850)
+    - Many thanks to Andreas Beckmann for helping debug the upgrade issue.
 
  -- Antonio Terceiro <terceiro@debian.org>  Fri, 14 Nov 2014 16:03:52 -0200
 
