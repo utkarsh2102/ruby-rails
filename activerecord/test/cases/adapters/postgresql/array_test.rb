@@ -4,6 +4,8 @@ require 'active_record/base'
 require 'active_record/connection_adapters/postgresql_adapter'
 
 class PostgresqlArrayTest < ActiveRecord::TestCase
+  include InTimeZone
+
   class PgArray < ActiveRecord::Base
     self.table_name = 'pg_arrays'
   end
@@ -14,6 +16,7 @@ class PostgresqlArrayTest < ActiveRecord::TestCase
       @connection.create_table('pg_arrays') do |t|
         t.string 'tags', array: true
         t.integer 'ratings', array: true
+        t.datetime :datetimes, array: true
       end
     end
     @column = PgArray.columns.find { |c| c.name == 'tags' }
@@ -178,6 +181,24 @@ class PostgresqlArrayTest < ActiveRecord::TestCase
 
     PgArray.update_all tags: []
     assert_equal [], pg_array.reload.tags
+  end
+
+  def test_datetime_with_timezone_awareness
+    tz = "Pacific Time (US & Canada)"
+
+    in_time_zone tz do
+      PgArray.reset_column_information
+      time_string = Time.current.to_s
+      time = Time.zone.parse(time_string)
+
+      record = PgArray.new(datetimes: [time_string])
+      assert_equal [time], record.datetimes
+
+      record.save!
+      record.reload
+
+      assert_equal [time], record.datetimes
+    end
   end
 
   private

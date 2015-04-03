@@ -1,8 +1,42 @@
+## Rails 4.1.10 (March 19, 2015) ##
+
+*   Local variable in a partial is now available even if a falsy value is
+    passed to `:object` when rendering a partial.
+
+    Fixes #17373.
+
+    *Agis Anastasopoulos*
+
+*   Default translations that have a lower precidence than an html safe default,
+    but are not themselves safe, should not be marked as html_safe.
+
+    *Justin Coyne*
+
+## Rails 4.1.9 (January 6, 2015) ##
+
+*   Added an explicit error message, in `ActionView::PartialRenderer`
+    for partial `rendering`, when the value of option `as` has invalid characters.
+
+    *Angelo Capilleri*
+
+
+## Rails 4.1.8 (November 16, 2014) ##
+
 *   Update `select_tag` to work correctly with `:include_blank` option passing a string.
 
     Fixes #16483.
 
     *Frank Groeneveld*
+
+
+## Rails 4.1.7.1 (November 19, 2014) ##
+
+*   No changes.
+
+
+## Rails 4.1.7 (October 29, 2014) ##
+
+*   No changes.
 
 
 ## Rails 4.1.6 (September 11, 2014) ##

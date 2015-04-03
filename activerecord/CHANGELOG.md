@@ -1,3 +1,105 @@
+## Rails 4.1.10 (March 19, 2015) ##
+
+*   Fixed ActiveRecord::Relation#becomes! and changed_attributes issues for type column
+
+    Fixes #17139.
+
+    *Miklos Fazekas*
+
+*   A `NullRelation` should represent nothing. This fixes a bug where
+    `Comment.where(post_id: Post.none)` returned a non-empty result.
+
+    Closes #15176.
+
+    *Matthew Draper*, *Yves Senn*
+
+*   Respect custom primary keys for associations when calling `Relation#where`
+
+    Fixes #18813.
+
+    *Sean Griffin*
+
+*   Fixed ActiveRecord::Relation#group method when argument is SQL reserved key word:
+
+      SplitTest.group(:key).count
+      Property.group(:value).count
+
+    *Bogdan Gusiev*
+
+*   Fixed setting of foreign_key for through associations while building of new record.
+
+    Fixes #12698.
+
+    *Ivan Antropov*
+
+*   Fixed automatic inverse_of for models nested in module.
+
+    *Andrew McCloud*
+
+*   Fix `reaping_frequency` option when the value is a string.
+
+    This usually happens when it is configured using `DATABASE_URL`.
+
+    *korbin*
+
+
+## Rails 4.1.9 (January 6, 2015) ##
+
+*   `db:schema:load` and `db:structure:load` no longer purge the database
+    before loading the schema. This is left for the user to do.
+    `db:test:prepare` will still purge the database.
+
+    Closes #17945.
+
+    *Yves Senn*
+
+*   Bring back `db:test:prepare` to synchronize the test database schema.
+
+    Manual synchronization using `bin/rake db:test:prepare` is required
+    when a migration is rolled-back, edited and reapplied.
+
+    `ActiveRecord::Base.maintain_test_schema` now uses `db:test:prepare`
+    to synchronize the schema. Plugins can use this task as a hook to
+    provide custom behavior after the schema has been loaded.
+
+    NOTE: `test:prepare` runs before the schema was synchronized.
+
+    Fixes #17171, #15787.
+
+    *Yves Senn*
+
+*   Renaming a table in pg also renames the primary key index.
+
+    Fixes #12856
+
+    *Sean Griffin*
+
+*   Make it possible to access fixtures excluded by a `default_scope`.
+
+    *Yves Senn*
+
+*   `timestamps` and `add_timestamps` passes additional options along.
+    (like `null: false`)
+
+    Closes #17624.
+
+    *Yves Senn*
+
+
+## Rails 4.1.8 (November 16, 2014) ##
+
+*   Cache `CollectionAssociation#reader` proxies separately before and after
+    the owner has been saved so that the proxy is not cached without the
+    owner's id.
+
+    *Ben Woosley*
+
+*   Fix preloading of associations which unscope a default scope.
+
+    Fixes #11036.
+
+    *Byron Bischoff*
+
 *   Do not use `RENAME INDEX` syntax for MariaDB 10.0.
 
     Fixes #15931.
@@ -34,6 +136,16 @@
     Fixes #16128.
 
     *Agis Anastasopoulos*
+
+
+## Rails 4.1.7.1 (November 19, 2014) ##
+
+*   No changes.
+
+
+## Rails 4.1.7 (October 29, 2014) ##
+
+*   No changes.
 
 
 ## Rails 4.1.6 (September 11, 2014) ##

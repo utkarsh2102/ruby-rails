@@ -110,7 +110,7 @@ class ActionsTest < Rails::Generators::TestCase
     run_generator
 
     action :environment do
-      '# This wont be added'
+      _ = '# This wont be added'# assignment to silence parse-time warning "unused literal ignored"
       '# This will be added'
     end
 
@@ -198,6 +198,30 @@ class ActionsTest < Rails::Generators::TestCase
     route_command = "route '/login', controller: 'sessions', action: 'new'"
     action :route, route_command
     assert_file 'config/routes.rb', /#{Regexp.escape(route_command)}/
+  end
+
+  def test_route_should_add_data_with_an_new_line
+    run_generator
+    action :route, "root 'welcome#index'"
+    route_path = File.expand_path("config/routes.rb", destination_root)
+    content = File.read(route_path)
+
+    # Remove all of the comments and blank lines from the routes file
+    content.gsub!(/^  \#.*\n/, '')
+    content.gsub!(/^\n/, '')
+
+    File.open(route_path, "wb") { |file| file.write(content) }
+    assert_file "config/routes.rb", /\.routes\.draw do\n  root 'welcome#index'\nend\n\z/
+
+    action :route, "resources :product_lines"
+
+    routes = <<-F
+Rails.application.routes.draw do
+  resources :product_lines
+  root 'welcome#index'
+end
+F
+    assert_file "config/routes.rb", routes
   end
 
   def test_readme

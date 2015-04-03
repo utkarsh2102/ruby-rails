@@ -182,10 +182,10 @@ class StringInflectionsTest < ActiveSupport::TestCase
   end
 
   def test_string_squish
-    original = %{\u180E\u180E A string surrounded by unicode mongolian vowel separators,
-      with tabs(\t\t), newlines(\n\n), unicode nextlines(\u0085\u0085) and many spaces(  ). \u180E\u180E}
+    original = %{\u205f\u3000 A string surrounded by various unicode spaces,
+      with tabs(\t\t), newlines(\n\n), unicode nextlines(\u0085\u0085) and many spaces(  ). \u00a0\u2007}
 
-    expected = "A string surrounded by unicode mongolian vowel separators, " +
+    expected = "A string surrounded by various unicode spaces, " +
       "with tabs( ), newlines( ), unicode nextlines( ) and many spaces( )."
 
     # Make sure squish returns what we expect:
@@ -366,7 +366,7 @@ class StringConversionsTest < ActiveSupport::TestCase
       now = Time.now
       assert_equal Time.local(now.year, now.month, now.day, 23, 50), "23:50".to_time
       assert_equal Time.utc(now.year, now.month, now.day, 23, 50), "23:50".to_time(:utc)
-      assert_equal Time.local(now.year, now.month, now.day, 18, 50), "13:50 -0100".to_time
+      assert_equal Time.local(now.year, now.month, now.day, 17, 50), "13:50 -0100".to_time
       assert_equal Time.utc(now.year, now.month, now.day, 23, 50), "22:50 -0100".to_time(:utc)
     end
   end

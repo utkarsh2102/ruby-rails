@@ -18,6 +18,10 @@ module ActiveRecord
       def attribute_alias?(name)
         false
       end
+
+      def sanitize_sql(sql)
+        sql
+      end
     end
 
     def relation
@@ -95,11 +99,11 @@ module ActiveRecord
     end
 
     test '#reorder!' do
-      relation = self.relation.order('foo')
+      order_relation = self.relation.order('foo')
 
-      assert relation.reorder!('bar').equal?(relation)
-      assert_equal ['bar'], relation.order_values
-      assert relation.reordering_value
+      assert order_relation.reorder!('bar').equal?(order_relation)
+      assert_equal ['bar'], order_relation.order_values
+      assert order_relation.reordering_value
     end
 
     test '#reorder! with symbol prepends the table name' do

@@ -139,20 +139,59 @@ class HttpTokenAuthenticationTest < ActionController::TestCase
     assert_equal(expected, actual)
   end
 
+  test "token_and_options returns correct token with nounce option" do
+    token = "rcHu+HzSFw89Ypyhn/896A="
+    nonce_hash = {nonce: "123abc"}
+    actual = ActionController::HttpAuthentication::Token.token_and_options(sample_request(token, nonce_hash))
+    expected_token = token
+    expected_nonce = {"nonce" => nonce_hash[:nonce]}
+    assert_equal(expected_token, actual.first)
+    assert_equal(expected_nonce, actual.last)
+  end
+
   test "token_and_options returns nil with no value after the equal sign" do
     actual = ActionController::HttpAuthentication::Token.token_and_options(malformed_request).first
     expected = nil
     assert_equal(expected, actual)
   end
 
+  test "raw_params returns a tuple of two key value pair strings" do
+    auth = sample_request("rcHu+HzSFw89Ypyhn/896A=").authorization.to_s
+    actual = ActionController::HttpAuthentication::Token.raw_params(auth)
+    expected = ["token=\"rcHu+HzSFw89Ypyhn/896A=\"", "nonce=\"def\""]
+    assert_equal(expected, actual)
+  end
+
+  test "token_and_options returns right token when token key is not specified in header" do
+    token = "rcHu+HzSFw89Ypyhn/896A="
+
+    actual = ActionController::HttpAuthentication::Token.token_and_options(
+      sample_request_without_token_key(token)
+    ).first
+
+    expected = token
+    assert_equal(expected, actual)
+  end
+
   private
 
-    def sample_request(token)
-      @sample_request ||= OpenStruct.new authorization: %{Token token="#{token}", nonce="def"}
+    def sample_request(token, options = {nonce: "def"})
+      authorization = options.inject([%{Token token="#{token}"}]) do |arr, (k, v)|
+        arr << "#{k}=\"#{v}\""
+      end.join(", ")
+      mock_authorization_request(authorization)
     end
 
     def malformed_request
-      @malformed_request ||= OpenStruct.new authorization: %{Token token=}
+      mock_authorization_request(%{Token token=})
+    end
+
+    def sample_request_without_token_key(token)
+      mock_authorization_request(%{Token #{token}})
+    end
+
+    def mock_authorization_request(authorization)
+      OpenStruct.new(authorization: authorization)
     end
 
     def encode_credentials(token, options = {})
