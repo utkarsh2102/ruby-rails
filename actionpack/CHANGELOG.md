@@ -1,3 +1,50 @@
+## Rails 4.1.10 (March 19, 2015) ##
+
+*   Preserve default format when generating URLs
+
+    Fixes an issue that would cause the format set in default_url_options to be
+    lost when generating URLs with fewer positional arguments than parameters in
+    the route definition.
+
+    Backport of #18627
+
+    *Tekin Suleyman*, *Dominic Baggott*
+
+*   Default headers, removed in controller actions, are no longer reapplied on
+    the test response.
+
+    *Jonas Baumann*
+
+*   Ensure `append_info_to_payload` is called even if an exception is raised.
+
+    Fixes an issue where when an exception is raised in the request the additonal
+    payload data is not available.
+
+    See:
+    * #14903
+    * https://github.com/roidrage/lograge/issues/37
+
+    *Dieter Komendera*, *Margus Pärt*
+
+
+## Rails 4.1.9 (January 6, 2015) ##
+
+*   Fixed handling of positional url helper arguments when `format: false`.
+
+    Fixes #17819.
+
+    *Andrew White*, *Tatiana Soukiassian*
+
+*   Restore handling of a bare `Authorization` header, without `token=`
+    prefix.
+
+    Fixes #17108.
+
+    *Guo Xiang Tan*
+
+
+## Rails 4.1.8 (November 16, 2014) ##
+
 *   Fix regression where path was getting overwritten when route anchor was false, and X-Cascade pass
 
     fixes #17035.
@@ -9,6 +56,20 @@
     fixes #11502.
 
     *Yuki Nishijima*
+
+
+## Rails 4.1.7.1 (November 19, 2014) ##
+
+*   Fix arbitrary file existence disclosure in Action Pack.
+
+    CVE-2014-7829.
+
+
+## Rails 4.1.7 (October 29, 2014) ##
+
+*   Fix arbitrary file existence disclosure in Action Pack.
+
+    CVE-2014-7818.
 
 
 ## Rails 4.1.6 (September 11, 2014) ##

@@ -45,6 +45,11 @@ class UniquenessValidationTest < ActiveRecord::TestCase
 
   repair_validations(Topic, Reply)
 
+  class ModelWithScopedValidationOnArray < ActiveRecord::Base
+    self.table_name = 'postgresql_arrays'
+    validates_uniqueness_of :name, scope: [:commission_by_quarter]
+  end
+
   def test_validate_uniqueness
     Topic.validates_uniqueness_of(:title)
 
@@ -81,6 +86,34 @@ class UniquenessValidationTest < ActiveRecord::TestCase
     assert !t2.valid?, "Shouldn't be valid"
     assert !t2.save, "Shouldn't save t2 as unique"
     assert_equal ["has already been taken"], t2.errors[:title]
+  end
+
+  def test_validates_uniqueness_with_nil_scope
+    old_validators = Topic._validators.deep_dup
+    old_callbacks = Topic._validate_callbacks.deep_dup
+    Topic.validates_uniqueness_of(:title, scope: :parent_id)
+
+    Topic.create!(title: "test 1", parent_id: nil)
+    topic = Topic.new(title: "test 1", parent_id: nil)
+
+    refute topic.valid?
+  ensure
+    Topic._validators = old_validators
+    Topic._validate_callbacks = old_callbacks
+  end
+
+  def test_validates_uniqueness_with_false_scope
+    old_validators = Topic._validators.deep_dup
+    old_callbacks = Topic._validate_callbacks.deep_dup
+    Topic.validates_uniqueness_of(:title, scope: [:parent_id, :approved])
+
+    Topic.create!(title: "test 1", parent_id: nil, approved: false)
+    topic = Topic.new(title: "test 1", parent_id: nil, approved: false)
+
+    refute topic.valid?
+  ensure
+    Topic._validators = old_validators
+    Topic._validate_callbacks = old_callbacks
   end
 
   def test_validates_uniqueness_with_validates
@@ -387,6 +420,15 @@ class UniquenessValidationTest < ActiveRecord::TestCase
       assert !e2.persisted?, "e2 shouldn't be valid"
       assert e2.errors[:nicknames].any?, "Should have errors for nicknames"
       assert_equal ["has already been taken"], e2.errors[:nicknames], "Should have uniqueness message for nicknames"
+    end
+
+    def test_validate_uniqueness_scoped_to_array
+      record = ModelWithScopedValidationOnArray.new(
+        name: "Sheldon Cooper",
+        commission_by_quarter: [1, 2, 3]
+      )
+
+      assert_nothing_raised { record.valid? }
     end
   end
 

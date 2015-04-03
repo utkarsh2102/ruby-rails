@@ -235,12 +235,26 @@ module ActionDispatch
             result = options.dup
 
             if args.size > 0
-              if args.size < keys.size - 1 # take format into account
+              # take format into account
+              if keys.include?(:format)
+                keys_size = keys.size - 1
+              else
+                keys_size = keys.size
+              end
+
+              if args.size < keys_size
                 keys -= t.url_options.keys if t.respond_to?(:url_options)
                 keys -= options.keys
               end
               keys -= inner_options.keys
-              result.merge!(Hash[keys.zip(args)])
+
+              keys.each do |key|
+                value = inner_options.fetch(key) { args.shift }
+
+                unless key == :format && value.nil?
+                  result[key] = value
+                end
+              end
             end
 
             result.merge!(inner_options)

@@ -351,7 +351,7 @@ module Rails
 
           base.called_from = begin
             call_stack = if Kernel.respond_to?(:caller_locations)
-              caller_locations.map(&:path)
+              caller_locations.map { |l| l.absolute_path || l.path }
             else
               # Remove the line number from backtraces making sure we don't leave anything behind
               caller.map { |p| p.sub(/:\d+.*/, '') }
@@ -567,10 +567,10 @@ module Rails
     end
 
     initializer :add_routing_paths do |app|
-      paths = self.paths["config/routes.rb"].existent
+      routing_paths = self.paths["config/routes.rb"].existent
 
-      if routes? || paths.any?
-        app.routes_reloader.paths.unshift(*paths)
+      if routes? || routing_paths.any?
+        app.routes_reloader.paths.unshift(*routing_paths)
         app.routes_reloader.route_sets << routes
       end
     end

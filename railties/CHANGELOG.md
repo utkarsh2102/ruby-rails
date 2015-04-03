@@ -1,3 +1,40 @@
+## Rails 4.1.10 (March 19, 2015) ##
+
+*   Add a new-line to the end of route method generated code.
+
+    We need to add a `\n`, because we cannot have two routes
+    in the same line.
+
+    *arthurnn*
+
+*   Force generated routes to be inserted into routes.rb
+
+    *Andrew White*
+
+*   Don't remove all line endings from routes.rb when revoking scaffold.
+
+    Fixes #15913.
+
+    *Andrew White*
+
+*   Fix scaffold generator with `--helper=false` option.
+
+    *Rafael Mendonça França*
+
+
+## Rails 4.1.9 (January 6, 2015) ##
+
+*   No changes.
+
+
+## Rails 4.1.8 (November 16, 2014) ##
+
+*   `secret_token` is now saved in `Rails.application.secrets.secret_token`
+    and it falls back to the value of `config.secret_token` when it is not
+    present in `config/secrets.yml`.
+
+    *Benjamin Fleischer*
+
 *   Specify dummy app's db migrate path in plugin's test_helper.rb.
 
     Fixes #16877.
@@ -8,6 +45,16 @@
     you specify dummy_path option.
 
     *Yukio Mizuta*
+
+
+## Rails 4.1.7.1 (November 19, 2014) ##
+
+*   No changes.
+
+
+## Rails 4.1.7 (October 29, 2014) ##
+
+*   No changes.
 
 
 ## Rails 4.1.6 (September 11, 2014) ##

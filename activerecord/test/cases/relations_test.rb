@@ -15,6 +15,7 @@ require 'models/engine'
 require 'models/tyre'
 require 'models/minivan'
 require 'models/aircraft'
+require "models/possession"
 
 
 class RelationTest < ActiveRecord::TestCase
@@ -394,6 +395,11 @@ class RelationTest < ActiveRecord::TestCase
     ac.save
     assert_equal Hash.new, ac.engines.group(:car_id).maximum(:id)
     assert_equal        nil, ac.engines.maximum(:id)
+  end
+
+  def test_null_relation_in_where_condition
+    assert_operator 0, :<, Comment.count # precondition, make sure there are comments.
+    assert_equal 0, Comment.where(post_id: Post.none).to_a.size
   end
 
   def test_joins_with_nil_argument
@@ -1403,6 +1409,10 @@ class RelationTest < ActiveRecord::TestCase
 
     scope = Post.having([])
     assert_equal [], scope.having_values
+  end
+
+  def test_grouping_by_column_with_reserved_name
+    assert_equal [], Possession.select(:where).group(:where).to_a
   end
 
   def test_references_triggers_eager_loading

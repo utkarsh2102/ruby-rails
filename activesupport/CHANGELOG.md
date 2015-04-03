@@ -1,7 +1,57 @@
+## Rails 4.1.10 (March 19, 2015) ##
+
+*   Fixed a roundtrip problem with AS::SafeBuffer where primitive-like strings
+    will be dumped as primitives:
+
+    Before:
+
+       YAML.load ActiveSupport::SafeBuffer.new("Hello").to_yaml  # => "Hello"
+       YAML.load ActiveSupport::SafeBuffer.new("true").to_yaml   # => true
+       YAML.load ActiveSupport::SafeBuffer.new("false").to_yaml  # => false
+       YAML.load ActiveSupport::SafeBuffer.new("1").to_yaml      # => 1
+       YAML.load ActiveSupport::SafeBuffer.new("1.1").to_yaml    # => 1.1
+
+     After:
+
+       YAML.load ActiveSupport::SafeBuffer.new("Hello").to_yaml  # => "Hello"
+       YAML.load ActiveSupport::SafeBuffer.new("true").to_yaml   # => "true"
+       YAML.load ActiveSupport::SafeBuffer.new("false").to_yaml  # => "false"
+       YAML.load ActiveSupport::SafeBuffer.new("1").to_yaml      # => "1"
+       YAML.load ActiveSupport::SafeBuffer.new("1.1").to_yaml    # => "1.1"
+
+    *Godfrey Chan*
+
+*   Replace fixed `:en` with `I18n.default_locale` in `Duration#inspect`.
+
+    *Dominik Masur*
+
+*   Add missing time zone definitions for Russian Federation and sync them
+    with `zone.tab` file from tzdata version 2014j (latest).
+
+    *Andrey Novikov*
+
+
+## Rails 4.1.9 (January 6, 2015) ##
+
+*   No changes.
+
+
+## Rails 4.1.8 (November 16, 2014) ##
+
 *   `Method` objects now report themselves as not `duplicable?`. This allows
     hashes and arrays containing `Method` objects to be `deep_dup`ed.
 
     *Peter Jaros*
+
+
+## Rails 4.1.7.1 (November 19, 2014) ##
+
+*   No changes.
+
+
+## Rails 4.1.7 (October 29, 2014) ##
+
+*   No changes.
 
 
 ## Rails 4.1.6 (September 11, 2014) ##

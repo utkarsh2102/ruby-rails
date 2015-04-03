@@ -33,7 +33,13 @@ module ActiveRecord
           reload
         end
 
-        @proxy ||= CollectionProxy.create(klass, self)
+        if owner.new_record?
+          # Cache the proxy separately before the owner has an id
+          # or else a post-save proxy will still lack the id
+          @new_record_proxy ||= CollectionProxy.create(klass, self)
+        else
+          @proxy ||= CollectionProxy.create(klass, self)
+        end
       end
 
       # Implements the writer method, e.g. foo.items= for Foo.has_many :items
@@ -121,6 +127,16 @@ module ActiveRecord
 
       def last(*args)
         first_nth_or_last(:last, *args)
+      end
+
+      def take(n = nil)
+        if loaded?
+          n ? target.take(n) : target.first
+        else
+          scope.take(n).tap do |record|
+            set_inverse_instance record if record.is_a? ActiveRecord::Base
+          end
+        end
       end
 
       def build(attributes = {}, &block)
@@ -560,8 +576,13 @@ module ActiveRecord
           if reflection.is_a?(ActiveRecord::Reflection::ThroughReflection)
             assoc = owner.association(reflection.through_reflection.name)
             assoc.reader.any? { |source|
-              target = source.send(reflection.source_reflection.name)
-              target.respond_to?(:include?) ? target.include?(record) : target == record
+              target_association = source.send(reflection.source_reflection.name)
+
+              if target_association.respond_to?(:include?)
+                target_association.include?(record)
+              else
+                target_association == record
+              end
             } || target.include?(record)
           else
             target.include?(record)

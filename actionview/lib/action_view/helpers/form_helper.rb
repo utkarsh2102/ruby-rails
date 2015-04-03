@@ -1142,11 +1142,11 @@ module ActionView
             object_name = model_name_from_record_or_class(object).param_key
           end
 
-          builder = options[:builder] || default_form_builder
+          builder = options[:builder] || default_form_builder_class
           builder.new(object_name, object, self, options)
         end
 
-        def default_form_builder
+        def default_form_builder_class
           builder = ActionView::Base.default_form_builder
           builder.respond_to?(:constantize) ? builder.constantize : builder
         end
@@ -1871,6 +1871,8 @@ module ActionView
   end
 
   ActiveSupport.on_load(:action_view) do
-    cattr_accessor(:default_form_builder) { ::ActionView::Helpers::FormBuilder }
+    cattr_accessor(:default_form_builder, instance_writer: false, instance_reader: false) do
+      ::ActionView::Helpers::FormBuilder
+    end
   end
 end

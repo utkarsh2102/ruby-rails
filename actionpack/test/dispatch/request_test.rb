@@ -729,8 +729,8 @@ class RequestTest < ActiveSupport::TestCase
       }
 
       parameter_filter = ActionDispatch::Http::ParameterFilter.new(filter_words)
-      before_filter['barg'] = {'bargain'=>'gain', 'blah'=>'bar', 'bar'=>{'bargain'=>{'blah'=>'foo'}}}
-      after_filter['barg']  = {'bargain'=>'niag', 'blah'=>'[FILTERED]', 'bar'=>{'bargain'=>{'blah'=>'[FILTERED]'}}}
+      before_filter['barg'] = {:bargain=>'gain', 'blah'=>'bar', 'bar'=>{'bargain'=>{'blah'=>'foo'}}}
+      after_filter['barg']  = {:bargain=>'niag', 'blah'=>'[FILTERED]', 'bar'=>{'bargain'=>{'blah'=>'[FILTERED]'}}}
 
       assert_equal after_filter, parameter_filter.filter(before_filter)
     end
@@ -876,6 +876,13 @@ class RequestTest < ActiveSupport::TestCase
     assert_raise ArgumentError do
       request.variant = "yolo"
     end
+  end
+
+  test "reset variant" do
+    request = stub_request
+
+    request.variant = nil
+    assert_equal nil, request.variant
   end
 
   test "setting variant with non symbol value" do

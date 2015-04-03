@@ -27,6 +27,8 @@ require 'models/student'
 require 'models/reference'
 require 'models/job'
 require 'models/tyre'
+require 'models/zine'
+require 'models/interest'
 
 class HasManyAssociationsTestForReorderWithJoinDependency < ActiveRecord::TestCase
   fixtures :authors, :posts, :comments
@@ -44,7 +46,7 @@ class HasManyAssociationsTest < ActiveRecord::TestCase
   fixtures :accounts, :categories, :companies, :developers, :projects,
            :developers_projects, :topics, :authors, :comments,
            :people, :posts, :readers, :taggings, :cars, :essays,
-           :categorizations, :jobs
+           :categorizations, :jobs, :zines, :interests
 
   def setup
     Client.destroyed_client_ids.clear
@@ -337,6 +339,45 @@ class HasManyAssociationsTest < ActiveRecord::TestCase
     assert_equal companies(:another_first_firm_client), companies(:first_firm).clients_sorted_desc.find_by_type('Client')
   end
 
+  def test_taking
+    posts(:other_by_bob).destroy
+    assert_equal posts(:misc_by_bob), authors(:bob).posts.take
+    assert_equal posts(:misc_by_bob), authors(:bob).posts.take!
+    authors(:bob).posts.to_a
+    assert_equal posts(:misc_by_bob), authors(:bob).posts.take
+    assert_equal posts(:misc_by_bob), authors(:bob).posts.take!
+  end
+
+  def test_taking_not_found
+    authors(:bob).posts.delete_all
+    assert_raise(ActiveRecord::RecordNotFound) { authors(:bob).posts.take! }
+    authors(:bob).posts.to_a
+    assert_raise(ActiveRecord::RecordNotFound) { authors(:bob).posts.take! }
+  end
+
+  def test_taking_with_a_number
+    # taking from unloaded Relation
+    bob = Author.find(authors(:bob).id)
+    assert_equal [posts(:misc_by_bob)], bob.posts.take(1)
+    bob = Author.find(authors(:bob).id)
+    assert_equal [posts(:misc_by_bob), posts(:other_by_bob)], bob.posts.take(2)
+
+    # taking from loaded Relation
+    bob.posts.to_a
+    assert_equal [posts(:misc_by_bob)], authors(:bob).posts.take(1)
+    assert_equal [posts(:misc_by_bob), posts(:other_by_bob)], authors(:bob).posts.take(2)
+  end
+
+  def test_taking_with_inverse_of
+    interests(:woodsmanship).destroy
+    interests(:survival).destroy
+
+    zine = zines(:going_out)
+    interest = zine.interests.take
+    assert_equal interests(:hunting), interest
+    assert_same zine, interest.zine
+  end
+
   def test_cant_save_has_many_readonly_association
     authors(:david).readonly_comments.each { |c| assert_raise(ActiveRecord::ReadOnlyRecord) { c.save! } }
     authors(:david).readonly_comments.each { |c| assert c.readonly? }
@@ -364,6 +405,13 @@ class HasManyAssociationsTest < ActiveRecord::TestCase
 
   def test_finding_using_primary_key
     assert_equal "Summit", Firm.all.merge!(:order => "id").first.clients_using_primary_key.first.name
+  end
+
+  def test_update_all_on_association_accessed_before_save
+    firm = Firm.new(name: 'Firm')
+    firm.clients << Client.first
+    firm.save!
+    assert_equal firm.clients.count, firm.clients.update_all(description: 'Great!')
   end
 
   def test_belongs_to_sanity
@@ -1825,6 +1873,14 @@ class HasManyAssociationsTest < ActiveRecord::TestCase
 
     assert_equal [bulb1], car.bulbs
     assert_equal [bulb1, bulb2], car.all_bulbs.sort_by(&:id)
+  end
+
+  test 'unscopes the default scope of associated model when used with include' do
+    car = Car.create!
+    bulb = Bulb.create! name: "other", car: car
+
+    assert_equal bulb, Car.find(car.id).all_bulbs.first
+    assert_equal bulb, Car.includes(:all_bulbs).find(car.id).all_bulbs.first
   end
 
   test "raises RecordNotDestroyed when replaced child can't be destroyed" do

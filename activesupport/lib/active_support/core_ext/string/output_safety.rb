@@ -142,7 +142,11 @@ module ActiveSupport #:nodoc:
       else
         if html_safe?
           new_safe_buffer = super
-          new_safe_buffer.instance_eval { @html_safe = true }
+
+          if new_safe_buffer
+            new_safe_buffer.instance_eval { @html_safe = true }
+          end
+
           new_safe_buffer
         else
           to_str[*args]
@@ -206,7 +210,7 @@ module ActiveSupport #:nodoc:
     end
 
     def encode_with(coder)
-      coder.represent_scalar nil, to_str
+      coder.represent_object nil, to_str
     end
 
     UNSAFE_STRING_METHODS.each do |unsafe_method|

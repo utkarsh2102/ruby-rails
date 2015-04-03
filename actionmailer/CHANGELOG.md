@@ -1,8 +1,30 @@
+## Rails 4.1.10 (March 19, 2015) ##
+
+*   No changes.
+
+
+## Rails 4.1.9 (January 6, 2015) ##
+
+*   No changes.
+
+
+## Rails 4.1.8 (November 16, 2014) ##
+
 *   Attachments can be added while rendering the mail template.
 
     Fixes #16974.
 
     *Christian Felder*
+
+## Rails 4.1.7.1 (November 19, 2014) ##
+
+*   No changes.
+
+
+## Rails 4.1.7 (October 29, 2014) ##
+
+*   No changes.
+
 
 ## Rails 4.1.6 (September 11, 2014) ##
 
