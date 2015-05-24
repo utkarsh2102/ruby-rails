@@ -1,4 +1,4 @@
-rails (2:4.1.10-1) UNRELEASED; urgency=medium
+rails (2:4.1.10-1) unstable; urgency=medium
 
   * New upstream release; bug fixes only
   * debian/copyright: fix mention to the license of
@@ -8,7 +8,7 @@ rails (2:4.1.10-1) UNRELEASED; urgency=medium
   * Drop Breaks:/Replaces: relationships against packages provided by old
     versioned source packages (e.g. *-2.3, *-3.2, *-4.0).
 
- -- Antonio Terceiro <terceiro@debian.org>  Fri, 03 Apr 2015 18:19:36 -0300
+ -- Antonio Terceiro <terceiro@debian.org>  Sun, 24 May 2015 18:11:04 -0300
 
 rails (2:4.1.8-1) unstable; urgency=medium
 
