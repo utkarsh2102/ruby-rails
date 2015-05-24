@@ -35,22 +35,6 @@ Description: Support and utility classes used by the Rails 4.1 framework
  standard library that were required for Rails but found to be
  generally useful.
 
-Package: ruby-activesupport-2.3
-Architecture: all
-Depends: ruby-activesupport (>= 2:4),
-         ${misc:Depends},
-         ${shlibs:Depends}
-Breaks:
- ruby-activesupport-3.2,
- ruby-activesupport-4.0,
- ruby-actionpack-2.3,
- ruby-activerecord-2.3,
- ruby-activeresource-2.3,
- ruby-rails-2.3,
-Description: transitional dummy package
- Ensure the removal of rails 2.3 on upgrades from wheezy.
- This package can be safely removed.
-
 Package: ruby-activerecord
 Architecture: all
 X-DhRuby-Root: activerecord/

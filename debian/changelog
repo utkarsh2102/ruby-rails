@@ -3,6 +3,8 @@ rails (2:4.1.10-1) UNRELEASED; urgency=medium
   * New upstream release; bug fixes only
   * debian/copyright: fix mention to the license of
     guides/assets/javascripts/jquery.min.js
+  * Drop transitional package ruby-activesupport-2.3; it was only needed for
+    upgrades from wheezy.
 
  -- Antonio Terceiro <terceiro@debian.org>  Fri, 03 Apr 2015 18:19:36 -0300
 
