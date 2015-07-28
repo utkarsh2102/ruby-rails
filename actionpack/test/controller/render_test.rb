@@ -10,11 +10,17 @@ class TestControllerWithExtraEtags < ActionController::Base
   etag { nil  }
 
   def fresh
-    render text: "stale" if stale?(etag: '123')
+    render text: "stale" if stale?(etag: '123', template: false)
   end
 
   def array
-    render text: "stale" if stale?(etag: %w(1 2 3))
+    render text: "stale" if stale?(etag: %w(1 2 3), template: false)
+  end
+
+  def with_template
+    if stale? template: 'test/hello_world'
+      render text: 'stale'
+    end
   end
 end
 
@@ -211,6 +217,20 @@ class TestController < ActionController::Base
     head :forbidden, :x_custom_header => "something"
   end
 
+  def head_and_return
+    head :ok and return
+    raise 'should not reach this line'
+  end
+
+  def head_with_no_content
+    # Fill in the headers with dummy data to make
+    # sure they get removed during the testing
+    response.headers["Content-Type"] = "dummy"
+    response.headers["Content-Length"] = 42
+
+    head 204
+  end
+
   private
 
     def set_variable_for_layout
@@ -242,6 +262,8 @@ class MetalTestController < ActionController::Metal
   include AbstractController::Rendering
   include ActionView::Rendering
   include ActionController::Rendering
+  include ActionController::RackDelegation
+
 
   def accessing_logger_in_template
     render :inline =>  "<%= logger.class %>"
@@ -387,10 +409,6 @@ end
 class EtagRenderTest < ActionController::TestCase
   tests TestControllerWithExtraEtags
 
-  def setup
-    super
-  end
-
   def test_multiple_etags
     @request.if_none_match = etag(["123", 'ab', :cde, [:f]])
     get :fresh
@@ -409,6 +427,32 @@ class EtagRenderTest < ActionController::TestCase
     @request.if_none_match = %("nomatch")
     get :array
     assert_response :success
+  end
+
+  def test_etag_reflects_template_digest
+    get :with_template
+    assert_response :ok
+    assert_not_nil etag = @response.etag
+
+    request.if_none_match = etag
+    get :with_template
+    assert_response :not_modified
+
+    # Modify the template digest
+    path = File.expand_path('../../fixtures/test/hello_world.erb', __FILE__)
+    old = File.read(path)
+
+    begin
+      File.write path, 'foo'
+      ActionView::Digestor.cache.clear
+
+      request.if_none_match = etag
+      get :with_template
+      assert_response :ok
+      assert_not_equal etag, @response.etag
+    ensure
+      File.write path, old
+    end
   end
 
   def etag(record)
@@ -515,6 +559,14 @@ class HeadRenderTest < ActionController::TestCase
     end
   end
 
+  def test_head_with_no_content
+    get :head_with_no_content
+
+    assert_equal 204, @response.status
+    assert_nil @response.headers["Content-Type"]
+    assert_nil @response.headers["Content-Length"]
+  end
+
   def test_head_with_string_status
     get :head_with_string_status, :status => "404 Eat Dirt"
     assert_equal 404, @response.response_code
@@ -528,5 +580,11 @@ class HeadRenderTest < ActionController::TestCase
     assert_equal "Forbidden", @response.message
     assert_equal "something", @response.headers["X-Custom-Header"]
     assert_response :forbidden
+  end
+
+  def test_head_returns_truthy_value
+    assert_nothing_raised do
+      get :head_and_return
+    end
   end
 end

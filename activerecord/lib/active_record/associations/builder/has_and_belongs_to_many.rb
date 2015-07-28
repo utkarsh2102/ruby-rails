@@ -11,7 +11,7 @@ module ActiveRecord::Associations::Builder
         end
 
         def join_table
-          @join_table ||= [@lhs_class.table_name, klass.table_name].sort.join("\0").gsub(/^(.*[._])(.+)\0\1(.+)/, '\1\2_\3').gsub("\0", "_")
+          @join_table ||= [@lhs_class.table_name, klass.table_name].sort.join("\0").gsub(/^(.*[._])(.+)\0\1(.+)/, '\1\2_\3').tr("\0", "_")
         end
 
         private
@@ -72,22 +72,13 @@ module ActiveRecord::Associations::Builder
           self.right_reflection = _reflect_on_association(rhs_name)
         end
 
-        def hash
-          object_id.hash
-        end
-
-        def ==(other)
-          equal?(other)
-        end
-        alias :eql? :==
-
       }
 
       join_model.name                = "HABTM_#{association_name.to_s.camelize}"
       join_model.table_name_resolver = habtm
       join_model.class_resolver      = lhs_model
 
-      join_model.add_left_association :left_side, class: lhs_model
+      join_model.add_left_association :left_side, anonymous_class: lhs_model
       join_model.add_right_association association_name, belongs_to_options(options)
       join_model
     end
@@ -107,7 +98,7 @@ module ActiveRecord::Associations::Builder
 
     def middle_options(join_model)
       middle_options = {}
-      middle_options[:class] = join_model
+      middle_options[:class_name] = "#{lhs_model.name}::#{join_model.name}"
       middle_options[:source] = join_model.left_reflection.name
       if options.key? :foreign_key
         middle_options[:foreign_key] = options[:foreign_key]
@@ -119,7 +110,7 @@ module ActiveRecord::Associations::Builder
       rhs_options = {}
 
       if options.key? :class_name
-        rhs_options[:foreign_key] = options[:class_name].foreign_key
+        rhs_options[:foreign_key] = options[:class_name].to_s.foreign_key
         rhs_options[:class_name] = options[:class_name]
       end
 

@@ -10,15 +10,22 @@ require 'models/reply'
 require 'models/minivan'
 require 'models/speedometer'
 require 'models/ship_part'
-
-Company.has_many :accounts
+require 'models/treasure'
+require 'models/developer'
+require 'models/comment'
+require 'models/rating'
+require 'models/post'
 
 class NumericData < ActiveRecord::Base
   self.table_name = 'numeric_data'
+
+  attribute :world_population, Type::Integer.new
+  attribute :my_house_population, Type::Integer.new
+  attribute :atoms_in_universe, Type::Integer.new
 end
 
 class CalculationsTest < ActiveRecord::TestCase
-  fixtures :companies, :accounts, :topics
+  fixtures :companies, :accounts, :topics, :speedometers, :minivans
 
   def test_should_sum_field
     assert_equal 318, Account.sum(:credit_limit)
@@ -47,11 +54,6 @@ class CalculationsTest < ActiveRecord::TestCase
 
   def test_should_return_nil_as_average
     assert_nil NumericData.average(:bank_balance)
-  end
-
-  def test_type_cast_calculated_value_should_convert_db_averages_of_fixnum_class_to_decimal
-    assert_equal 0, NumericData.all.send(:type_cast_calculated_value, 0, nil, 'avg')
-    assert_equal 53.0, NumericData.all.send(:type_cast_calculated_value, 53, nil, 'avg')
   end
 
   def test_should_get_maximum_of_field
@@ -464,7 +466,6 @@ class CalculationsTest < ActiveRecord::TestCase
     assert_equal 7, Company.includes(:contracts).sum(:developer_id)
   end
 
-
   def test_from_option_with_specified_index
     if Edge.connection.adapter_name == 'MySQL' or Edge.connection.adapter_name == 'Mysql2'
       assert_equal Edge.count(:all), Edge.from('edges USE INDEX(unique_edge_index)').count(:all)
@@ -612,5 +613,33 @@ class CalculationsTest < ActiveRecord::TestCase
     actual = Topic.joins(:replies)
       .pluck('topics.title', 'replies_topics.title')
     assert_equal expected, actual
+  end
+
+  def test_calculation_with_polymorphic_relation
+    part = ShipPart.create!(name: "has trinket")
+    part.trinkets.create!
+
+    assert_equal part.id, ShipPart.joins(:trinkets).sum(:id)
+  end
+
+  def test_pluck_joined_with_polymorphic_relation
+    part = ShipPart.create!(name: "has trinket")
+    part.trinkets.create!
+
+    assert_equal [part.id], ShipPart.joins(:trinkets).pluck(:id)
+  end
+
+  def test_grouped_calculation_with_polymorphic_relation
+    part = ShipPart.create!(name: "has trinket")
+    part.trinkets.create!
+
+    assert_equal({ "has trinket" => part.id }, ShipPart.joins(:trinkets).group("ship_parts.name").sum(:id))
+  end
+
+  def test_should_reference_correct_aliases_while_joining_tables_of_has_many_through_association
+    assert_nothing_raised ActiveRecord::StatementInvalid do
+      developer = Developer.create!(name: 'developer')
+      developer.ratings.includes(comment: :post).where(posts: { id: 1 }).count
+    end
   end
 end

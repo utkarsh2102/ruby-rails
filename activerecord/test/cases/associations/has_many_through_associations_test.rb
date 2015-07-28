@@ -15,6 +15,7 @@ require 'models/toy'
 require 'models/contract'
 require 'models/company'
 require 'models/developer'
+require 'models/computer'
 require 'models/subscriber'
 require 'models/book'
 require 'models/subscription'
@@ -83,11 +84,11 @@ class HasManyThroughAssociationsTest < ActiveRecord::TestCase
     subscriber   = make_model "Subscriber"
 
     subscriber.primary_key = 'nick'
-    subscription.belongs_to :book,       class: book
-    subscription.belongs_to :subscriber, class: subscriber
+    subscription.belongs_to :book,       anonymous_class: book
+    subscription.belongs_to :subscriber, anonymous_class: subscriber
 
-    book.has_many :subscriptions, class: subscription
-    book.has_many :subscribers, through: :subscriptions, class: subscriber
+    book.has_many :subscriptions, anonymous_class: subscription
+    book.has_many :subscribers, through: :subscriptions, anonymous_class: subscriber
 
     anonbook = book.first
     namebook = Book.find anonbook.id
@@ -153,10 +154,10 @@ class HasManyThroughAssociationsTest < ActiveRecord::TestCase
     lesson_student = make_model 'LessonStudent'
     lesson_student.table_name = 'lessons_students'
 
-    lesson_student.belongs_to :lesson, :class => lesson
-    lesson_student.belongs_to :student, :class => student
-    lesson.has_many :lesson_students, :class => lesson_student
-    lesson.has_many :students, :through => :lesson_students, :class => student
+    lesson_student.belongs_to :lesson, :anonymous_class => lesson
+    lesson_student.belongs_to :student, :anonymous_class => student
+    lesson.has_many :lesson_students, :anonymous_class => lesson_student
+    lesson.has_many :students, :through => :lesson_students, :anonymous_class => student
     [lesson, lesson_student, student]
   end
 
@@ -490,7 +491,7 @@ class HasManyThroughAssociationsTest < ActiveRecord::TestCase
     post = posts(:welcome)
     tag  = post.tags.create!(:name => 'doomed')
 
-    assert_difference ['post.reload.taggings_count', 'post.reload.tags_count'], -1 do
+    assert_difference ['post.reload.tags_count'], -1 do
       posts(:welcome).tags.delete(tag)
     end
   end
@@ -500,7 +501,7 @@ class HasManyThroughAssociationsTest < ActiveRecord::TestCase
     tag  = post.tags.create!(:name => 'doomed')
     post.update_columns(tags_with_destroy_count: post.tags.count)
 
-    assert_difference ['post.reload.taggings_count', 'post.reload.tags_with_destroy_count'], -1 do
+    assert_difference ['post.reload.tags_with_destroy_count'], -1 do
       posts(:welcome).tags_with_destroy.delete(tag)
     end
   end
@@ -510,7 +511,7 @@ class HasManyThroughAssociationsTest < ActiveRecord::TestCase
     tag  = post.tags.create!(:name => 'doomed')
     post.update_columns(tags_with_nullify_count: post.tags.count)
 
-    assert_no_difference 'post.reload.taggings_count' do
+    assert_no_difference 'post.reload.tags_count' do
       assert_difference 'post.reload.tags_with_nullify_count', -1 do
         posts(:welcome).tags_with_nullify.delete(tag)
       end
@@ -525,14 +526,14 @@ class HasManyThroughAssociationsTest < ActiveRecord::TestCase
     tag.tagged_posts = []
     post.reload
 
-    assert_equal(post.taggings.count, post.taggings_count)
+    assert_equal(post.taggings.count, post.tags_count)
   end
 
   def test_update_counter_caches_on_destroy
     post = posts(:welcome)
     tag  = post.tags.create!(name: 'doomed')
 
-    assert_difference 'post.reload.taggings_count', -1 do
+    assert_difference 'post.reload.tags_count', -1 do
       tag.tagged_posts.destroy(post)
     end
   end
@@ -594,6 +595,12 @@ class HasManyThroughAssociationsTest < ActiveRecord::TestCase
     assert posts(:thinking).reload.people(true).collect(&:first_name).include?("Jeb")
   end
 
+  def test_through_record_is_built_when_created_with_where
+    assert_difference("posts(:thinking).readers.count", 1) do
+      posts(:thinking).people.where(first_name: "Jeb").create
+    end
+  end
+
   def test_associate_with_create_and_no_options
     peeps = posts(:thinking).people.count
     posts(:thinking).people.create(:first_name => 'foo')
@@ -615,8 +622,11 @@ class HasManyThroughAssociationsTest < ActiveRecord::TestCase
   def test_create_on_new_record
     p = Post.new
 
-    assert_raises(ActiveRecord::RecordNotSaved) { p.people.create(:first_name => "mew") }
-    assert_raises(ActiveRecord::RecordNotSaved) { p.people.create!(:first_name => "snow") }
+    error = assert_raises(ActiveRecord::RecordNotSaved) { p.people.create(:first_name => "mew") }
+    assert_equal "You cannot call create unless the parent is saved", error.message
+
+    error = assert_raises(ActiveRecord::RecordNotSaved) { p.people.create!(:first_name => "snow") }
+    assert_equal "You cannot call create unless the parent is saved", error.message
   end
 
   def test_associate_with_create_and_invalid_options
@@ -712,9 +722,6 @@ class HasManyThroughAssociationsTest < ActiveRecord::TestCase
       [:added, :before, "Roger"],
       [:added, :after, "Roger"]
     ], log.last(4)
-
-    post.people_with_callbacks.clear
-    assert_equal((%w(Michael David Julian Roger) * 2).sort, log.last(8).collect(&:last).sort)
   end
 
   def test_dynamic_find_should_respect_association_include
@@ -1099,7 +1106,7 @@ class HasManyThroughAssociationsTest < ActiveRecord::TestCase
   def test_has_many_through_associations_on_new_records_use_null_relations
     person = Person.new
 
-    assert_no_queries do
+    assert_no_queries(ignore_none: false) do
       assert_equal [], person.posts
       assert_equal [], person.posts.where(body: 'omg')
       assert_equal [], person.posts.pluck(:body)
@@ -1158,62 +1165,5 @@ class HasManyThroughAssociationsTest < ActiveRecord::TestCase
     post_direct = author.posts.build
     post_through = organization.posts.build
     assert_equal post_direct.author_id, post_through.author_id
-  end
-end
-
-class NonTransactionalHMTAssociationsTest < ActiveRecord::TestCase
-  self.use_transactional_fixtures = false
-
-  class Shout < ActiveRecord::Base
-    self.table_name = "test_poly_shouts"
-
-    belongs_to :account
-    belongs_to :content, :polymorphic => true
-  end
-
-  class TextShout < ActiveRecord::Base
-    self.table_name = "test_poly_text_shouts"
-  end
-
-  class PictureShout < ActiveRecord::Base
-    self.table_name = "test_poly_picture_shouts"
-  end
-
-  class Account < ActiveRecord::Base
-    self.table_name = "test_poly_accounts"
-    has_many :shouts
-    has_many :text_shouts, :through => :shouts, :source => :content, :source_type => TextShout
-    has_many :picture_shouts, :through => :shouts, :source => :content, :source_type => PictureShout
-  end
-
-  def test_eager_load_polymorphic_nested_associations
-    @connection = ActiveRecord::Base.connection
-    @connection.create_table(:test_poly_accounts, force: true)
-    @connection.create_table(:test_poly_shouts, force: true) do |t|
-      t.references :account
-      t.references :content, polymorphic: true
-    end
-    @connection.create_table(:test_poly_text_shouts, force: true) do |t|
-      t.text :text
-    end
-    @connection.create_table(:test_poly_picture_shouts, force: true) do |t|
-      t.text :url
-    end
-
-    account = Account.create!
-
-    text_shout = TextShout.new(:text => "Hello")
-    picture_shout = PictureShout.new(:url => "some url")
-
-    account.shouts.create! :content => text_shout
-    account.shouts.create! :content => picture_shout
-
-    assert_includes Account.eager_load(:text_shouts, :picture_shouts).where("test_poly_text_shouts.text like '%Hello%'"), account
-    assert_includes Account.eager_load(:text_shouts, :picture_shouts).where("test_poly_picture_shouts.url like '%some%'"), account
-  ensure
-    @connection.execute("DROP TABLE IF EXISTS test_poly_accounts")
-    @connection.execute("DROP TABLE IF EXISTS test_poly_shouts")
-    @connection.execute("DROP TABLE IF EXISTS test_poly_text_shouts")
-    @connection.execute("DROP TABLE IF EXISTS test_poly_picture_shouts")
   end
 end

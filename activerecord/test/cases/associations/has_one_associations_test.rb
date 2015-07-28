@@ -1,5 +1,6 @@
 require "cases/helper"
 require 'models/developer'
+require 'models/computer'
 require 'models/project'
 require 'models/company'
 require 'models/ship'
@@ -7,6 +8,7 @@ require 'models/pirate'
 require 'models/car'
 require 'models/bulb'
 require 'models/author'
+require 'models/image'
 require 'models/post'
 
 class HasOneAssociationsTest < ActiveRecord::TestCase
@@ -200,7 +202,7 @@ class HasOneAssociationsTest < ActiveRecord::TestCase
   end
 
   def test_build_association_dont_create_transaction
-    assert_no_queries {
+    assert_no_queries(ignore_none: false) {
       Firm.new.build_account
     }
   end
@@ -269,6 +271,14 @@ class HasOneAssociationsTest < ActiveRecord::TestCase
     account.credit_limit = 5
     account.save
     assert_equal account, firm.reload.account
+  end
+
+  def test_create_with_inexistent_foreign_key_failing
+    firm = Firm.create(name: 'GlobalMegaCorp')
+
+    assert_raises(ActiveRecord::UnknownAttributeError) do
+      firm.create_account_with_inexistent_foreign_key
+    end
   end
 
   def test_build
@@ -409,9 +419,11 @@ class HasOneAssociationsTest < ActiveRecord::TestCase
     pirate = pirates(:redbeard)
     new_ship = Ship.new
 
-    assert_raise(ActiveRecord::RecordNotSaved) do
+    error = assert_raise(ActiveRecord::RecordNotSaved) do
       pirate.ship = new_ship
     end
+
+    assert_equal "Failed to save the new associated ship.", error.message
     assert_nil pirate.ship
     assert_nil new_ship.pirate_id
   end
@@ -421,20 +433,25 @@ class HasOneAssociationsTest < ActiveRecord::TestCase
     pirate.ship.name = nil
 
     assert !pirate.ship.valid?
-    assert_raise(ActiveRecord::RecordNotSaved) do
+    error = assert_raise(ActiveRecord::RecordNotSaved) do
       pirate.ship = ships(:interceptor)
     end
+
     assert_equal ships(:black_pearl), pirate.ship
     assert_equal pirate.id, pirate.ship.pirate_id
+    assert_equal "Failed to remove the existing associated ship. " +
+                 "The record failed to save after its foreign key was set to nil.", error.message
   end
 
   def test_replacement_failure_due_to_new_record_should_raise_error
     pirate = pirates(:blackbeard)
     new_ship = Ship.new
 
-    assert_raise(ActiveRecord::RecordNotSaved) do
+    error = assert_raise(ActiveRecord::RecordNotSaved) do
       pirate.ship = new_ship
     end
+
+    assert_equal "Failed to save the new associated ship.", error.message
     assert_equal ships(:black_pearl), pirate.ship
     assert_equal pirate.id, pirate.ship.pirate_id
     assert_equal pirate.id, ships(:black_pearl).reload.pirate_id
@@ -557,12 +574,28 @@ class HasOneAssociationsTest < ActiveRecord::TestCase
     assert_equal author.post, post
   end
 
+  def test_has_one_loading_for_new_record
+    Post.create!(author_id: 42, title: 'foo', body: 'bar')
+    author = Author.new(id: 42)
+    assert author.post
+  end
+
   def test_has_one_relationship_cannot_have_a_counter_cache
     assert_raise(ArgumentError) do
       Class.new(ActiveRecord::Base) do
         has_one :thing, counter_cache: true
       end
     end
+  end
+
+  def test_with_polymorphic_has_one_with_custom_columns_name
+    post = Post.create! :title => 'foo', :body => 'bar'
+    image = Image.create!
+
+    post.main_image = image
+    post.reload
+
+    assert_equal image, post.main_image
   end
 
   test 'dangerous association name raises ArgumentError' do

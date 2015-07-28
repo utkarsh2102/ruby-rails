@@ -1,11 +1,32 @@
 module ActiveRecord
   module Associations
     class AssociationScope #:nodoc:
-      INSTANCE = new
-
       def self.scope(association, connection)
         INSTANCE.scope association, connection
       end
+
+      class BindSubstitution
+        def initialize(block)
+          @block = block
+        end
+
+        def bind_value(scope, column, value, alias_tracker)
+          substitute = alias_tracker.connection.substitute_at(column)
+          scope.bind_values += [[column, @block.call(value)]]
+          substitute
+        end
+      end
+
+      def self.create(&block)
+        block = block ? block : lambda { |val| val }
+        new BindSubstitution.new(block)
+      end
+
+      def initialize(bind_substitution)
+        @bind_substitution = bind_substitution
+      end
+
+      INSTANCE = create
 
       def scope(association, connection)
         klass         = association.klass
@@ -20,6 +41,23 @@ module ActiveRecord
 
       def join_type
         Arel::Nodes::InnerJoin
+      end
+
+      def self.get_bind_values(owner, chain)
+        binds = []
+        last_reflection = chain.last
+
+        binds << last_reflection.join_id_for(owner)
+        if last_reflection.type
+          binds << owner.class.base_class.name
+        end
+
+        chain.each_cons(2).each do |reflection, next_reflection|
+          if reflection.type
+            binds << next_reflection.klass.base_class.name
+          end
+        end
+        binds
       end
 
       private
@@ -49,15 +87,45 @@ module ActiveRecord
       end
 
       def bind_value(scope, column, value, alias_tracker)
-        substitute = alias_tracker.connection.substitute_at(
-          column, scope.bind_values.length)
-        scope.bind_values += [[column, value]]
-        substitute
+        @bind_substitution.bind_value scope, column, value, alias_tracker
       end
 
       def bind(scope, table_name, column_name, value, tracker)
         column   = column_for table_name, column_name, tracker
         bind_value scope, column, value, tracker
+      end
+
+      def last_chain_scope(scope, table, reflection, owner, tracker, assoc_klass)
+        join_keys = reflection.join_keys(assoc_klass)
+        key = join_keys.key
+        foreign_key = join_keys.foreign_key
+
+        bind_val = bind scope, table.table_name, key.to_s, owner[foreign_key], tracker
+        scope    = scope.where(table[key].eq(bind_val))
+
+        if reflection.type
+          value    = owner.class.base_class.name
+          bind_val = bind scope, table.table_name, reflection.type, value, tracker
+          scope    = scope.where(table[reflection.type].eq(bind_val))
+        else
+          scope
+        end
+      end
+
+      def next_chain_scope(scope, table, reflection, tracker, assoc_klass, foreign_table, next_reflection)
+        join_keys = reflection.join_keys(assoc_klass)
+        key = join_keys.key
+        foreign_key = join_keys.foreign_key
+
+        constraint = table[key].eq(foreign_table[foreign_key])
+
+        if reflection.type
+          value    = next_reflection.klass.base_class.name
+          bind_val = bind scope, table.table_name, reflection.type, value, tracker
+          scope    = scope.where(table[reflection.type].eq(bind_val))
+        end
+
+        scope = scope.joins(join(foreign_table, constraint))
       end
 
       def add_constraints(scope, owner, assoc_klass, refl, tracker)
@@ -66,41 +134,16 @@ module ActiveRecord
 
         tables = construct_tables(chain, assoc_klass, refl, tracker)
 
+        owner_reflection = chain.last
+        table = tables.last
+        scope = last_chain_scope(scope, table, owner_reflection, owner, tracker, assoc_klass)
+
         chain.each_with_index do |reflection, i|
           table, foreign_table = tables.shift, tables.first
 
-          if reflection.source_macro == :belongs_to
-            if reflection.options[:polymorphic]
-              key = reflection.association_primary_key(assoc_klass)
-            else
-              key = reflection.association_primary_key
-            end
-
-            foreign_key = reflection.foreign_key
-          else
-            key         = reflection.foreign_key
-            foreign_key = reflection.active_record_primary_key
-          end
-
-          if reflection == chain.last
-            bind_val = bind scope, table.table_name, key.to_s, owner[foreign_key], tracker
-            scope    = scope.where(table[key].eq(bind_val))
-
-            if reflection.type
-              value    = owner.class.base_class.name
-              bind_val = bind scope, table.table_name, reflection.type.to_s, value, tracker
-              scope    = scope.where(table[reflection.type].eq(bind_val))
-            end
-          else
-            constraint = table[key].eq(foreign_table[foreign_key])
-
-            if reflection.type
-              value    = chain[i + 1].klass.base_class.name
-              bind_val = bind scope, table.table_name, reflection.type.to_s, value, tracker
-              scope    = scope.where(table[reflection.type].eq(bind_val))
-            end
-
-            scope = scope.joins(join(foreign_table, constraint))
+          unless reflection == chain.last
+            next_reflection = chain[i + 1]
+            scope = next_chain_scope(scope, table, reflection, tracker, assoc_klass, foreign_table, next_reflection)
           end
 
           is_first_chain = i == 0
@@ -120,6 +163,7 @@ module ActiveRecord
             end
 
             scope.where_values += item.where_values
+            scope.bind_values  += item.bind_values
             scope.order_values |= item.order_values
           end
         end

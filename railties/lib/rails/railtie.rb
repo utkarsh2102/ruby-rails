@@ -93,7 +93,7 @@ module Rails
   #     end
   #   end
   #
-  # By default, Rails load generators from your load path. However, if you want to place
+  # By default, Rails loads generators from your load path. However, if you want to place
   # your generators at a different location, you can specify in your Railtie a block which
   # will load them during normal generators lookup:
   #
@@ -183,8 +183,8 @@ module Rails
       end
 
       protected
-        def generate_railtie_name(class_or_module)
-          ActiveSupport::Inflector.underscore(class_or_module).tr("/", "_")
+        def generate_railtie_name(string)
+          ActiveSupport::Inflector.underscore(string).tr("/", "_")
         end
 
         # If the class method does not have a method, then send the method call

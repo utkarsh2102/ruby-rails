@@ -8,7 +8,8 @@ module AbstractController
   class Error < StandardError #:nodoc:
   end
 
-  class ActionNotFound < StandardError #:nodoc:
+  # Raised when a non-existing controller action is triggered.
+  class ActionNotFound < StandardError
   end
 
   # <tt>AbstractController::Base</tt> is a low-level API. Nobody should be
@@ -120,14 +121,14 @@ module AbstractController
     #
     # The actual method that is called is determined by calling
     # #method_for_action. If no method can handle the action, then an
-    # ActionNotFound error is raised.
+    # AbstractController::ActionNotFound error is raised.
     #
     # ==== Returns
     # * <tt>self</tt>
     def process(action, *args)
-      @_action_name = action_name = action.to_s
+      @_action_name = action.to_s
 
-      unless action_name = _find_action_name(action_name)
+      unless action_name = _find_action_name(@_action_name)
         raise ActionNotFound, "The action '#{action}' could not be found for #{self.class.name}"
       end
 
@@ -161,6 +162,14 @@ module AbstractController
     # * <tt>TrueClass</tt>, <tt>FalseClass</tt>
     def available_action?(action_name)
       _find_action_name(action_name).present?
+    end
+
+    # Returns true if the given controller is capable of rendering
+    # a path. A subclass of +AbstractController::Base+
+    # may return false. An Email controller for example does not
+    # support paths, only full URLs.
+    def self.supports_path?
+      true
     end
 
     private
@@ -215,7 +224,8 @@ module AbstractController
       #
       # ==== Returns
       # * <tt>string</tt> - The name of the method that handles the action
-      # * false           - No valid method name could be found. Raise ActionNotFound.
+      # * false           - No valid method name could be found.
+      # Raise AbstractController::ActionNotFound.
       def _find_action_name(action_name)
         _valid_action_name?(action_name) && method_for_action(action_name)
       end
@@ -235,7 +245,7 @@ module AbstractController
       # the case.
       #
       # If none of these conditions are true, and method_for_action
-      # returns nil, an ActionNotFound exception will be raised.
+      # returns nil, an AbstractController::ActionNotFound exception will be raised.
       #
       # ==== Parameters
       # * <tt>action_name</tt> - An action name to find a method name for

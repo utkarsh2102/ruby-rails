@@ -51,9 +51,7 @@ module ActionView
     # The HTML generated for this would be (modulus formatting):
     #
     #   <form action="/people" class="new_person" id="new_person" method="post">
-    #     <div style="display:none">
-    #       <input name="authenticity_token" type="hidden" value="NrOp5bsjoLRuK8IW5+dQEYjKGUJDe7TQoZVvq95Wteg=" />
-    #     </div>
+    #     <input name="authenticity_token" type="hidden" value="NrOp5bsjoLRuK8IW5+dQEYjKGUJDe7TQoZVvq95Wteg=" />
     #     <label for="person_first_name">First name</label>:
     #     <input id="person_first_name" name="person[first_name]" type="text" /><br />
     #
@@ -81,10 +79,8 @@ module ActionView
     # the code above as is would yield instead:
     #
     #   <form action="/people/256" class="edit_person" id="edit_person_256" method="post">
-    #     <div style="display:none">
-    #       <input name="_method" type="hidden" value="patch" />
-    #       <input name="authenticity_token" type="hidden" value="NrOp5bsjoLRuK8IW5+dQEYjKGUJDe7TQoZVvq95Wteg=" />
-    #     </div>
+    #     <input name="_method" type="hidden" value="patch" />
+    #     <input name="authenticity_token" type="hidden" value="NrOp5bsjoLRuK8IW5+dQEYjKGUJDe7TQoZVvq95Wteg=" />
     #     <label for="person_first_name">First name</label>:
     #     <input id="person_first_name" name="person[first_name]" type="text" value="John" /><br />
     #
@@ -142,7 +138,7 @@ module ActionView
       # will get expanded to
       #
       #   <%= text_field :person, :first_name %>
-      # which results in an html <tt><input></tt> tag whose +name+ attribute is
+      # which results in an HTML <tt><input></tt> tag whose +name+ attribute is
       # <tt>person[first_name]</tt>. This means that when the form is submitted,
       # the value entered by the user will be available in the controller as
       # <tt>params[:person][:first_name]</tt>.
@@ -168,6 +164,23 @@ module ActionView
       # * <tt>:namespace</tt> - A namespace for your form to ensure uniqueness of
       #   id attributes on form elements. The namespace attribute will be prefixed
       #   with underscore on the generated HTML id.
+      # * <tt>:method</tt> - The method to use when submitting the form, usually
+      #   either "get" or "post". If "patch", "put", "delete", or another verb
+      #   is used, a hidden input with name <tt>_method</tt> is added to
+      #   simulate the verb over post.
+      # * <tt>:authenticity_token</tt> - Authenticity token to use in the form.
+      #   Use only if you need to pass custom authenticity token string, or to
+      #   not add authenticity_token field at all (by passing <tt>false</tt>).
+      #   Remote forms may omit the embedded authenticity token by setting
+      #   <tt>config.action_view.embed_authenticity_token_in_remote_forms = false</tt>.
+      #   This is helpful when you're fragment-caching the form. Remote forms
+      #   get the authenticity token from the <tt>meta</tt> tag, so embedding is
+      #   unnecessary unless you support browsers without JavaScript.
+      # * <tt>:remote</tt> - If set to true, will allow the Unobtrusive
+      #   JavaScript drivers to control the submit behavior. By default this
+      #   behavior is an ajax submit.
+      # * <tt>:enforce_utf8</tt> - If set to false, a hidden input with name
+      #   utf8 is not output.
       # * <tt>:html</tt> - Optional HTML attributes for the form tag.
       #
       # Also note that +form_for+ doesn't create an exclusive scope. It's still
@@ -315,9 +328,7 @@ module ActionView
       # The HTML generated for this would be:
       #
       #   <form action='http://www.example.com' method='post' data-remote='true'>
-      #     <div style='display:none'>
-      #       <input name='_method' type='hidden' value='patch' />
-      #     </div>
+      #     <input name='_method' type='hidden' value='patch' />
       #     ...
       #   </form>
       #
@@ -333,9 +344,7 @@ module ActionView
       # The HTML generated for this would be:
       #
       #   <form action='http://www.example.com' method='post' data-behavior='autosave' name='go'>
-      #     <div style='display:none'>
-      #       <input name='_method' type='hidden' value='patch' />
-      #     </div>
+      #     <input name='_method' type='hidden' value='patch' />
       #     ...
       #   </form>
       #
@@ -428,13 +437,15 @@ module ActionView
         html_options[:data]   = options.delete(:data)   if options.has_key?(:data)
         html_options[:remote] = options.delete(:remote) if options.has_key?(:remote)
         html_options[:method] = options.delete(:method) if options.has_key?(:method)
+        html_options[:enforce_utf8] = options.delete(:enforce_utf8) if options.has_key?(:enforce_utf8)
         html_options[:authenticity_token] = options.delete(:authenticity_token)
 
         builder = instantiate_builder(object_name, object, options)
         output  = capture(builder, &block)
         html_options[:multipart] ||= builder.multipart?
 
-        form_tag(options[:url] || {}, html_options) { output }
+        html_options = html_options_for_form(options[:url] || {}, html_options)
+        form_tag_with_body(html_options, output)
       end
 
       def apply_form_for_options!(record, object, options) #:nodoc:
@@ -449,7 +460,11 @@ module ActionView
           method: method
         )
 
-        options[:url] ||= polymorphic_path(record, format: options.delete(:format))
+        options[:url] ||= if options.key?(:format)
+                            polymorphic_path(record, format: options.delete(:format))
+                          else
+                            polymorphic_path(record, {})
+                          end
       end
       private :apply_form_for_options!
 
@@ -457,7 +472,7 @@ module ActionView
       # doesn't create the form tags themselves. This makes fields_for suitable
       # for specifying additional model objects in the same form.
       #
-      # Although the usage and purpose of +field_for+ is similar to +form_for+'s,
+      # Although the usage and purpose of +fields_for+ is similar to +form_for+'s,
       # its method signature is slightly different. Like +form_for+, it yields
       # a FormBuilder object associated with a particular model object to a block,
       # and within the block allows methods to be called on the builder to
@@ -477,7 +492,7 @@ module ActionView
       #       Admin?  : <%= permission_fields.check_box :admin %>
       #     <% end %>
       #
-      #     <%= f.submit %>
+      #     <%= person_form.submit %>
       #   <% end %>
       #
       # In this case, the checkbox field will be represented by an HTML +input+
@@ -746,6 +761,7 @@ module ActionView
       #   label(:post, :terms) do
       #     'Accept <a href="/terms">Terms</a>.'.html_safe
       #   end
+      #   # => <label for="post_terms">Accept <a href="/terms">Terms</a>.</label>
       def label(object_name, method, content_or_options = nil, options = nil, &block)
         Tags::Label.new(object_name, method, self, content_or_options, options).render(&block)
       end
@@ -1007,6 +1023,18 @@ module ActionView
       #   date_field("user", "born_on", value: "1984-05-12")
       #   # => <input id="user_born_on" name="user[born_on]" type="date" value="1984-05-12" />
       #
+      # You can create values for the "min" and "max" attributes by passing
+      # instances of Date or Time to the options hash.
+      #
+      #   date_field("user", "born_on", min: Date.today)
+      #   # => <input id="user_born_on" name="user[born_on]" type="date" min="2014-05-20" />
+      #
+      # Alternatively, you can pass a String formatted as an ISO8601 date as the
+      # values for "min" and "max."
+      #
+      #   date_field("user", "born_on", min: "2014-05-20")
+      #   # => <input id="user_born_on" name="user[born_on]" type="date" min="2014-05-20" />
+      #
       def date_field(object_name, method, options = {})
         Tags::DateField.new(object_name, method, self, options).render
       end
@@ -1023,6 +1051,18 @@ module ActionView
       # === Example
       #   time_field("task", "started_at")
       #   # => <input id="task_started_at" name="task[started_at]" type="time" />
+      #
+      # You can create values for the "min" and "max" attributes by passing
+      # instances of Date or Time to the options hash.
+      #
+      #   time_field("task", "started_at", min: Time.now)
+      #   # => <input id="task_started_at" name="task[started_at]" type="time" min="01:00:00.000" />
+      #
+      # Alternatively, you can pass a String formatted as an ISO8601 time as the
+      # values for "min" and "max."
+      #
+      #   time_field("task", "started_at", min: "01:00:00")
+      #   # => <input id="task_started_at" name="task[started_at]" type="time" min="01:00:00.000" />
       #
       def time_field(object_name, method, options = {})
         Tags::TimeField.new(object_name, method, self, options).render
@@ -1041,6 +1081,18 @@ module ActionView
       #   datetime_field("user", "born_on")
       #   # => <input id="user_born_on" name="user[born_on]" type="datetime" value="1984-01-12T00:00:00.000+0000" />
       #
+      # You can create values for the "min" and "max" attributes by passing
+      # instances of Date or Time to the options hash.
+      #
+      #   datetime_field("user", "born_on", min: Date.today)
+      #   # => <input id="user_born_on" name="user[born_on]" type="datetime" min="2014-05-20T00:00:00.000+0000" />
+      #
+      # Alternatively, you can pass a String formatted as an ISO8601 datetime
+      # with UTC offset as the values for "min" and "max."
+      #
+      #   datetime_field("user", "born_on", min: "2014-05-20T00:00:00+0000")
+      #   # => <input id="user_born_on" name="user[born_on]" type="datetime" min="2014-05-20T00:00:00.000+0000" />
+      #
       def datetime_field(object_name, method, options = {})
         Tags::DatetimeField.new(object_name, method, self, options).render
       end
@@ -1057,6 +1109,18 @@ module ActionView
       #   @user.born_on = Date.new(1984, 1, 12)
       #   datetime_local_field("user", "born_on")
       #   # => <input id="user_born_on" name="user[born_on]" type="datetime-local" value="1984-01-12T00:00:00" />
+      #
+      # You can create values for the "min" and "max" attributes by passing
+      # instances of Date or Time to the options hash.
+      #
+      #   datetime_local_field("user", "born_on", min: Date.today)
+      #   # => <input id="user_born_on" name="user[born_on]" type="datetime-local" min="2014-05-20T00:00:00.000" />
+      #
+      # Alternatively, you can pass a String formatted as an ISO8601 datetime as
+      # the values for "min" and "max."
+      #
+      #   datetime_local_field("user", "born_on", min: "2014-05-20T00:00:00")
+      #   # => <input id="user_born_on" name="user[born_on]" type="datetime-local" min="2014-05-20T00:00:00.000" />
       #
       def datetime_local_field(object_name, method, options = {})
         Tags::DatetimeLocalField.new(object_name, method, self, options).render
@@ -1162,7 +1226,7 @@ module ActionView
     #     Admin: <%= person_form.check_box :admin %>
     #   <% end %>
     #
-    # In the above block, the a +FormBuilder+ object is yielded as the
+    # In the above block, a +FormBuilder+ object is yielded as the
     # +person_form+ variable. This allows you to generate the +text_field+
     # and +check_box+ fields by specifying their eponymous methods, which
     # modify the underlying template and associates the +@person+ model object
@@ -1183,10 +1247,11 @@ module ActionView
     #         )
     #       )
     #     end
+    #   end
     #
     # The above code creates a new method +div_radio_button+ which wraps a div
-    # around the a new radio button. Note that when options are passed in, you
-    # must called +objectify_options+ in order for the model object to get
+    # around the new radio button. Note that when options are passed in, you
+    # must call +objectify_options+ in order for the model object to get
     # correctly passed to the method. If +objectify_options+ is not called,
     # then the newly created helper will not be linked back to the model.
     #
@@ -1268,7 +1333,7 @@ module ActionView
       # doesn't create the form tags themselves. This makes fields_for suitable
       # for specifying additional model objects in the same form.
       #
-      # Although the usage and purpose of +field_for+ is similar to +form_for+'s,
+      # Although the usage and purpose of +fields_for+ is similar to +form_for+'s,
       # its method signature is slightly different. Like +form_for+, it yields
       # a FormBuilder object associated with a particular model object to a block,
       # and within the block allows methods to be called on the builder to
@@ -1809,8 +1874,8 @@ module ActionView
           object = convert_to_model(@object)
           key    = object ? (object.persisted? ? :update : :create) : :submit
 
-          model = if object.class.respond_to?(:model_name)
-            object.class.model_name.human
+          model = if object.respond_to?(:model_name)
+            object.model_name.human
           else
             @object_name.to_s.humanize
           end

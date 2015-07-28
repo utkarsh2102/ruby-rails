@@ -75,8 +75,8 @@ module ActiveSupport
 
     # Returns a <tt>Time.local()</tt> instance of the simultaneous time in your
     # system's <tt>ENV['TZ']</tt> zone.
-    def localtime
-      utc.respond_to?(:getlocal) ? utc.getlocal : utc.to_time.getlocal
+    def localtime(utc_offset = nil)
+      utc.respond_to?(:getlocal) ? utc.getlocal(utc_offset) : utc.to_time.getlocal(utc_offset)
     end
     alias_method :getlocal, :localtime
 
@@ -185,8 +185,11 @@ module ActiveSupport
     end
     alias_method :rfc822, :rfc2822
 
-    # <tt>:db</tt> format outputs time in UTC; all others output time in local.
-    # Uses TimeWithZone's +strftime+, so <tt>%Z</tt> and <tt>%z</tt> work correctly.
+    # Returns a string of the object's date and time.
+    # Accepts an optional <tt>format</tt>:
+    # * <tt>:default</tt> - default value, mimics Ruby 1.9 Time#to_s format.
+    # * <tt>:db</tt> - format outputs time in UTC :db time. See Time#to_formatted_s(:db).
+    # * Any key in <tt>Time::DATE_FORMATS</tt> can be used. See active_support/core_ext/time/conversions.rb.
     def to_s(format = :default)
       if format == :db
         utc.to_s(format)
@@ -198,15 +201,11 @@ module ActiveSupport
     end
     alias_method :to_formatted_s, :to_s
 
-    # Replaces <tt>%Z</tt> and <tt>%z</tt> directives with +zone+ and
-    # +formatted_offset+, respectively, before passing to Time#strftime, so
-    # that zone information is correct
+    # Replaces <tt>%Z</tt> directive with +zone before passing to Time#strftime,
+    # so that zone information is correct.
     def strftime(format)
-      format = format.gsub('%Z', zone)
-                     .gsub('%z',   formatted_offset(false))
-                     .gsub('%:z',  formatted_offset(true))
-                     .gsub('%::z', formatted_offset(true) + ":00")
-      time.strftime(format)
+      format = format.gsub(/((?:\A|[^%])(?:%%)*)%Z/, "\\1#{zone}")
+      getlocal(utc_offset).strftime(format)
     end
 
     # Use the time in UTC for comparisons.
@@ -259,7 +258,7 @@ module ActiveSupport
       # If we're subtracting a Duration of variable length (i.e., years, months, days), move backwards from #time,
       # otherwise move backwards #utc, for accuracy when moving across DST boundaries
       if other.acts_like?(:time)
-        utc.to_f - other.to_f
+        to_time - other.to_time
       elsif duration_of_variable_length?(other)
         method_missing(:-, other)
       else
@@ -348,6 +347,14 @@ module ActiveSupport
 
     def marshal_load(variables)
       initialize(variables[0].utc, ::Time.find_zone(variables[1]), variables[2].utc)
+    end
+
+    # respond_to_missing? is not called in some cases, such as when type conversion is
+    # performed with Kernel#String
+    def respond_to?(sym, include_priv = false)
+      # ensure that we're not going to throw and rescue from NoMethodError in method_missing which is slow
+      return false if sym.to_sym == :to_str
+      super
     end
 
     # Ensure proxy class responds to all methods that underlying time instance

@@ -50,7 +50,7 @@ module Rails
     end
 
     def gitignore
-      copy_file "gitignore", ".gitignore"
+      template "gitignore", ".gitignore"
     end
 
     def app
@@ -258,6 +258,12 @@ module Rails
 
       public_task :apply_rails_template, :run_bundle
       public_task :generate_spring_binstubs
+
+      def run_after_bundle_callbacks
+        @after_bundle_callbacks.each do |callback|
+          callback.call
+        end
+      end
 
     protected
 

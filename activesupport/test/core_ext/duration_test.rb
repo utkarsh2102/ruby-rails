@@ -2,8 +2,11 @@ require 'abstract_unit'
 require 'active_support/inflector'
 require 'active_support/time'
 require 'active_support/json'
+require 'time_zone_test_helpers'
 
 class DurationTest < ActiveSupport::TestCase
+  include TimeZoneTestHelpers
+
   def test_is_a
     d = 1.day
     assert d.is_a?(ActiveSupport::Duration)
@@ -17,11 +20,16 @@ class DurationTest < ActiveSupport::TestCase
     assert !d.is_a?(k)
   end
 
+  def test_instance_of
+    assert 1.minute.instance_of?(Fixnum)
+    assert 2.days.instance_of?(ActiveSupport::Duration)
+    assert !3.second.instance_of?(Numeric)
+  end
+
   def test_threequals
     assert ActiveSupport::Duration === 1.day
     assert !(ActiveSupport::Duration === 1.day.to_i)
     assert !(ActiveSupport::Duration === 'foo')
-    assert !(ActiveSupport::Duration === ActiveSupport::ProxyObject.new)
   end
 
   def test_equals
@@ -31,11 +39,22 @@ class DurationTest < ActiveSupport::TestCase
     assert !(1.day == 'foo')
   end
 
+  def test_to_s
+    assert_equal "1", 1.second.to_s
+  end
+
   def test_eql
+    rubinius_skip "Rubinius' #eql? definition relies on #instance_of? " \
+                  "which behaves oddly for the sake of backward-compatibility."
+
     assert 1.minute.eql?(1.minute)
+    assert 1.minute.eql?(60.seconds)
     assert 2.days.eql?(48.hours)
     assert !1.second.eql?(1)
     assert !1.eql?(1.second)
+    assert 1.minute.eql?(180.seconds - 2.minutes)
+    assert !1.minute.eql?(60)
+    assert !1.minute.eql?('foo')
   end
 
   def test_inspect
@@ -87,8 +106,8 @@ class DurationTest < ActiveSupport::TestCase
 
   def test_since_and_ago
     t = Time.local(2000)
-    assert t + 1, 1.second.since(t)
-    assert t - 1, 1.second.ago(t)
+    assert_equal t + 1, 1.second.since(t)
+    assert_equal t - 1, 1.second.ago(t)
   end
 
   def test_since_and_ago_without_argument
@@ -168,6 +187,10 @@ class DurationTest < ActiveSupport::TestCase
     assert_equal counter, 60
   end
 
+  def test_as_json
+    assert_equal 172800, 2.days.as_json
+  end
+
   def test_to_json
     assert_equal '172800', 2.days.to_json
   end
@@ -177,11 +200,24 @@ class DurationTest < ActiveSupport::TestCase
     assert_equal cased, "ok"
   end
 
-  protected
-    def with_env_tz(new_tz = 'US/Eastern')
-      old_tz, ENV['TZ'] = ENV['TZ'], new_tz
-      yield
-    ensure
-      old_tz ? ENV['TZ'] = old_tz : ENV.delete('TZ')
-    end
+  def test_respond_to
+    assert_respond_to 1.day, :since
+    assert_respond_to 1.day, :zero?
+  end
+
+  def test_hash
+    assert_equal 1.minute.hash, 60.seconds.hash
+  end
+
+  def test_comparable
+    assert_equal(-1, (0.seconds <=> 1.second))
+    assert_equal(-1, (1.second <=> 1.minute))
+    assert_equal(-1, (1 <=> 1.minute))
+    assert_equal(0, (0.seconds <=> 0.seconds))
+    assert_equal(0, (0.seconds <=> 0.minutes))
+    assert_equal(0, (1.second <=> 1.second))
+    assert_equal(1, (1.second <=> 0.second))
+    assert_equal(1, (1.minute <=> 1.second))
+    assert_equal(1, (61 <=> 1.minute))
+  end
 end

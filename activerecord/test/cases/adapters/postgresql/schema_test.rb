@@ -1,4 +1,5 @@
 require "cases/helper"
+require 'support/schema_dumping_helper'
 
 class SchemaTest < ActiveRecord::TestCase
   self.use_transactional_fixtures = false
@@ -81,7 +82,7 @@ class SchemaTest < ActiveRecord::TestCase
     @connection.execute "CREATE TABLE #{SCHEMA_NAME}.#{UNMATCHED_PK_TABLE_NAME} (id integer NOT NULL DEFAULT nextval('#{SCHEMA_NAME}.#{UNMATCHED_SEQUENCE_NAME}'::regclass), CONSTRAINT unmatched_pkey PRIMARY KEY (id))"
   end
 
-  def teardown
+  teardown do
     @connection.execute "DROP SCHEMA #{SCHEMA2_NAME} CASCADE"
     @connection.execute "DROP SCHEMA #{SCHEMA_NAME} CASCADE"
   end
@@ -297,13 +298,13 @@ class SchemaTest < ActiveRecord::TestCase
   end
 
   def test_with_uppercase_index_name
-    ActiveRecord::Base.connection.execute "CREATE INDEX \"things_Index\" ON #{SCHEMA_NAME}.things (name)"
-    assert_nothing_raised { ActiveRecord::Base.connection.remove_index! "things", "#{SCHEMA_NAME}.things_Index"}
+    @connection.execute "CREATE INDEX \"things_Index\" ON #{SCHEMA_NAME}.things (name)"
+    assert_nothing_raised { @connection.remove_index! "things", "#{SCHEMA_NAME}.things_Index"}
+    @connection.execute "CREATE INDEX \"things_Index\" ON #{SCHEMA_NAME}.things (name)"
 
-    ActiveRecord::Base.connection.execute "CREATE INDEX \"things_Index\" ON #{SCHEMA_NAME}.things (name)"
-    ActiveRecord::Base.connection.schema_search_path = SCHEMA_NAME
-    assert_nothing_raised { ActiveRecord::Base.connection.remove_index! "things", "things_Index"}
-    ActiveRecord::Base.connection.schema_search_path = "public"
+    with_schema_search_path SCHEMA_NAME do
+      assert_nothing_raised { @connection.remove_index! "things", "things_Index"}
+    end
   end
 
   def test_primary_key_with_schema_specified
@@ -331,14 +332,15 @@ class SchemaTest < ActiveRecord::TestCase
   end
 
   def test_pk_and_sequence_for_with_schema_specified
+    pg_name = ActiveRecord::ConnectionAdapters::PostgreSQL::Name
     [
       %("#{SCHEMA_NAME}"."#{PK_TABLE_NAME}"),
       %("#{SCHEMA_NAME}"."#{UNMATCHED_PK_TABLE_NAME}")
     ].each do |given|
       pk, seq = @connection.pk_and_sequence_for(given)
       assert_equal 'id', pk, "primary key should be found when table referenced as #{given}"
-      assert_equal "#{PK_TABLE_NAME}_id_seq", seq, "sequence name should be found when table referenced as #{given}" if given == %("#{SCHEMA_NAME}"."#{PK_TABLE_NAME}")
-      assert_equal "#{UNMATCHED_SEQUENCE_NAME}", seq, "sequence name should be found when table referenced as #{given}" if given ==  %("#{SCHEMA_NAME}"."#{UNMATCHED_PK_TABLE_NAME}")
+      assert_equal pg_name.new(SCHEMA_NAME, "#{PK_TABLE_NAME}_id_seq"), seq, "sequence name should be found when table referenced as #{given}" if given == %("#{SCHEMA_NAME}"."#{PK_TABLE_NAME}")
+      assert_equal pg_name.new(SCHEMA_NAME, UNMATCHED_SEQUENCE_NAME), seq, "sequence name should be found when table referenced as #{given}" if given ==  %("#{SCHEMA_NAME}"."#{UNMATCHED_PK_TABLE_NAME}")
     end
   end
 
@@ -354,18 +356,17 @@ class SchemaTest < ActiveRecord::TestCase
   end
 
   def test_prepared_statements_with_multiple_schemas
+    [SCHEMA_NAME, SCHEMA2_NAME].each do |schema_name|
+      with_schema_search_path schema_name do
+        Thing5.create(:id => 1, :name => "thing inside #{SCHEMA_NAME}", :email => "thing1@localhost", :moment => Time.now)
+      end
+    end
 
-    @connection.schema_search_path = SCHEMA_NAME
-    Thing5.create(:id => 1, :name => "thing inside #{SCHEMA_NAME}", :email => "thing1@localhost", :moment => Time.now)
-
-    @connection.schema_search_path = SCHEMA2_NAME
-    Thing5.create(:id => 1, :name => "thing inside #{SCHEMA2_NAME}", :email => "thing1@localhost", :moment => Time.now)
-
-    @connection.schema_search_path = SCHEMA_NAME
-    assert_equal 1, Thing5.count
-
-    @connection.schema_search_path = SCHEMA2_NAME
-    assert_equal 1, Thing5.count
+    [SCHEMA_NAME, SCHEMA2_NAME].each do |schema_name|
+      with_schema_search_path schema_name do
+        assert_equal 1, Thing5.count
+      end
+    end
   end
 
   def test_schema_exists?
@@ -377,6 +378,22 @@ class SchemaTest < ActiveRecord::TestCase
     }.each do |given,expect|
       assert_equal expect, @connection.schema_exists?(given)
     end
+  end
+
+  def test_reset_pk_sequence
+    sequence_name = "#{SCHEMA_NAME}.#{UNMATCHED_SEQUENCE_NAME}"
+    @connection.execute "SELECT setval('#{sequence_name}', 123)"
+    assert_equal "124", @connection.select_value("SELECT nextval('#{sequence_name}')")
+    @connection.reset_pk_sequence!("#{SCHEMA_NAME}.#{UNMATCHED_PK_TABLE_NAME}")
+    assert_equal "1", @connection.select_value("SELECT nextval('#{sequence_name}')")
+  end
+
+  def test_set_pk_sequence
+    table_name = "#{SCHEMA_NAME}.#{PK_TABLE_NAME}"
+    _, sequence_name = @connection.pk_and_sequence_for table_name
+    @connection.set_pk_sequence! table_name, 123
+    assert_equal "124", @connection.select_value("SELECT nextval('#{sequence_name}')")
+    @connection.reset_pk_sequence! table_name
   end
 
   private
@@ -417,4 +434,29 @@ class SchemaTest < ActiveRecord::TestCase
       assert_equal this_index_column, this_index.columns[0]
       assert_equal this_index_name, this_index.name
     end
+end
+
+class SchemaForeignKeyTest < ActiveRecord::TestCase
+  include SchemaDumpingHelper
+
+  setup do
+    @connection = ActiveRecord::Base.connection
+  end
+
+  def test_dump_foreign_key_targeting_different_schema
+    @connection.create_schema "my_schema"
+    @connection.create_table "my_schema.trains" do |t|
+      t.string :name
+    end
+    @connection.create_table "wagons" do |t|
+      t.integer :train_id
+    end
+    @connection.add_foreign_key "wagons", "my_schema.trains", column: "train_id"
+    output = dump_table_schema "wagons"
+    assert_match %r{\s+add_foreign_key "wagons", "my_schema.trains", column: "train_id"$}, output
+  ensure
+    @connection.execute "DROP TABLE IF EXISTS wagons"
+    @connection.execute "DROP TABLE IF EXISTS my_schema.trains"
+    @connection.execute "DROP SCHEMA IF EXISTS my_schema"
+  end
 end

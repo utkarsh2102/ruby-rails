@@ -1,5 +1,7 @@
 require 'cases/helper'
+require 'support/ddl_helper'
 require 'models/developer'
+require 'models/computer'
 require 'models/owner'
 require 'models/pet'
 require 'models/toy'
@@ -86,6 +88,18 @@ class TimestampTest < ActiveRecord::TestCase
     previous_value = task.ending
     task.touch(:ending)
     assert_not_equal previous_value, task.ending
+    assert_in_delta Time.now, task.ending, 1
+  end
+
+  def test_touching_many_attributes_updates_them
+    task = Task.first
+    previous_starting = task.starting
+    previous_ending = task.ending
+    task.touch(:starting, :ending)
+
+    assert_not_equal previous_starting, task.starting
+    assert_not_equal previous_ending, task.ending
+    assert_in_delta Time.now, task.starting, 1
     assert_in_delta Time.now, task.ending, 1
   end
 
@@ -410,5 +424,34 @@ class TimestampTest < ActiveRecord::TestCase
   def test_all_timestamp_attributes_in_model
     toy = Toy.first
     assert_equal [:created_at, :updated_at], toy.send(:all_timestamp_attributes_in_model)
+  end
+
+  def test_index_is_created_for_both_timestamps
+    ActiveRecord::Base.connection.create_table(:foos, force: true) do |t|
+      t.timestamps(:foos, null: true, index: true)
+    end
+
+    indexes = ActiveRecord::Base.connection.indexes('foos')
+    assert_equal ['created_at', 'updated_at'], indexes.flat_map(&:columns).sort
+  ensure
+    ActiveRecord::Base.connection.drop_table(:foos)
+  end
+end
+
+class TimestampsWithoutTransactionTest < ActiveRecord::TestCase
+  include DdlHelper
+  self.use_transactional_fixtures = false
+
+  class TimestampAttributePost < ActiveRecord::Base
+    attr_accessor :created_at, :updated_at
+  end
+
+  def test_do_not_write_timestamps_on_save_if_they_are_not_attributes
+    with_example_table ActiveRecord::Base.connection, "timestamp_attribute_posts", "id integer primary key" do
+      post = TimestampAttributePost.new(id: 1)
+      post.save! # should not try to assign and persist created_at, updated_at
+      assert_nil post.created_at
+      assert_nil post.updated_at
+    end
   end
 end

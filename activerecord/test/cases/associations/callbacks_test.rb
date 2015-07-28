@@ -3,6 +3,7 @@ require 'models/post'
 require 'models/author'
 require 'models/project'
 require 'models/developer'
+require 'models/computer'
 require 'models/company'
 
 class AssociationCallbacksTest < ActiveRecord::TestCase
@@ -150,7 +151,7 @@ class AssociationCallbacksTest < ActiveRecord::TestCase
                   "after_removing#{jamis.id}"], activerecord.developers_log
   end
 
-  def test_has_and_belongs_to_many_remove_callback_on_clear
+  def test_has_and_belongs_to_many_does_not_fire_callbacks_on_clear
     activerecord = projects(:active_record)
     assert activerecord.developers_log.empty?
     if activerecord.developers_with_callbacks.size == 0
@@ -159,9 +160,9 @@ class AssociationCallbacksTest < ActiveRecord::TestCase
       activerecord.reload
       assert activerecord.developers_with_callbacks.size == 2
     end
-    log_array = activerecord.developers_with_callbacks.collect {|d| ["before_removing#{d.id}","after_removing#{d.id}"]}.flatten.sort
+    activerecord.developers_with_callbacks.flat_map {|d| ["before_removing#{d.id}","after_removing#{d.id}"]}.sort
     assert activerecord.developers_with_callbacks.clear
-    assert_equal log_array, activerecord.developers_log.sort
+    assert_predicate activerecord.developers_log, :empty?
   end
 
   def test_has_many_and_belongs_to_many_callbacks_for_save_on_parent

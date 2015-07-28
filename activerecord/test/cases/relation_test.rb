@@ -229,11 +229,63 @@ module ActiveRecord
       assert_equal false, post.respond_to?(:title), "post should not respond_to?(:body) since invoking it raises exception"
     end
 
+    def test_select_quotes_when_using_from_clause
+      if sqlite3_version_includes_quoting_bug?
+        skip <<-ERROR.squish
+          You are using an outdated version of SQLite3 which has a bug in
+          quoted column names. Please update SQLite3 and rebuild the sqlite3
+          ruby gem
+        ERROR
+      end
+      quoted_join = ActiveRecord::Base.connection.quote_table_name("join")
+      selected = Post.select(:join).from(Post.select("id as #{quoted_join}")).map(&:join)
+      assert_equal Post.pluck(:id), selected
+    end
+
     def test_relation_merging_with_merged_joins_as_strings
       join_string = "LEFT OUTER JOIN #{Rating.quoted_table_name} ON #{SpecialComment.quoted_table_name}.id = #{Rating.quoted_table_name}.comment_id"
       special_comments_with_ratings = SpecialComment.joins join_string
       posts_with_special_comments_with_ratings = Post.group("posts.id").joins(:special_comments).merge(special_comments_with_ratings)
       assert_equal 3, authors(:david).posts.merge(posts_with_special_comments_with_ratings).count.length
+    end
+
+    class EnsureRoundTripTypeCasting < ActiveRecord::Type::Value
+      def type
+        :string
+      end
+
+      def type_cast_from_database(value)
+        raise value unless value == "type cast for database"
+        "type cast from database"
+      end
+
+      def type_cast_for_database(value)
+        raise value unless value == "value from user"
+        "type cast for database"
+      end
+    end
+
+    class UpdateAllTestModel < ActiveRecord::Base
+      self.table_name = 'posts'
+
+      attribute :body, EnsureRoundTripTypeCasting.new
+    end
+
+    def test_update_all_goes_through_normal_type_casting
+      UpdateAllTestModel.update_all(body: "value from user", type: nil) # No STI
+
+      assert_equal "type cast from database", UpdateAllTestModel.first.body
+    end
+
+    private
+
+    def sqlite3_version_includes_quoting_bug?
+      if current_adapter?(:SQLite3Adapter)
+        selected_quoted_column_names = ActiveRecord::Base.connection.exec_query(
+          'SELECT "join" FROM (SELECT id AS "join" FROM posts) subquery'
+        ).columns
+        ["join"] != selected_quoted_column_names
+      end
     end
   end
 end

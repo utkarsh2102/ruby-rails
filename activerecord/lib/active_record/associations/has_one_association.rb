@@ -1,8 +1,8 @@
-
 module ActiveRecord
   # = Active Record Belongs To Has One Association
   module Associations
     class HasOneAssociation < SingularAssociation #:nodoc:
+      include ForeignAssociation
 
       def handle_dependency
         case options[:dependent]

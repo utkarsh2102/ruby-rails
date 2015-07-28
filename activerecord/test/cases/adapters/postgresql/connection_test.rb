@@ -1,20 +1,33 @@
 require "cases/helper"
+require 'support/connection_helper'
 
 module ActiveRecord
   class PostgresqlConnectionTest < ActiveRecord::TestCase
+    include ConnectionHelper
+
     class NonExistentTable < ActiveRecord::Base
     end
+
+    fixtures :comments
 
     def setup
       super
       @subscriber = SQLSubscriber.new
-      ActiveSupport::Notifications.subscribe('sql.active_record', @subscriber)
+      @subscription = ActiveSupport::Notifications.subscribe('sql.active_record', @subscriber)
       @connection = ActiveRecord::Base.connection
     end
 
     def teardown
-      ActiveSupport::Notifications.unsubscribe(@subscriber)
+      ActiveSupport::Notifications.unsubscribe(@subscription)
       super
+    end
+
+    def test_truncate
+      count = ActiveRecord::Base.connection.execute("select count(*) from comments").first['count'].to_i
+      assert_operator count, :>, 0
+      ActiveRecord::Base.connection.truncate("comments")
+      count = ActiveRecord::Base.connection.execute("select count(*) from comments").first['count'].to_i
+      assert_equal 0, count
     end
 
     def test_encoding
@@ -43,6 +56,37 @@ module ActiveRecord
       # Verify the connection param has been applied.
       expect = NonExistentTable.connection.query('show geqo').first.first
       assert_equal 'off', expect
+    end
+
+    def test_reset
+      @connection.query('ROLLBACK')
+      @connection.query('SET geqo TO off')
+
+      # Verify the setting has been applied.
+      expect = @connection.query('show geqo').first.first
+      assert_equal 'off', expect
+
+      @connection.reset!
+
+      # Verify the setting has been cleared.
+      expect = @connection.query('show geqo').first.first
+      assert_equal 'on', expect
+    end
+
+    def test_reset_with_transaction
+      @connection.query('ROLLBACK')
+      @connection.query('SET geqo TO off')
+
+      # Verify the setting has been applied.
+      expect = @connection.query('show geqo').first.first
+      assert_equal 'off', expect
+
+      @connection.query('BEGIN')
+      @connection.reset!
+
+      # Verify the setting has been cleared.
+      expect = @connection.query('show geqo').first.first
+      assert_equal 'on', expect
     end
 
     def test_tables_logs_name
@@ -87,7 +131,7 @@ module ActiveRecord
       name = @subscriber.payloads.last[:statement_name]
       assert name
       res = @connection.exec_query("EXPLAIN (FORMAT JSON) EXECUTE #{name}(#{bindval})")
-      plan = res.column_types['QUERY PLAN'].type_cast res.rows.first.first
+      plan = res.column_types['QUERY PLAN'].type_cast_from_database res.rows.first.first
       assert_operator plan.length, :>, 0
     end
 
@@ -167,17 +211,5 @@ module ActiveRecord
         ActiveRecord::Base.establish_connection(orig_connection.deep_merge({:variables => {:debug_print_plan => :default}}))
       end
     end
-
-    private
-
-    def run_without_connection
-      original_connection = ActiveRecord::Base.remove_connection
-      begin
-        yield original_connection
-      ensure
-        ActiveRecord::Base.establish_connection(original_connection)
-      end
-    end
-
   end
 end

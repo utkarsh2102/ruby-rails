@@ -35,7 +35,7 @@ module ActionView
           end
         end
 
-        BLOCK_EXPR = /\s+(do|\{)(\s*\|[^|]*\|)?\s*\Z/
+        BLOCK_EXPR = /\s*((\s+|\))do|\{)(\s*\|[^|]*\|)?\s*\Z/
 
         def add_expr_literal(src, code)
           flush_newline_if_pending(src)
@@ -49,9 +49,9 @@ module ActionView
         def add_expr_escaped(src, code)
           flush_newline_if_pending(src)
           if code =~ BLOCK_EXPR
-            src << "@output_buffer.safe_append= " << code
+            src << "@output_buffer.safe_expr_append= " << code
           else
-            src << "@output_buffer.safe_append=(" << code << ");"
+            src << "@output_buffer.safe_expr_append=(" << code << ");"
           end
         end
 

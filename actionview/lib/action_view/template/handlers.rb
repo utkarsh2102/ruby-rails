@@ -22,12 +22,21 @@ module ActionView #:nodoc:
 
       # Register an object that knows how to handle template files with the given
       # extensions. This can be used to implement new template types.
-      # The handler must respond to `:call`, which will be passed the template
+      # The handler must respond to +:call+, which will be passed the template
       # and should return the rendered template as a String.
       def register_template_handler(*extensions, handler)
         raise(ArgumentError, "Extension is required") if extensions.empty?
         extensions.each do |extension|
           @@template_handlers[extension.to_sym] = handler
+        end
+        @@template_extensions = nil
+      end
+
+      # Opposite to register_template_handler.
+      def unregister_template_handler(*extensions)
+        extensions.each do |extension|
+          handler = @@template_handlers.delete extension.to_sym
+          @@default_template_handlers = nil if @@default_template_handlers == handler
         end
         @@template_extensions = nil
       end

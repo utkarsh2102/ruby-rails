@@ -1,76 +1,48 @@
-## Rails 4.1.10 (March 19, 2015) ##
+## Rails 4.2.3 (June 25, 2015) ##
+
+* No Changes *
+
+
+## Rails 4.2.2 (June 16, 2015) ##
+
+* No Changes *
+
+
+## Rails 4.2.1 (March 19, 2015) ##
 
 *   No changes.
 
 
-## Rails 4.1.9 (January 6, 2015) ##
+## Rails 4.2.0 (December 20, 2014) ##
 
-*   No changes.
+*   New guide about constant autoloading and reloading.
 
+    *Xavier Noria*
 
-## Rails 4.1.8 (November 16, 2014) ##
+* Change Posts to Articles in Getting Started sample application in order to
+better align with the actual guides.
 
-*   No changes.
-
-
-## Rails 4.1.7.1 (November 19, 2014) ##
-
-*   No changes.
-
-
-## Rails 4.1.7 (October 29, 2014) ##
-
-*   No changes.
-
-
-## Rails 4.1.6 (September 11, 2014) ##
-
-*   No changes.
-
-
-## Rails 4.1.5 (August 18, 2014) ##
-
-*   No changes.
-
-
-## Rails 4.1.4 (July 2, 2014) ##
-
-*   No changes.
-
-
-## Rails 4.1.3 (July 2, 2014) ##
-
-*   No changes.
-
-
-## Rails 4.1.2 (June 26, 2014) ##
+    *John Kelly Ferguson*
 
 * Update all Rails 4.1.0 references to 4.1.1 within the guides and code.
 
     *John Kelly Ferguson*
 
-*   Updates the maintenance policy to match the latest versions of Rails.
+* Split up rows in the Explain Queries table of the ActiveRecord Querying section
+in order to improve readability.
+
+    *John Kelly Ferguson*
+
+*   Change all non-HTTP method 'post' references to 'article'.
+
+    *John Kelly Ferguson*
+
+*   Updates the maintenance policy to match the latest versions of Rails
 
     *Matias Korhonen*
 
+*   Switched the order of `Applying a default scope` and `Merging of scopes` subsections so default scopes are introduced first.
 
-## Rails 4.1.1 (May 6, 2014) ##
+    *Alex Riabov*
 
-*   No changes.
-
-
-## Rails 4.1.0 (April 8, 2014) ##
-
-*   Fixed missing line and shadow on service pages(404, 422, 500).
-
-    *Dmitry Korotkov*
-
-*   Removed repetitive th tags. Instead of them added one th tag with a colspan attribute.
-
-    *Sıtkı Bağdat*
-
-*   Added the Rails maintenance policy to the guides.
-
-    *Matias Korhonen*
-
-Please check [4-0-stable](https://github.com/rails/rails/blob/4-0-stable/guides/CHANGELOG.md) for previous changes.
+Please check [4-1-stable](https://github.com/rails/rails/blob/4-1-stable/guides/CHANGELOG.md) for previous changes.

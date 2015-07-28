@@ -1,3 +1,5 @@
+require 'cgi'
+
 class Object
   # Alias of <tt>to_s</tt>.
   def to_param
@@ -7,7 +9,6 @@ class Object
   # Converts an object into a string suitable for use as a URL query string,
   # using the given <tt>key</tt> as the param name.
   def to_query(key)
-    require 'cgi' unless defined?(CGI) && defined?(CGI::escape)
     "#{CGI.escape(key.to_param)}=#{CGI.escape(to_param.to_s)}"
   end
 end

@@ -104,13 +104,11 @@ module ActiveRecord
         end
 
         def association_key_type
-          column = @klass.column_types[association_key_name.to_s]
-          column && column.type
+          @klass.type_for_attribute(association_key_name.to_s).type
         end
 
         def owner_key_type
-          column = @model.column_types[owner_key_name.to_s]
-          column && column.type
+          @model.type_for_attribute(owner_key_name.to_s).type
         end
 
         def load_slices(slices)
@@ -134,20 +132,21 @@ module ActiveRecord
           scope = klass.unscoped
 
           values         = reflection_scope.values
+          reflection_binds = reflection_scope.bind_values
           preload_values = preload_scope.values
+          preload_binds  = preload_scope.bind_values
 
           scope.where_values      = Array(values[:where])      + Array(preload_values[:where])
           scope.references_values = Array(values[:references]) + Array(preload_values[:references])
+          scope.bind_values       = (reflection_binds + preload_binds)
 
           scope._select!   preload_values[:select] || values[:select] || table[Arel.star]
           scope.includes! preload_values[:includes] || values[:includes]
+          scope.joins! preload_values[:joins] || values[:joins]
+          scope.order! preload_values[:order] || values[:order]
 
-          if preload_values.key? :order
-            scope.order! preload_values[:order]
-          else
-            if values.key? :order
-              scope.order! values[:order]
-            end
+          if preload_values[:readonly] || values[:readonly]
+            scope.readonly!
           end
 
           if options[:as]

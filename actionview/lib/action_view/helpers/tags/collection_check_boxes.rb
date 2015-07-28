@@ -27,7 +27,11 @@ module ActionView
 
           # Append a hidden field to make sure something will be sent back to the
           # server if all check boxes are unchecked.
-          rendered_collection + hidden_field
+          if @options.fetch(:include_hidden, true)
+            rendered_collection + hidden_field
+          else
+            rendered_collection
+          end
         end
 
         private

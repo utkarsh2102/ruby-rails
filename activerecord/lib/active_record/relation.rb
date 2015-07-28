@@ -1,16 +1,16 @@
 # -*- coding: utf-8 -*-
+require 'arel/collectors/bind'
 
 module ActiveRecord
   # = Active Record Relation
   class Relation
-    JoinOperation = Struct.new(:relation, :join_class, :on)
-
     MULTI_VALUE_METHODS  = [:includes, :eager_load, :preload, :select, :group,
                             :order, :joins, :where, :having, :bind, :references,
                             :extending, :unscope]
 
     SINGLE_VALUE_METHODS = [:limit, :offset, :lock, :readonly, :from, :reordering,
                             :reverse_order, :distinct, :create_with, :uniq]
+    INVALID_METHODS_FOR_DELETE_ALL = [:limit, :distinct, :offset, :group, :having]
 
     VALUE_METHODS = MULTI_VALUE_METHODS + SINGLE_VALUE_METHODS
 
@@ -79,22 +79,26 @@ module ActiveRecord
         scope.unscope!(where: @klass.inheritance_column)
       end
 
-      um = scope.where(@klass.arel_table[@klass.primary_key].eq(id_was || id)).arel.compile_update(substitutes, @klass.primary_key)
+      relation = scope.where(@klass.primary_key => (id_was || id))
+      bvs = binds + relation.bind_values
+      um = relation
+        .arel
+        .compile_update(substitutes, @klass.primary_key)
 
       @klass.connection.update(
         um,
         'SQL',
-        binds)
+        bvs,
+      )
     end
 
     def substitute_values(values) # :nodoc:
-      substitutes = values.sort_by { |arel_attr,_| arel_attr.name }
-      binds       = substitutes.map do |arel_attr, value|
+      binds = values.map do |arel_attr, value|
         [@klass.columns_hash[arel_attr.name], value]
       end
 
-      substitutes.each_with_index do |tuple, i|
-        tuple[1] = @klass.connection.substitute_at(binds[i][0], i)
+      substitutes = values.each_with_index.map do |(arel_attr, _), i|
+        [arel_attr, @klass.connection.substitute_at(binds[i][0])]
       end
 
       [substitutes, binds]
@@ -230,6 +234,7 @@ module ActiveRecord
     # Please see further details in the
     # {Active Record Query Interface guide}[http://guides.rubyonrails.org/active_record_querying.html#running-explain].
     def explain
+      #TODO: Fix for binds.
       exec_explain(collecting_queries_for_explain { exec_queries })
     end
 
@@ -237,6 +242,11 @@ module ActiveRecord
     def to_a
       load
       @records
+    end
+
+    # Serializes the relation objects Array.
+    def encode_with(coder)
+      coder.represent_seq(nil, to_a)
     end
 
     def as_json(options = nil) #:nodoc:
@@ -294,10 +304,11 @@ module ActiveRecord
       klass.current_scope = previous
     end
 
-    # Updates all records with details given if they match a set of conditions supplied, limits and order can
-    # also be supplied. This method constructs a single SQL UPDATE statement and sends it straight to the
-    # database. It does not instantiate the involved models and it does not trigger Active Record callbacks
-    # or validations.
+    # Updates all records in the current relation with details given. This method constructs a single SQL UPDATE
+    # statement and sends it straight to the database. It does not instantiate the involved models and it does not
+    # trigger Active Record callbacks or validations. Values passed to `update_all` will not go through
+    # ActiveRecord's type-casting behavior. It should receive only values that can be passed as-is to the SQL
+    # database.
     #
     # ==== Parameters
     #
@@ -330,7 +341,8 @@ module ActiveRecord
         stmt.wheres = arel.constraints
       end
 
-      @klass.connection.update stmt, 'SQL', bind_values
+      bvs = arel.bind_values + bind_values
+      @klass.connection.update stmt, 'SQL', bvs
     end
 
     # Updates an object (or multiple objects) and saves it to the database, if validations pass.
@@ -434,12 +446,21 @@ module ActiveRecord
     # If you need to destroy dependent associations or call your <tt>before_*</tt> or
     # +after_destroy+ callbacks, use the +destroy_all+ method instead.
     #
-    # If a limit scope is supplied, +delete_all+ raises an ActiveRecord error:
+    # If an invalid method is supplied, +delete_all+ raises an ActiveRecord error:
     #
     #   Post.limit(100).delete_all
-    #   # => ActiveRecord::ActiveRecordError: delete_all doesn't support limit scope
+    #   # => ActiveRecord::ActiveRecordError: delete_all doesn't support limit
     def delete_all(conditions = nil)
-      raise ActiveRecordError.new("delete_all doesn't support limit scope") if self.limit_value
+      invalid_methods = INVALID_METHODS_FOR_DELETE_ALL.select { |method|
+        if MULTI_VALUE_METHODS.include?(method)
+          send("#{method}_values").any?
+        else
+          send("#{method}_value")
+        end
+      }
+      if invalid_methods.any?
+        raise ActiveRecordError.new("delete_all doesn't support #{invalid_methods.join(', ')}")
+      end
 
       if conditions
         where(conditions).delete_all
@@ -523,11 +544,11 @@ module ActiveRecord
                       find_with_associations { |rel| relation = rel }
                     end
 
-                    ast   = relation.arel.ast
-                    binds = relation.bind_values.dup
-                    visitor.accept(ast) do
-                      connection.quote(*binds.shift.reverse)
-                    end
+                    arel  = relation.arel
+                    binds = (arel.bind_values + relation.bind_values).dup
+                    binds.map! { |bv| connection.quote(*bv.reverse) }
+                    collect = visitor.accept(arel.ast, Arel::Collectors::Bind.new)
+                    collect.substitute_binds(binds).join
                   end
     end
 
@@ -544,7 +565,13 @@ module ActiveRecord
 
       Hash[equalities.map { |where|
         name = where.left.name
-        [name, binds.fetch(name.to_s) { where.right }]
+        [name, binds.fetch(name.to_s) {
+          case where.right
+          when Array then where.right.map(&:val)
+          when Arel::Nodes::Casted
+            where.right.val
+          end
+        }]
       }]
     end
 
@@ -608,11 +635,11 @@ module ActiveRecord
     private
 
     def exec_queries
-      @records = eager_loading? ? find_with_associations : @klass.find_by_sql(arel, bind_values)
+      @records = eager_loading? ? find_with_associations : @klass.find_by_sql(arel, arel.bind_values + bind_values)
 
       preload = preload_values
       preload +=  includes_values unless eager_loading?
-      preloader = ActiveRecord::Associations::Preloader.new
+      preloader = build_preloader
       preload.each do |associations|
         preloader.preload @records, associations
       end
@@ -621,6 +648,10 @@ module ActiveRecord
 
       @loaded = true
       @records
+    end
+
+    def build_preloader
+      ActiveRecord::Associations::Preloader.new
     end
 
     def references_eager_loaded_tables?

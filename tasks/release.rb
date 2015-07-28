@@ -1,4 +1,4 @@
-FRAMEWORKS = %w( activesupport activemodel activerecord actionview actionpack actionmailer railties )
+FRAMEWORKS = %w( activesupport activemodel activerecord actionview actionpack activejob actionmailer railties )
 
 root    = File.expand_path('../../', __FILE__)
 version = File.read("#{root}/RAILS_VERSION").strip
@@ -78,7 +78,7 @@ namespace :changelog do
   end
 
   task :release_summary do
-    FRAMEWORKS + ['guides'].each do |fw|
+    (FRAMEWORKS + ['guides']).each do |fw|
       puts "## #{fw}"
       fname    = File.join fw, 'CHANGELOG.md'
       contents = File.readlines fname

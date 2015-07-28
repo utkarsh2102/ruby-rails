@@ -6,6 +6,7 @@ module ActiveRecord
     # If the association has a <tt>:through</tt> option further specialization
     # is provided by its child HasManyThroughAssociation.
     class HasManyAssociation < CollectionAssociation #:nodoc:
+      include ForeignAssociation
 
       def handle_dependency
         case options[:dependent]
@@ -41,6 +42,14 @@ module ActiveRecord
         end
       end
 
+      def empty?
+        if has_cached_counter?
+          size.zero?
+        else
+          super
+        end
+      end
+
       private
 
         # Returns the number of records in this collection.
@@ -58,7 +67,7 @@ module ActiveRecord
         # the loaded flag is set to true as well.
         def count_records
           count = if has_cached_counter?
-            owner.send(:read_attribute, cached_counter_attribute_name)
+            owner._read_attribute cached_counter_attribute_name
           else
             scope.count
           end
@@ -76,15 +85,30 @@ module ActiveRecord
         end
 
         def cached_counter_attribute_name(reflection = reflection())
-          options[:counter_cache] || "#{reflection.name}_count"
+          if reflection.options[:counter_cache]
+            reflection.options[:counter_cache].to_s
+          else
+            "#{reflection.name}_count"
+          end
         end
 
         def update_counter(difference, reflection = reflection())
+          update_counter_in_database(difference, reflection)
+          update_counter_in_memory(difference, reflection)
+        end
+
+        def update_counter_in_database(difference, reflection = reflection())
           if has_cached_counter?(reflection)
             counter = cached_counter_attribute_name(reflection)
             owner.class.update_counters(owner.id, counter => difference)
+          end
+        end
+
+        def update_counter_in_memory(difference, reflection = reflection())
+          if counter_must_be_updated_by_has_many?(reflection)
+            counter = cached_counter_attribute_name(reflection)
             owner[counter] += difference
-            owner.changed_attributes.delete(counter) # eww
+            owner.send(:clear_attribute_changes, counter) # eww
           end
         end
 
@@ -98,12 +122,40 @@ module ActiveRecord
         #     it will be decremented twice.
         #
         # Hence this method.
-        def inverse_updates_counter_cache?(reflection = reflection())
+        def inverse_which_updates_counter_cache(reflection = reflection())
           counter_name = cached_counter_attribute_name(reflection)
-          reflection.klass._reflections.values.any? { |inverse_reflection|
-            :belongs_to == inverse_reflection.macro &&
+          inverse_which_updates_counter_named(counter_name, reflection)
+        end
+        alias inverse_updates_counter_cache? inverse_which_updates_counter_cache
+
+        def inverse_which_updates_counter_named(counter_name, reflection)
+          reflection.klass._reflections.values.find { |inverse_reflection|
+            inverse_reflection.belongs_to? &&
             inverse_reflection.counter_cache_column == counter_name
           }
+        end
+        alias inverse_updates_counter_named? inverse_which_updates_counter_named
+
+        def inverse_updates_counter_in_memory?(reflection)
+          inverse = inverse_which_updates_counter_cache(reflection)
+          inverse && inverse == reflection.inverse_of
+        end
+
+        def counter_must_be_updated_by_has_many?(reflection)
+          !inverse_updates_counter_in_memory?(reflection) && has_cached_counter?(reflection)
+        end
+
+        def delete_count(method, scope)
+          if method == :delete_all
+            scope.delete_all
+          else
+            scope.update_all(reflection.foreign_key => nil)
+          end
+        end
+
+        def delete_or_nullify_all_records(method)
+          count = delete_count(method, self.scope)
+          update_counter(-count)
         end
 
         # Deletes the records according to the <tt>:dependent</tt> option.
@@ -112,26 +164,28 @@ module ActiveRecord
             records.each(&:destroy!)
             update_counter(-records.length) unless inverse_updates_counter_cache?
           else
-            if records == :all || !reflection.klass.primary_key
-              scope = self.scope
-            else
-              scope = self.scope.where(reflection.klass.primary_key => records)
-            end
-
-            if method == :delete_all
-              update_counter(-scope.delete_all)
-            else
-              update_counter(-scope.update_all(reflection.foreign_key => nil))
-            end
+            scope = self.scope.where(reflection.klass.primary_key => records)
+            update_counter(-delete_count(method, scope))
           end
         end
 
-        def foreign_key_present?
-          if reflection.klass.primary_key
-            owner.attribute_present?(reflection.association_primary_key)
+        def concat_records(records, *)
+          update_counter_if_success(super, records.length)
+        end
+
+        def _create_record(attributes, *)
+          if attributes.is_a?(Array)
+            super
           else
-            false
+            update_counter_if_success(super, 1)
           end
+        end
+
+        def update_counter_if_success(saved_successfully, difference)
+          if saved_successfully
+            update_counter_in_memory(difference)
+          end
+          saved_successfully
         end
     end
   end

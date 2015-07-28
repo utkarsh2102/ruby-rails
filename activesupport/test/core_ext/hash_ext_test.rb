@@ -70,6 +70,8 @@ class HashExtTest < ActiveSupport::TestCase
     assert_respond_to h, :to_options!
     assert_respond_to h, :compact
     assert_respond_to h, :compact!
+    assert_respond_to h, :except
+    assert_respond_to h, :except!
   end
 
   def test_transform_keys
@@ -584,6 +586,8 @@ class HashExtTest < ActiveSupport::TestCase
     roundtrip = mixed_with_default.with_indifferent_access.to_hash
     assert_equal @strings, roundtrip
     assert_equal '1234', roundtrip.default
+
+    # Ensure nested hashes are not HashWithIndiffereneAccess
     new_to_hash = @nested_mixed.with_indifferent_access.to_hash
     assert_not new_to_hash.instance_of?(HashWithIndifferentAccess)
     assert_not new_to_hash["a"].instance_of?(HashWithIndifferentAccess)
@@ -665,7 +669,7 @@ class HashExtTest < ActiveSupport::TestCase
     assert_equal 'c', h[:a][:c]
   end
 
-  def test_indifferent_subhashes
+  def test_indifferent_sub_hashes
     h = {'user' => {'id' => 5}}.with_indifferent_access
     ['user', :user].each {|user| [:id, 'id'].each {|id| assert_equal 5, h[user][id], "h[#{user.inspect}][#{id.inspect}] should be 5"}}
 
@@ -689,6 +693,11 @@ class HashExtTest < ActiveSupport::TestCase
       { :failure => "stuff", :funny => "business" }.assert_valid_keys([ :failure, :funny ])
       { :failure => "stuff", :funny => "business" }.assert_valid_keys(:failure, :funny)
     end
+    # not all valid keys are required to be present
+    assert_nothing_raised do
+      { :failure => "stuff", :funny => "business" }.assert_valid_keys([ :failure, :funny, :sunny ])
+      { :failure => "stuff", :funny => "business" }.assert_valid_keys(:failure, :funny, :sunny)
+    end
 
     exception = assert_raise ArgumentError do
       { :failore => "stuff", :funny => "business" }.assert_valid_keys([ :failure, :funny ])
@@ -699,6 +708,16 @@ class HashExtTest < ActiveSupport::TestCase
       { :failore => "stuff", :funny => "business" }.assert_valid_keys(:failure, :funny)
     end
     assert_equal "Unknown key: :failore. Valid keys are: :failure, :funny", exception.message
+
+    exception = assert_raise ArgumentError do
+      { :failore => "stuff", :funny => "business" }.assert_valid_keys([ :failure ])
+    end
+    assert_equal "Unknown key: :failore. Valid keys are: :failure", exception.message
+
+    exception = assert_raise ArgumentError do
+      { :failore => "stuff", :funny => "business" }.assert_valid_keys(:failure)
+    end
+    assert_equal "Unknown key: :failore. Valid keys are: :failure", exception.message
   end
 
   def test_assorted_keys_not_stringified
@@ -927,13 +946,19 @@ class HashExtTest < ActiveSupport::TestCase
   def test_except_with_more_than_one_argument
     original = { :a => 'x', :b => 'y', :c => 10 }
     expected = { :a => 'x' }
+
     assert_equal expected, original.except(:b, :c)
+
+    assert_equal expected, original.except!(:b, :c)
+    assert_equal expected, original
   end
 
   def test_except_with_original_frozen
     original = { :a => 'x', :b => 'y' }
     original.freeze
     assert_nothing_raised { original.except(:a) }
+
+    assert_raise(RuntimeError) { original.except!(:a) }
   end
 
   def test_except_with_mocha_expectation_on_original
@@ -966,6 +991,12 @@ class HashExtTest < ActiveSupport::TestCase
     h = hash_with_only_nil_values.dup
     assert_equal({}, h.compact!)
     assert_equal({}, h)
+  end
+
+  def test_new_with_to_hash_conversion
+    hash = HashWithIndifferentAccess.new(HashByConversion.new(a: 1))
+    assert hash.key?('a')
+    assert_equal 1, hash[:a]
   end
 end
 
@@ -1471,10 +1502,30 @@ class HashToXmlTest < ActiveSupport::TestCase
     end
   end
 
+  def test_from_xml_array_one
+    expected = { 'numbers' => { 'type' => 'Array', 'value' => '1' }}
+    assert_equal expected, Hash.from_xml('<numbers type="Array"><value>1</value></numbers>')
+  end
+
+  def test_from_xml_array_many
+    expected = { 'numbers' => { 'type' => 'Array', 'value' => [ '1', '2' ] }}
+    assert_equal expected, Hash.from_xml('<numbers type="Array"><value>1</value><value>2</value></numbers>')
+  end
+
   def test_from_trusted_xml_allows_symbol_and_yaml_types
     expected = { 'product' => { 'name' => :value }}
     assert_equal expected, Hash.from_trusted_xml('<product><name type="symbol">value</name></product>')
     assert_equal expected, Hash.from_trusted_xml('<product><name type="yaml">:value</name></product>')
+  end
+
+  def test_should_use_default_proc_for_unknown_key
+    hash_wia = HashWithIndifferentAccess.new { 1 +  2 }
+    assert_equal 3, hash_wia[:new_key]
+  end
+
+  def test_should_use_default_proc_if_no_key_is_supplied
+    hash_wia = HashWithIndifferentAccess.new { 1 +  2 }
+    assert_equal 3, hash_wia.default
   end
 
   def test_should_use_default_value_for_unknown_key
@@ -1502,6 +1553,17 @@ class HashToXmlTest < ActiveSupport::TestCase
     hash = Hash.new(3)
     hash_wia = hash.with_indifferent_access
     assert_equal 3, hash_wia.default
+  end
+
+  def test_should_copy_the_default_proc_when_converting_to_hash_with_indifferent_access
+    hash = Hash.new do
+      2 + 1
+    end
+    assert_equal 3, hash[:foo]
+
+    hash_wia = hash.with_indifferent_access
+    assert_equal 3, hash_wia[:foo]
+    assert_equal 3, hash_wia[:bar]
   end
 
   # The XML builder seems to fail miserably when trying to tag something

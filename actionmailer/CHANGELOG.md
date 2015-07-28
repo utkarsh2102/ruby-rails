@@ -1,45 +1,92 @@
-## Rails 4.1.10 (March 19, 2015) ##
+## Rails 4.2.3 (June 25, 2015) ##
 
-*   No changes.
+*   `assert_emails` in block form use the given number as expected value.
+    This makes the error message much easier to understand.
+
+    *Yuji Yaginuma*
+
+*   Mailer preview now uses `url_for` to fix links to emails for apps running on
+    a subdirectory.
+
+    *Remo Mueller*
+
+*   Mailer previews no longer crash when the `mail` method wasn't called
+    (`NullMail`).
+
+    Fixes #19849.
+
+    *Yves Senn*
+
+*   Make sure labels and values line up in mailer previews.
+
+    *Yves Senn*
 
 
-## Rails 4.1.9 (January 6, 2015) ##
+## Rails 4.2.2 (June 16, 2015) ##
 
-*   No changes.
+* No Changes *
 
 
-## Rails 4.1.8 (November 16, 2014) ##
+## Rails 4.2.1 (March 19, 2015) ##
 
-*   Attachments can be added while rendering the mail template.
+* No Changes *
+
+
+## Rails 4.2.0 (December 20, 2014) ##
+
+*   `MailerGenerator` now generates layouts by default. The HTML mailer layout
+    now includes `<html>` and `<body>` tags which improve the spam rating in
+    some spam detection engines. Mailers now inherit from `ApplicationMailer`
+    which sets the default layout.
+
+    *Andy Jeffries*
+
+*   `link_to` and `url_for` now generate URLs by default in templates.
+    Passing `only_path: false` is no longer needed.
+
+    Fixes #16497 and #16589.
+
+    *Xavier Noria*, *Richard Schneeman*
+
+*   Attachments can now be added while rendering the mail template.
 
     Fixes #16974.
 
     *Christian Felder*
 
-## Rails 4.1.7.1 (November 19, 2014) ##
+*   Add `#deliver_later` and `#deliver_now` methods and deprecate `#deliver` in
+    favor of `#deliver_now`. `#deliver_later` will enqueue a job to render and
+    deliver the mail instead of delivering it immediately. The job is enqueued
+    using the new Active Job framework in Rails and will use the queue that you
+    have configured in Rails.
 
-*   No changes.
+    *DHH*, *Abdelkader Boudih*, *Cristian Bica*
 
-
-## Rails 4.1.7 (October 29, 2014) ##
-
-*   No changes.
-
-
-## Rails 4.1.6 (September 11, 2014) ##
-
-*   Make ActionMailer::Previews methods class methods. Previously they were
-    instance methods and ActionMailer tries to render a message when they
-    are called.
+*   `ActionMailer::Previews` are now class methods instead of instance methods.
 
     *Cristian Bica*
 
-*   Raise an exception when attachments are added after `mail` was called.
+*   Deprecate `*_path` helpers in email views. They generated broken links in
+    email views and were not the intention of most developers. The `*_url`
+    helper is recommended instead.
+
+    *Richard Schneeman*
+
+*   Raise an exception when attachments are added after `mail` is called.
     This is a safeguard to prevent invalid emails.
 
     Fixes #16163.
 
     *Yves Senn*
+
+*   Add `config.action_mailer.show_previews` configuration option.
+
+    This configuration option can be used to enable the mail preview in
+    environments other than development (such as staging).
+
+    Defaults to `true` in development and `false` elsewhere.
+
+    *Leonard Garvey*
 
 *   Allow preview interceptors to be registered through
     `config.action_mailer.preview_interceptors`.
@@ -48,92 +95,5 @@
 
     *Yves Senn*
 
-
-## Rails 4.1.5 (August 18, 2014) ##
-
-*   No changes.
-
-
-## Rails 4.1.4 (July 2, 2014) ##
-
-*   No changes.
-
-
-## Rails 4.1.3 (July 2, 2014) ##
-
-*   No changes.
-
-
-## Rails 4.1.2 (June 26, 2014) ##
-
-*   No changes.
-
-
-## Rails 4.1.1 (May 6, 2014) ##
-
-*   No changes.
-
-
-## Rails 4.1.0 (April 8, 2014) ##
-
-*   Support the use of underscored symbols when registering interceptors and
-    observers like we do elsewhere within Rails.
-
-    *Andrew White*
-
-*   Add the ability to intercept emails before previewing in a similar fashion
-    to how emails can be intercepted before delivery.
-
-    Fixes #13622.
-
-    Example:
-
-        class CSSInlineStyler
-          def self.previewing_email(message)
-            # inline CSS styles
-          end
-        end
-
-        ActionMailer::Base.register_preview_interceptor CSSInlineStyler
-
-    *Andrew White*
-
-*   Add mailer previews feature based on 37 Signals mail_view gem.
-
-    *Andrew White*
-
-*   Calling `mail()` without arguments serves as getter for the current mail
-    message and keeps previously set headers.
-
-    Fixes #13090.
-
-    Example:
-
-        class MailerWithCallback < ActionMailer::Base
-          after_action :a_callback
-
-          def welcome
-            mail subject: "subject", to: ["joe@example.com"]
-          end
-
-          def a_callback
-            mail # => returns the current mail message
-          end
-        end
-
-    *Yves Senn*
-
-*   Instrument the generation of Action Mailer messages. The time it takes to
-    generate a message is written to the log.
-
-    *Daniel Schierbeck*
-
-*   Invoke mailer defaults as procs only if they are procs, do not convert with
-    `to_proc`. That an object is convertible to a proc does not mean it's meant
-    to be always used as a proc.
-
-    Fixes #11533.
-
-    *Alex Tsukernik*
-
-Please check [4-0-stable](https://github.com/rails/rails/blob/4-0-stable/actionmailer/CHANGELOG.md) for previous changes.
+Please check [4-1-stable](https://github.com/rails/rails/blob/4-1-stable/actionmailer/CHANGELOG.md)
+for previous changes.

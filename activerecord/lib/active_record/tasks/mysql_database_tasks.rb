@@ -31,6 +31,7 @@ module ActiveRecord
           end
           establish_connection configuration
         else
+          $stderr.puts error.inspect
           $stderr.puts "Couldn't create database for #{configuration.inspect}, #{creation_options.inspect}"
           $stderr.puts "(If you set the charset manually, make sure you have a matching collation)" if configuration['encoding']
         end
@@ -124,7 +125,7 @@ IDENTIFIED BY '#{configuration['password']}' WITH GRANT OPTION;
       end
 
       def root_password
-        $stdout.print "Please provide the root password for your mysql installation\n>"
+        $stdout.print "Please provide the root password for your MySQL installation\n>"
         $stdin.gets.strip
       end
 

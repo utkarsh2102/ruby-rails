@@ -23,7 +23,7 @@ module ActiveSupport
           precision = 0 if precision < 0 # don't let it be negative
         else
           rounded_number = number.round(precision)
-          rounded_number = rounded_number.to_i if precision == 0
+          rounded_number = rounded_number.to_i if precision == 0 && rounded_number.finite?
           rounded_number = rounded_number.abs if rounded_number.zero? # prevent showing negative zeros
         end
 
@@ -33,7 +33,7 @@ module ActiveSupport
             a, b = s.split('.', 2)
             a + '.' + b[0, precision]
           else
-            "%01.#{precision}f" % rounded_number
+            "%00.#{precision}f" % rounded_number
           end
 
         delimited_number = NumberToDelimitedConverter.convert(formatted_string, options)

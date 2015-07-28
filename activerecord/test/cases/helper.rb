@@ -9,6 +9,7 @@ require 'active_record'
 require 'cases/test_case'
 require 'active_support/dependencies'
 require 'active_support/logger'
+require 'active_support/core_ext/string/strip'
 
 require 'support/config'
 require 'support/connection'
@@ -22,6 +23,9 @@ ActiveSupport::Deprecation.debug = true
 
 # Disable available locale checks to avoid warnings running the test suite.
 I18n.enforce_available_locales = false
+
+# Enable raise errors in after_commit and after_rollback.
+ActiveRecord::Base.raise_in_transactional_callbacks = true
 
 # Connect to the database
 ARTest.connect
@@ -39,6 +43,15 @@ end
 def in_memory_db?
   current_adapter?(:SQLite3Adapter) &&
   ActiveRecord::Base.connection_pool.spec.config[:database] == ":memory:"
+end
+
+def mysql_56?
+  current_adapter?(:Mysql2Adapter) &&
+    ActiveRecord::Base.connection.send(:version).join(".") >= "5.6.0"
+end
+
+def mysql_enforcing_gtid_consistency?
+  current_adapter?(:MysqlAdapter, :Mysql2Adapter) && 'ON' == ActiveRecord::Base.connection.show_variable('enforce_gtid_consistency')
 end
 
 def supports_savepoints?
@@ -82,7 +95,7 @@ EXPECTED_TIME_ZONE_AWARE_ATTRIBUTES = false
 def verify_default_timezone_config
   if Time.zone != EXPECTED_ZONE
     $stderr.puts <<-MSG
-\n#{self.to_s}
+\n#{self}
     Global state `Time.zone` was leaked.
       Expected: #{EXPECTED_ZONE}
       Got: #{Time.zone}
@@ -90,7 +103,7 @@ def verify_default_timezone_config
   end
   if ActiveRecord::Base.default_timezone != EXPECTED_DEFAULT_TIMEZONE
     $stderr.puts <<-MSG
-\n#{self.to_s}
+\n#{self}
     Global state `ActiveRecord::Base.default_timezone` was leaked.
       Expected: #{EXPECTED_DEFAULT_TIMEZONE}
       Got: #{ActiveRecord::Base.default_timezone}
@@ -98,7 +111,7 @@ def verify_default_timezone_config
   end
   if ActiveRecord::Base.time_zone_aware_attributes != EXPECTED_TIME_ZONE_AWARE_ATTRIBUTES
     $stderr.puts <<-MSG
-\n#{self.to_s}
+\n#{self}
     Global state `ActiveRecord::Base.time_zone_aware_attributes` was leaked.
       Expected: #{EXPECTED_TIME_ZONE_AWARE_ATTRIBUTES}
       Got: #{ActiveRecord::Base.time_zone_aware_attributes}
@@ -106,17 +119,21 @@ def verify_default_timezone_config
   end
 end
 
-unless ENV['FIXTURE_DEBUG']
-  module ActiveRecord::TestFixtures::ClassMethods
-    def try_to_load_dependency_with_silence(*args)
-      old = ActiveRecord::Base.logger.level
-      ActiveRecord::Base.logger.level = ActiveSupport::Logger::ERROR
-      try_to_load_dependency_without_silence(*args)
-      ActiveRecord::Base.logger.level = old
-    end
+def enable_extension!(extension, connection)
+  return false unless connection.supports_extensions?
+  return connection.reconnect! if connection.extension_enabled?(extension)
 
-    alias_method_chain :try_to_load_dependency, :silence
-  end
+  connection.enable_extension extension
+  connection.commit_db_transaction
+  connection.reconnect!
+end
+
+def disable_extension!(extension, connection)
+  return false unless connection.supports_extensions?
+  return true unless connection.extension_enabled?(extension)
+
+  connection.disable_extension extension
+  connection.reconnect!
 end
 
 require "cases/validations_repair_helper"
@@ -163,7 +180,7 @@ class SQLSubscriber
 
   def start(name, id, payload)
     @payloads << payload
-    @logged << [payload[:sql], payload[:name], payload[:binds]]
+    @logged << [payload[:sql].squish, payload[:name], payload[:binds]]
   end
 
   def finish(name, id, payload); end
@@ -184,3 +201,10 @@ module InTimeZone
     ActiveRecord::Base.time_zone_aware_attributes = old_tz
   end
 end
+
+require 'mocha/setup' # FIXME: stop using mocha
+
+# FIXME: we have tests that depend on run order, we should fix that and
+# remove this method call.
+require 'active_support/test_case'
+ActiveSupport::TestCase.test_order = :sorted

@@ -1,3 +1,5 @@
+require 'active_support/core_ext/string/filters'
+
 module ActiveRecord
   module Tasks # :nodoc:
     class DatabaseAlreadyExists < StandardError; end # :nodoc:
@@ -6,14 +8,13 @@ module ActiveRecord
     # <tt>ActiveRecord::Tasks::DatabaseTasks</tt> is a utility class, which encapsulates
     # logic behind common tasks used to manage database and migrations.
     #
-    # The tasks defined here are used in rake tasks provided by Active Record.
+    # The tasks defined here are used with Rake tasks provided by Active Record.
     #
     # In order to use DatabaseTasks, a few config values need to be set. All the needed
     # config values are set by Rails already, so it's necessary to do it only if you
     # want to change the defaults or when you want to use Active Record outside of Rails
     # (in such case after configuring the database tasks, you can also use the rake tasks
     # defined in Active Record).
-    #
     #
     # The possible config values are:
     #
@@ -28,7 +29,7 @@ module ActiveRecord
     # Example usage of +DatabaseTasks+ outside Rails could look as such:
     #
     #   include ActiveRecord::Tasks
-    #   DatabaseTasks.database_configuration = YAML.load(File.read('my_database_config.yml'))
+    #   DatabaseTasks.database_configuration = YAML.load_file('my_database_config.yml')
     #   DatabaseTasks.db_dir = 'db'
     #   # other settings...
     #
@@ -59,7 +60,11 @@ module ActiveRecord
       end
 
       def fixtures_path
-        @fixtures_path ||= File.join(root, 'test', 'fixtures')
+        @fixtures_path ||= if ENV['FIXTURES_PATH']
+                             File.join(root, ENV['FIXTURES_PATH'])
+                           else
+                             File.join(root, 'test', 'fixtures')
+                           end
       end
 
       def root
@@ -107,6 +112,8 @@ module ActiveRecord
       def drop(*arguments)
         configuration = arguments.first
         class_for_adapter(configuration['adapter']).new(*arguments).drop
+      rescue ActiveRecord::NoDatabaseError
+        $stderr.puts "Database '#{configuration['database']}' does not exist"
       rescue Exception => error
         $stderr.puts error, *(error.backtrace)
         $stderr.puts "Couldn't drop #{configuration['database']}"
@@ -120,6 +127,18 @@ module ActiveRecord
         each_current_configuration(environment) { |configuration|
           drop configuration
         }
+      end
+
+      def migrate
+        verbose = ENV["VERBOSE"] ? ENV["VERBOSE"] == "true" : true
+        version = ENV["VERSION"] ? ENV["VERSION"].to_i : nil
+        scope   = ENV['SCOPE']
+        verbose_was, Migration.verbose = Migration.verbose, verbose
+        Migrator.migrate(Migrator.migrations_paths, version) do |migration|
+          scope.blank? || scope == migration.scope
+        end
+      ensure
+        Migration.verbose = verbose_was
       end
 
       def charset_current(environment = env)
@@ -144,6 +163,19 @@ module ActiveRecord
         class_for_adapter(configuration['adapter']).new(configuration).purge
       end
 
+      def purge_all
+        each_local_configuration { |configuration|
+          purge configuration
+        }
+      end
+
+      def purge_current(environment = env)
+        each_current_configuration(environment) { |configuration|
+          purge configuration
+        }
+        ActiveRecord::Base.establish_connection(environment.to_sym)
+      end
+
       def structure_dump(*arguments)
         configuration = arguments.first
         filename = arguments.delete_at 1
@@ -157,24 +189,44 @@ module ActiveRecord
       end
 
       def load_schema(format = ActiveRecord::Base.schema_format, file = nil)
+        ActiveSupport::Deprecation.warn(<<-MSG.squish)
+          This method will act on a specific connection in the future.
+          To act on the current connection, use `load_schema_current` instead.
+        MSG
+
         load_schema_current(format, file)
+      end
+
+      def schema_file(format = ActiveRecord::Base.schema_format)
+        case format
+        when :ruby
+          File.join(db_dir, "schema.rb")
+        when :sql
+          File.join(db_dir, "structure.sql")
+        end
       end
 
       # This method is the successor of +load_schema+. We should rename it
       # after +load_schema+ went through a deprecation cycle. (Rails > 4.2)
       def load_schema_for(configuration, format = ActiveRecord::Base.schema_format, file = nil) # :nodoc:
+        file ||= schema_file(format)
+
         case format
         when :ruby
-          file ||= File.join(db_dir, "schema.rb")
           check_schema_file(file)
           ActiveRecord::Base.establish_connection(configuration)
           load(file)
         when :sql
-          file ||= File.join(db_dir, "structure.sql")
           check_schema_file(file)
           structure_load(configuration, file)
         else
           raise ArgumentError, "unknown format #{format.inspect}"
+        end
+      end
+
+      def load_schema_current_if_exists(format = ActiveRecord::Base.schema_format, file = nil, environment = env)
+        if File.exist?(file || schema_file(format))
+          load_schema_current(format, file, environment)
         end
       end
 

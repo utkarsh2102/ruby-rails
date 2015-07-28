@@ -4,6 +4,7 @@ class Ship < ActiveRecord::Base
   belongs_to :pirate
   belongs_to :update_only_pirate, :class_name => 'Pirate'
   has_many :parts, :class_name => 'ShipPart'
+  has_many :treasures
 
   accepts_nested_attributes_for :parts, :allow_destroy => true
   accepts_nested_attributes_for :pirate, :allow_destroy => true, :reject_if => proc { |attributes| attributes.empty? }
@@ -16,4 +17,10 @@ class Ship < ActiveRecord::Base
   def cancel_save_callback_method
     false
   end
+end
+
+class FamousShip < ActiveRecord::Base
+  self.table_name = 'ships'
+  belongs_to :famous_pirate
+  validates_presence_of :name, on: :conference
 end

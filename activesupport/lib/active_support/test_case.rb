@@ -11,25 +11,59 @@ require 'active_support/testing/time_helpers'
 require 'active_support/core_ext/kernel/reporting'
 require 'active_support/deprecation'
 
-begin
-  silence_warnings { require 'mocha/setup' }
-rescue LoadError
-end
-
 module ActiveSupport
   class TestCase < ::Minitest::Test
     Assertion = Minitest::Assertion
 
-    alias_method :method_name, :name
+    class << self
+      # Sets the order in which test cases are run.
+      #
+      #   ActiveSupport::TestCase.test_order = :random # => :random
+      #
+      # Valid values are:
+      # * +:random+   (to run tests in random order)
+      # * +:parallel+ (to run tests in parallel)
+      # * +:sorted+   (to run tests alphabetically by method name)
+      # * +:alpha+    (equivalent to +:sorted+)
+      def test_order=(new_order)
+        ActiveSupport.test_order = new_order
+      end
 
-    $tags = {}
-    def self.for_tag(tag)
-      yield if $tags[tag]
+      # Returns the order in which test cases are run.
+      #
+      #   ActiveSupport::TestCase.test_order # => :sorted
+      #
+      # Possible values are +:random+, +:parallel+, +:alpha+, +:sorted+.
+      # Defaults to +:sorted+.
+      def test_order
+        test_order = ActiveSupport.test_order
+
+        if test_order.nil?
+          ActiveSupport::Deprecation.warn "You did not specify a value for the " \
+            "configuration option `active_support.test_order`. In Rails 5, " \
+            "the default value of this option will change from `:sorted` to " \
+            "`:random`.\n" \
+            "To disable this warning and keep the current behavior, you can add " \
+            "the following line to your `config/environments/test.rb`:\n" \
+            "\n" \
+            "  Rails.application.configure do\n" \
+            "    config.active_support.test_order = :sorted\n" \
+            "  end\n" \
+            "\n" \
+            "Alternatively, you can opt into the future behavior by setting this " \
+            "option to `:random`."
+
+          test_order = :sorted
+          self.test_order = test_order
+        end
+
+        test_order
+      end
+
+      alias :my_tests_are_order_dependent! :i_suck_and_my_tests_are_order_dependent!
     end
 
-    # FIXME: we have tests that depend on run order, we should fix that and
-    # remove this method call.
-    self.i_suck_and_my_tests_are_order_dependent!
+    alias_method :method_name, :name
 
     include ActiveSupport::Testing::TaggedLogging
     include ActiveSupport::Testing::SetupAndTeardown

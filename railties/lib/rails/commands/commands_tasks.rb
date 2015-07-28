@@ -20,7 +20,6 @@ The most common rails commands are:
              new application called MyApp in "./my_app"
 
 In addition to those, there are:
- application  Generate the Rails application code
  destroy      Undo code generated with "generate" (short-cut alias: "d")
  plugin new   Generates skeleton for developing a Rails plugin
  runner       Run a piece of code in the application environment (short-cut alias: "r")
@@ -28,7 +27,7 @@ In addition to those, there are:
 All commands can be run with -h (or --help) for more information.
 EOT
 
-    COMMAND_WHITELIST = %w(plugin generate destroy console server dbconsole application runner new version help)
+    COMMAND_WHITELIST = %w(plugin generate destroy console server dbconsole runner new version help)
 
     def initialize(argv)
       @argv = argv
@@ -87,10 +86,6 @@ EOT
       Rails::DBConsole.start
     end
 
-    def application
-      require_command!("application")
-    end
-
     def runner
       require_command!("runner")
     end
@@ -132,7 +127,7 @@ EOT
         require 'rails/generators'
         require_application_and_environment!
         Rails.application.load_generators
-        require "rails/commands/#{command}"
+        require_command!(command)
       end
 
       # Change to the application's path if there is no config.ru file in current directory.

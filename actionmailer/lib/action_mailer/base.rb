@@ -15,11 +15,17 @@ module ActionMailer
   #
   #   $ rails generate mailer Notifier
   #
-  # The generated model inherits from <tt>ActionMailer::Base</tt>. A mailer model defines methods
+  # The generated model inherits from <tt>ApplicationMailer</tt> which in turn
+  # inherits from <tt>ActionMailer::Base</tt>. A mailer model defines methods
   # used to generate an email message. In these methods, you can setup variables to be used in
   # the mailer views, options on the mail itself such as the <tt>:from</tt> address, and attachments.
   #
-  #   class Notifier < ActionMailer::Base
+  #   class ApplicationMailer < ActionMailer::Base
+  #     default from: 'from@exmaple.com'
+  #     layout 'mailer'
+  #   end
+  #
+  #   class Notifier < ApplicationMailer
   #     default from: 'no-reply@example.com',
   #             return_path: 'system@example.com'
   #
@@ -39,11 +45,8 @@ module ActionMailer
   #   in the same manner as <tt>attachments[]=</tt>
   #
   # * <tt>headers[]=</tt> - Allows you to specify any header field in your email such
-  #   as <tt>headers['X-No-Spam'] = 'True'</tt>. Note, while most fields like <tt>To:</tt>
-  #   <tt>From:</tt> can only appear once in an email header, other fields like <tt>X-Anything</tt>
-  #   can appear multiple times. If you want to change a field that can appear multiple times,
-  #   you need to set it to nil first so that Mail knows you are replacing it and not adding
-  #   another field of the same name.
+  #   as <tt>headers['X-No-Spam'] = 'True'</tt>. Note that declaring a header multiple times
+  #   will add many fields of the same name. Read #headers doc for more information.
   #
   # * <tt>headers(hash)</tt> - Allows you to specify multiple headers in your email such
   #   as <tt>headers({'X-No-Spam' => 'True', 'In-Reply-To' => '1234@message.id'})</tt>
@@ -55,7 +58,7 @@ module ActionMailer
   #
   # The mail method, if not passed a block, will inspect your views and send all the views with
   # the same name as the method, so the above action would send the +welcome.text.erb+ view
-  # file as well as the +welcome.text.html.erb+ view file in a +multipart/alternative+ email.
+  # file as well as the +welcome.html.erb+ view file in a +multipart/alternative+ email.
   #
   # If you want to explicitly render only certain templates, pass a block:
   #
@@ -87,14 +90,15 @@ module ActionMailer
   # name as the method in your mailer model. For example, in the mailer defined above, the template at
   # <tt>app/views/notifier/welcome.text.erb</tt> would be used to generate the email.
   #
-  # Variables defined in the model are accessible as instance variables in the view.
+  # Variables defined in the methods of your mailer model are accessible as instance variables in their
+  # corresponding view.
   #
   # Emails by default are sent in plain text, so a sample view for our model example might look like this:
   #
   #   Hi <%= @account.name %>,
   #   Thanks for joining our service! Please check back often.
   #
-  # You can even use Action Pack helpers in these views. For example:
+  # You can even use Action View helpers in these views. For example:
   #
   #   You got a new note!
   #   <%= truncate(@note.body, length: 25) %>
@@ -138,9 +142,20 @@ module ActionMailer
   # Once a mailer action and template are defined, you can deliver your message or create it and save it
   # for delivery later:
   #
-  #   Notifier.welcome(david).deliver # sends the email
-  #   mail = Notifier.welcome(david)  # => a Mail::Message object
-  #   mail.deliver                    # sends the email
+  #   Notifier.welcome(User.first).deliver_now # sends the email
+  #   mail = Notifier.welcome(User.first)      # => an ActionMailer::MessageDelivery object
+  #   mail.deliver_now                    # sends the email
+  #
+  # The <tt>ActionMailer::MessageDelivery</tt> class is a wrapper around a <tt>Mail::Message</tt> object. If
+  # you want direct access to the <tt>Mail::Message</tt> object you can call the <tt>message</tt> method on
+  # the <tt>ActionMailer::MessageDelivery</tt> object.
+  #
+  #   Notifier.welcome(User.first).message     # => a Mail::Message object
+  #
+  # Action Mailer is nicely integrated with Active Job so you can send emails in the background (example: outside
+  # of the request-response cycle, so the user doesn't have to wait on it):
+  #
+  #   Notifier.welcome(User.first).deliver_later # enqueue the email sending to Active Job
   #
   # You never instantiate your mailer class. Rather, you just call the method you defined on the class itself.
   #
@@ -154,7 +169,7 @@ module ActionMailer
   # * signup_notification.text.erb
   # * signup_notification.html.erb
   # * signup_notification.xml.builder
-  # * signup_notification.yaml.erb
+  # * signup_notification.yml.erb
   #
   # Each would be rendered and added as a separate part to the message, with the corresponding content
   # type. The content type for the entire message is automatically set to <tt>multipart/alternative</tt>,
@@ -169,7 +184,7 @@ module ActionMailer
   #
   # Sending attachment in emails is easy:
   #
-  #   class ApplicationMailer < ActionMailer::Base
+  #   class Notifier < ApplicationMailer
   #     def welcome(recipient)
   #       attachments['free_book.pdf'] = File.read('path/to/file.pdf')
   #       mail(to: recipient, subject: "New account information")
@@ -185,7 +200,7 @@ module ActionMailer
   # If you need to send attachments with no content, you need to create an empty view for it,
   # or add an empty body parameter like this:
   #
-  #     class ApplicationMailer < ActionMailer::Base
+  #     class Notifier < ApplicationMailer
   #       def welcome(recipient)
   #         attachments['free_book.pdf'] = File.read('path/to/file.pdf')
   #         mail(to: recipient, subject: "New account information", body: "")
@@ -197,7 +212,7 @@ module ActionMailer
   # You can also specify that a file should be displayed inline with other HTML. This is useful
   # if you want to display a corporate logo or a photo.
   #
-  #   class ApplicationMailer < ActionMailer::Base
+  #   class Notifier < ApplicationMailer
   #     def welcome(recipient)
   #       attachments.inline['photo.png'] = File.read('path/to/photo.png')
   #       mail(to: recipient, subject: "Here is what we look like")
@@ -236,7 +251,7 @@ module ActionMailer
   # Action Mailer provides some intelligent defaults for your emails, these are usually specified in a
   # default method inside the class definition:
   #
-  #   class Notifier < ActionMailer::Base
+  #   class Notifier < ApplicationMailer
   #     default sender: 'system@example.com'
   #   end
   #
@@ -254,7 +269,7 @@ module ActionMailer
   # As you can pass in any header, you need to either quote the header as a string, or pass it in as
   # an underscored symbol, so the following will work:
   #
-  #   class Notifier < ActionMailer::Base
+  #   class Notifier < ApplicationMailer
   #     default 'Content-Transfer-Encoding' => '7bit',
   #             content_description: 'This is a description'
   #   end
@@ -262,7 +277,7 @@ module ActionMailer
   # Finally, Action Mailer also supports passing <tt>Proc</tt> objects into the default hash, so you
   # can define methods that evaluate as the message is being generated:
   #
-  #   class Notifier < ActionMailer::Base
+  #   class Notifier < ApplicationMailer
   #     default 'X-Special-Header' => Proc.new { my_method }
   #
   #     private
@@ -287,7 +302,7 @@ module ActionMailer
   # This may be useful, for example, when you want to add default inline attachments for all
   # messages sent out by a certain mailer class:
   #
-  #   class Notifier < ActionMailer::Base
+  #   class Notifier < ApplicationMailer
   #     before_action :add_inline_attachment!
   #
   #     def welcome
@@ -301,12 +316,13 @@ module ActionMailer
   #       end
   #   end
   #
-  # Callbacks in ActionMailer are implemented using AbstractController::Callbacks, so you
-  # can define and configure callbacks in the same manner that you would use callbacks in
-  # classes that inherit from ActionController::Base.
+  # Callbacks in Action Mailer are implemented using
+  # <tt>AbstractController::Callbacks</tt>, so you can define and configure
+  # callbacks in the same manner that you would use callbacks in classes that
+  # inherit from <tt>ActionController::Base</tt>.
   #
   # Note that unless you have a specific reason to do so, you should prefer using before_action
-  # rather than after_action in your ActionMailer classes so that headers are parsed properly.
+  # rather than after_action in your Action Mailer classes so that headers are parsed properly.
   #
   # = Previewing emails
   #
@@ -321,11 +337,11 @@ module ActionMailer
   #   end
   #
   # Methods must return a <tt>Mail::Message</tt> object which can be generated by calling the mailer
-  # method without the additional <tt>deliver</tt>. The location of the mailer previews
-  # directory can be configured using the <tt>preview_path</tt> option which has a default
+  # method without the additional <tt>deliver_now</tt> / <tt>deliver_later</tt>. The location of the
+  # mailer previews directory can be configured using the <tt>preview_path</tt> option which has a default
   # of <tt>test/mailers/previews</tt>:
   #
-  #     config.action_mailer.preview_path = "#{Rails.root}/lib/mailer_previews"
+  #   config.action_mailer.preview_path = "#{Rails.root}/lib/mailer_previews"
   #
   # An overview of all previews is accessible at <tt>http://localhost:3000/rails/mailers</tt>
   # on a running development server instance.
@@ -365,11 +381,11 @@ module ActionMailer
   #   * <tt>:password</tt> - If your mail server requires authentication, set the password in this setting.
   #   * <tt>:authentication</tt> - If your mail server requires authentication, you need to specify the
   #     authentication type here.
-  #     This is a symbol and one of <tt>:plain</tt> (will send the password in the clear), <tt>:login</tt> (will
-  #     send password Base64 encoded) or <tt>:cram_md5</tt> (combines a Challenge/Response mechanism to exchange
+  #     This is a symbol and one of <tt>:plain</tt> (will send the password Base64 encoded), <tt>:login</tt> (will
+  #     send the password Base64 encoded) or <tt>:cram_md5</tt> (combines a Challenge/Response mechanism to exchange
   #     information and a cryptographic Message Digest 5 algorithm to hash important information)
-  #   * <tt>:enable_starttls_auto</tt> - When set to true, detects if STARTTLS is enabled in your SMTP server
-  #     and starts to use it.
+  #   * <tt>:enable_starttls_auto</tt> - Detects if STARTTLS is enabled in your SMTP server and starts
+  #     to use it. Defaults to <tt>true</tt>.
   #   * <tt>:openssl_verify_mode</tt> - When using TLS, you can set how OpenSSL checks the certificate. This is
   #     really useful if you need to validate a self-signed and/or a wildcard certificate. You can use the name
   #     of an OpenSSL verify constant (<tt>'none'</tt>, <tt>'peer'</tt>, <tt>'client_once'</tt>,
@@ -393,7 +409,7 @@ module ActionMailer
   #   implement for a custom delivery agent.
   #
   # * <tt>perform_deliveries</tt> - Determines whether emails are actually sent from Action Mailer when you
-  #   call <tt>.deliver</tt> on an mail message or on an Action Mailer method. This is on by default but can
+  #   call <tt>.deliver</tt> on an email message or on an Action Mailer method. This is on by default but can
   #   be turned off to aid in functional testing.
   #
   # * <tt>deliveries</tt> - Keeps an array of all the emails sent out through the Action Mailer with
@@ -482,7 +498,7 @@ module ActionMailer
 
       # Sets the defaults through app configuration:
       #
-      #     config.action_mailer.default { from: "no-reply@example.org" }
+      #     config.action_mailer.default(from: "no-reply@example.org")
       #
       # Aliased by ::default_options=
       def default(value = nil)
@@ -547,8 +563,8 @@ module ActionMailer
       end
 
       def method_missing(method_name, *args) # :nodoc:
-        if respond_to?(method_name)
-          new(method_name, *args).message
+        if action_methods.include?(method_name.to_s)
+          MessageDelivery.new(self, method_name, *args)
         else
           super
         end
@@ -584,6 +600,11 @@ module ActionMailer
 
     class NullMail #:nodoc:
       def body; '' end
+      def header; {} end
+
+      def respond_to?(string, include_all=false)
+        true
+      end
 
       def method_missing(*args)
         nil
@@ -609,6 +630,26 @@ module ActionMailer
     # The resulting <tt>Mail::Message</tt> will have the following in its header:
     #
     #   X-Special-Domain-Specific-Header: SecretValue
+    #
+    # Note about replacing already defined headers:
+    #
+    # * +subject+
+    # * +sender+
+    # * +from+
+    # * +to+
+    # * +cc+
+    # * +bcc+
+    # * +reply-to+
+    # * +orig-date+
+    # * +message-id+
+    # * +references+
+    #
+    # Fields can only appear once in email headers while other fields such as
+    # <tt>X-Anything</tt> can appear multiple times.
+    #
+    # If you want to replace any header which already exists, first set it to
+    # +nil+ in order to reset the value otherwise another field will be added
+    # for the same header.
     def headers(args = nil)
       if args
         @_message.headers(args)
@@ -669,8 +710,8 @@ module ActionMailer
     # The main method that creates the message and renders the email templates. There are
     # two ways to call this method, with a block, or without a block.
     #
-    # Both methods accept a headers hash. This hash allows you to specify the most used headers
-    # in an email message, these are:
+    # It accepts a headers hash. This hash allows you to specify
+    # the most used headers in an email message, these are:
     #
     # * +:subject+ - The subject of the message, if this is omitted, Action Mailer will
     #   ask the Rails I18n class for a translated +:subject+ in the scope of
@@ -895,6 +936,11 @@ module ActionMailer
       response[:charset] ||= charset
       part = Mail::Part.new(response)
       container.add_part(part)
+    end
+
+    # Emails do not support relative path links.
+    def self.supports_path?
+      false
     end
 
     ActiveSupport.run_load_hooks(:action_mailer, self)

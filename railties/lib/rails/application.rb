@@ -1,4 +1,5 @@
 require 'fileutils'
+require 'yaml'
 require 'active_support/core_ext/hash/keys'
 require 'active_support/core_ext/object/blank'
 require 'active_support/key_generator'
@@ -87,7 +88,20 @@ module Rails
     class << self
       def inherited(base)
         super
-        base.instance
+        Rails.app_class = base
+        add_lib_to_load_path!(find_root(base.called_from))
+      end
+
+      def instance
+        super.run_load_hooks!
+      end
+
+      def create(initial_variable_values = {}, &block)
+        new(initial_variable_values, &block).run_load_hooks!
+      end
+
+      def find_root(from)
+        find_root_with_flag "config.ru", from, Dir.pwd
       end
 
       # Makes the +new+ method public.
@@ -116,24 +130,31 @@ module Rails
       @ordered_railties  = nil
       @railties          = nil
       @message_verifiers = {}
+      @ran_load_hooks    = false
 
-      Rails.application ||= self
-
-      add_lib_to_load_path!
-      ActiveSupport.run_load_hooks(:before_configuration, self)
-
-      initial_variable_values.each do |variable_name, value|
-        if INITIAL_VARIABLES.include?(variable_name)
-          instance_variable_set("@#{variable_name}", value)
-        end
-      end
-
-      instance_eval(&block) if block_given?
+      # are these actually used?
+      @initial_variable_values = initial_variable_values
+      @block = block
     end
 
     # Returns true if the application is initialized.
     def initialized?
       @initialized
+    end
+
+    def run_load_hooks! # :nodoc:
+      return self if @ran_load_hooks
+      @ran_load_hooks = true
+      ActiveSupport.run_load_hooks(:before_configuration, self)
+
+      @initial_variable_values.each do |variable_name, value|
+        if INITIAL_VARIABLES.include?(variable_name)
+          instance_variable_set("@#{variable_name}", value)
+        end
+      end
+
+      instance_eval(&@block) if @block
+      self
     end
 
     # Implements call according to the Rack API. It simply
@@ -153,14 +174,13 @@ module Rails
     def key_generator
       # number of iterations selected based on consultation with the google security
       # team. Details at https://github.com/rails/rails/pull/6952#issuecomment-7661220
-      @caching_key_generator ||= begin
+      @caching_key_generator ||=
         if secrets.secret_key_base
           key_generator = ActiveSupport::KeyGenerator.new(secrets.secret_key_base, iterations: 1000)
           ActiveSupport::CachingKeyGenerator.new(key_generator)
         else
           ActiveSupport::LegacyKeyGenerator.new(secrets.secret_token)
         end
-      end
     end
 
     # Returns a message verifier object.
@@ -188,6 +208,37 @@ module Rails
       end
     end
 
+    # Convenience for loading config/foo.yml for the current Rails env.
+    #
+    # Example:
+    #
+    #     # config/exception_notification.yml:
+    #     production:
+    #       url: http://127.0.0.1:8080
+    #       namespace: my_app_production
+    #     development:
+    #       url: http://localhost:3001
+    #       namespace: my_app_development
+    #
+    #     # config/production.rb
+    #     Rails.application.configure do
+    #       config.middleware.use ExceptionNotifier, config_for(:exception_notification)
+    #     end
+    def config_for(name)
+      yaml = Pathname.new("#{paths["config"].existent.first}/#{name}.yml")
+
+      if yaml.exist?
+        require "erb"
+        (YAML.load(ERB.new(yaml.read).result) || {})[Rails.env] || {}
+      else
+        raise "Could not load configuration. No such file - #{yaml}"
+      end
+    rescue Psych::SyntaxError => e
+      raise "YAML syntax error occurred while parsing #{yaml}. " \
+        "Please note that YAML must be consistently indented using spaces. Tabs are not allowed. " \
+        "Error: #{e.message}"
+    end
+
     # Stores some of the Rails initial environment parameters which
     # will be used by middlewares and engines to configure themselves.
     def env_config
@@ -208,7 +259,8 @@ module Rails
           "action_dispatch.signed_cookie_salt" => config.action_dispatch.signed_cookie_salt,
           "action_dispatch.encrypted_cookie_salt" => config.action_dispatch.encrypted_cookie_salt,
           "action_dispatch.encrypted_signed_cookie_salt" => config.action_dispatch.encrypted_signed_cookie_salt,
-          "action_dispatch.cookies_serializer" => config.action_dispatch.cookies_serializer
+          "action_dispatch.cookies_serializer" => config.action_dispatch.cookies_serializer,
+          "action_dispatch.cookies_digest" => config.action_dispatch.cookies_digest
         })
       end
     end
@@ -264,8 +316,8 @@ module Rails
     # are changing config.root inside your application definition or having a custom
     # Rails application, you will need to add lib to $LOAD_PATH on your own in case
     # you need to load files in lib/ during the application configuration as well.
-    def add_lib_to_load_path! #:nodoc:
-      path = File.join config.root, 'lib'
+    def self.add_lib_to_load_path!(root) #:nodoc:
+      path = File.join root, 'lib'
       if File.exist?(path) && !$LOAD_PATH.include?(path)
         $LOAD_PATH.unshift(path)
       end
@@ -309,7 +361,7 @@ module Rails
     end
 
     def config #:nodoc:
-      @config ||= Application::Configuration.new(find_root_with_flag("config.ru", Dir.pwd))
+      @config ||= Application::Configuration.new(self.class.find_root(self.class.called_from))
     end
 
     def config=(configuration) #:nodoc:

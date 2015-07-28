@@ -14,12 +14,15 @@ class FormTagHelperTest < ActionView::TestCase
     method = options[:method]
     enforce_utf8 = options.fetch(:enforce_utf8, true)
 
-    txt =  %{<div style="display:none">}
-    txt << %{<input name="utf8" type="hidden" value="&#x2713;" />} if enforce_utf8
-    if method && !%w(get post).include?(method.to_s)
-      txt << %{<input name="_method" type="hidden" value="#{method}" />}
+    ''.tap do |txt|
+      if enforce_utf8
+        txt << %{<input name="utf8" type="hidden" value="&#x2713;" />}
+      end
+
+      if method && !%w(get post).include?(method.to_s)
+        txt << %{<input name="_method" type="hidden" value="#{method}" />}
+      end
     end
-    txt << %{</div>}
   end
 
   def form_text(action = "http://www.example.com", options = {})
@@ -165,6 +168,13 @@ class FormTagHelperTest < ActionView::TestCase
     actual = password_field_tag
     expected = %(<input id="password" name="password" type="password" />)
     assert_dom_equal expected, actual
+  end
+
+  def test_multiple_field_tags_with_same_options
+    options = {class: 'important'}
+    assert_dom_equal %(<input name="title" type="file" id="title" class="important"/>), file_field_tag("title", options)
+    assert_dom_equal %(<input type="password" name="title" id="title" value="Hello!" class="important" />), password_field_tag("title", "Hello!", options)
+    assert_dom_equal %(<input type="text" name="title" id="title" value="Hello!" class="important" />), text_field_tag("title", "Hello!", options)
   end
 
   def test_radio_button_tag
@@ -641,6 +651,6 @@ class FormTagHelperTest < ActionView::TestCase
   private
 
   def root_elem(rendered_content)
-    HTML::Document.new(rendered_content).root.children[0]
+    Nokogiri::HTML::DocumentFragment.parse(rendered_content).children.first # extract from nodeset
   end
 end

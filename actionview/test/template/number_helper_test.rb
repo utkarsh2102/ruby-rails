@@ -35,6 +35,10 @@ class NumberHelperTest < ActionView::TestCase
     assert_equal "98a%", number_to_percentage("98a")
     assert_equal "NaN%", number_to_percentage(Float::NAN)
     assert_equal "Inf%", number_to_percentage(Float::INFINITY)
+    assert_equal "NaN%", number_to_percentage(Float::NAN, precision: 0)
+    assert_equal "Inf%", number_to_percentage(Float::INFINITY, precision: 0)
+    assert_equal "NaN%", number_to_percentage(Float::NAN, precision: 1)
+    assert_equal "Inf%", number_to_percentage(Float::INFINITY, precision: 1)
   end
 
   def test_number_with_delimiter
@@ -114,6 +118,8 @@ class NumberHelperTest < ActionView::TestCase
     I18n.backend.store_translations 'ts',
       :custom_units_for_number_to_human => {:mili => "mm", :centi => "cm", :deci => "dm", :unit => "m", :ten => "dam", :hundred => "hm", :thousand => "km"}
     assert_equal "1.01 cm", number_to_human(0.0101, :locale => 'ts', :units => :custom_units_for_number_to_human)
+  ensure
+    I18n.reload!
   end
 
   def test_number_helpers_outputs_are_html_safe
