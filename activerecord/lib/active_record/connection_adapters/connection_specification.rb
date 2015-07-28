@@ -1,4 +1,5 @@
 require 'uri'
+require 'active_support/core_ext/string/filters'
 
 module ActiveRecord
   module ConnectionAdapters
@@ -32,8 +33,8 @@ module ActiveRecord
         #   }
         def initialize(url)
           raise "Database URL cannot be empty" if url.blank?
-          @uri     = URI.parse(url)
-          @adapter = @uri.scheme.gsub('-', '_')
+          @uri     = uri_parser.parse(url)
+          @adapter = @uri.scheme.tr('-', '_')
           @adapter = "postgresql" if @adapter == "postgres"
 
           if @uri.opaque
@@ -41,7 +42,6 @@ module ActiveRecord
           else
             @query = @uri.query
           end
-          @authority = url =~ %r{\A[^:]*://}
         end
 
         # Converts the given URL to a full connection hash.
@@ -63,8 +63,8 @@ module ActiveRecord
 
         # Converts the query parameters of the URI into a hash.
         #
-        #   "localhost?pool=5&reap_frequency=2"
-        #   # => { "pool" => "5", "reap_frequency" => "2" }
+        #   "localhost?pool=5&reaping_frequency=2"
+        #   # => { "pool" => "5", "reaping_frequency" => "2" }
         #
         # returns empty hash if no query present.
         #
@@ -91,21 +91,8 @@ module ActiveRecord
         end
 
         # Returns name of the database.
-        # Sqlite3's handling of a leading slash is in transition as of
-        # Rails 4.1.
         def database_from_path
-          if @authority && @adapter == 'sqlite3'
-            # 'sqlite3:///foo' is relative, for backwards compatibility.
-
-            database_name = uri.path.sub(%r{^/}, "")
-
-            msg = "Paths in SQLite3 database URLs of the form `sqlite3:///path` will be treated as absolute in Rails 4.2. " \
-              "Please switch to `sqlite3:#{database_name}`."
-            ActiveSupport::Deprecation.warn(msg)
-
-            database_name
-
-          elsif @adapter == 'sqlite3'
+          if @adapter == 'sqlite3'
             # 'sqlite3:/foo' is absolute, because that makes sense. The
             # corresponding relative version, 'sqlite3:foo', is handled
             # elsewhere, as an "opaque".
@@ -174,7 +161,7 @@ module ActiveRecord
         #   config = { "production" => { "host" => "localhost", "database" => "foo", "adapter" => "sqlite3" } }
         #   spec = Resolver.new(config).spec(:production)
         #   spec.adapter_method
-        #   # => "sqlite3"
+        #   # => "sqlite3_connection"
         #   spec.config
         #   # => { "host" => "localhost", "database" => "foo", "adapter" => "sqlite3" }
         #
@@ -235,15 +222,19 @@ module ActiveRecord
           # this ambiguous behaviour and in the future this function
           # can be removed in favor of resolve_url_connection.
           if configurations.key?(spec) || spec !~ /:/
-            ActiveSupport::Deprecation.warn "Passing a string to ActiveRecord::Base.establish_connection " \
-              "for a configuration lookup is deprecated, please pass a symbol (#{spec.to_sym.inspect}) instead"
+            ActiveSupport::Deprecation.warn(<<-MSG.squish)
+              Passing a string to ActiveRecord::Base.establish_connection for a
+              configuration lookup is deprecated, please pass a symbol
+              (#{spec.to_sym.inspect}) instead.
+            MSG
+
             resolve_symbol_connection(spec)
           else
             resolve_url_connection(spec)
           end
         end
 
-        # Takes the environment such as `:production` or `:development`.
+        # Takes the environment such as +:production+ or +:development+.
         # This requires that the @configurations was initialized with a key that
         # matches.
         #
@@ -264,7 +255,7 @@ module ActiveRecord
         # Connection details inside of the "url" key win any merge conflicts
         def resolve_hash_connection(spec)
           if spec["url"] && spec["url"] !~ /^jdbc:/
-            connection_hash = resolve_string_connection(spec.delete("url"))
+            connection_hash = resolve_url_connection(spec.delete("url"))
             spec.merge!(connection_hash)
           end
           spec

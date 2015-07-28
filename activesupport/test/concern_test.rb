@@ -5,7 +5,7 @@ class ConcernTest < ActiveSupport::TestCase
   module Baz
     extend ActiveSupport::Concern
 
-    module ClassMethods
+    class_methods do
       def baz
         "baz"
       end
@@ -33,6 +33,12 @@ class ConcernTest < ActiveSupport::TestCase
 
     include Baz
 
+    module ClassMethods
+      def baz
+        "bar's baz + " + super
+      end
+    end
+
     def bar
       "bar"
     end
@@ -46,6 +52,11 @@ class ConcernTest < ActiveSupport::TestCase
     extend ActiveSupport::Concern
 
     include Bar, Baz
+  end
+
+  module Qux
+    module ClassMethods
+    end
   end
 
   def setup
@@ -64,6 +75,26 @@ class ConcernTest < ActiveSupport::TestCase
     assert_equal ConcernTest::Baz::ClassMethods, (class << @klass; self.included_modules; end)[0]
   end
 
+  def test_class_methods_are_extended_only_on_expected_objects
+    ::Object.__send__(:include, Qux)
+    Object.extend(Qux::ClassMethods)
+    # module needs to be created after Qux is included in Object or bug won't
+    # be triggered
+    test_module = Module.new do
+      extend ActiveSupport::Concern
+
+      class_methods do
+        def test
+        end
+      end
+    end
+    @klass.send(:include, test_module)
+    assert_equal false, Object.respond_to?(:test)
+    Qux.class_eval do
+      remove_const :ClassMethods
+    end
+  end
+
   def test_included_block_is_ran
     @klass.send(:include, Baz)
     assert_equal true, @klass.included_ran
@@ -73,7 +104,7 @@ class ConcernTest < ActiveSupport::TestCase
     @klass.send(:include, Bar)
     assert_equal "bar", @klass.new.bar
     assert_equal "bar+baz", @klass.new.baz
-    assert_equal "baz", @klass.baz
+    assert_equal "bar's baz + baz", @klass.baz
     assert @klass.included_modules.include?(ConcernTest::Bar)
   end
 

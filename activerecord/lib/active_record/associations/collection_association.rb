@@ -61,9 +61,9 @@ module ActiveRecord
 
       # Implements the ids writer method, e.g. foo.item_ids= for Foo.has_many :items
       def ids_writer(ids)
-        pk_column = reflection.primary_key_column
+        pk_type = reflection.primary_key_type
         ids = Array(ids).reject { |id| id.blank? }
-        ids.map! { |i| pk_column.type_cast(i) }
+        ids.map! { |i| pk_type.type_cast_from_user(i) }
         replace(klass.find(ids).index_by { |r| r.id }.values_at(*ids))
       end
 
@@ -161,9 +161,8 @@ module ActiveRecord
       # be chained. Since << flattens its argument list and inserts each record,
       # +push+ and +concat+ behave identically.
       def concat(*records)
-        load_target if owner.new_record?
-
         if owner.new_record?
+          load_target
           concat_records(records)
         else
           transaction { concat_records(records) }
@@ -186,8 +185,8 @@ module ActiveRecord
       end
 
       # Removes all records from the association without calling callbacks
-      # on the associated records. It honors the `:dependent` option. However
-      # if the `:dependent` value is `:destroy` then in that case the `:delete_all`
+      # on the associated records. It honors the +:dependent+ option. However
+      # if the +:dependent+ value is +:destroy+ then in that case the +:delete_all+
       # deletion strategy for the association is applied.
       #
       # You can force a particular deletion strategy by passing a parameter.
@@ -199,11 +198,11 @@ module ActiveRecord
       #
       # See delete for more info.
       def delete_all(dependent = nil)
-        if dependent.present? && ![:nullify, :delete_all].include?(dependent)
+        if dependent && ![:nullify, :delete_all].include?(dependent)
           raise ArgumentError, "Valid values are :nullify or :delete_all"
         end
 
-        dependent = if dependent.present?
+        dependent = if dependent
                       dependent
                     elsif options[:dependent] == :destroy
                       :delete_all
@@ -211,7 +210,7 @@ module ActiveRecord
                       options[:dependent]
                     end
 
-        delete(:all, dependent: dependent).tap do
+        delete_or_nullify_all_records(dependent).tap do
           reset
           loaded!
         end
@@ -261,19 +260,12 @@ module ActiveRecord
       # are actually removed from the database, that depends precisely on
       # +delete_records+. They are in any case removed from the collection.
       def delete(*records)
+        return if records.empty?
         _options = records.extract_options!
         dependent = _options[:dependent] || options[:dependent]
 
-        if records.first == :all
-          if (loaded? || dependent == :destroy) && dependent != :delete_all
-            delete_or_destroy(load_target, dependent)
-          else
-            delete_records(:all, dependent)
-          end
-        else
-          records = find(records) if records.any? { |record| record.kind_of?(Fixnum) || record.kind_of?(String) }
-          delete_or_destroy(records, dependent)
-        end
+        records = find(records) if records.any? { |record| record.kind_of?(Fixnum) || record.kind_of?(String) }
+        delete_or_destroy(records, dependent)
       end
 
       # Deletes the +records+ and removes them from this association calling
@@ -282,6 +274,7 @@ module ActiveRecord
       # Note that this method removes records from the database ignoring the
       # +:dependent+ option.
       def destroy(*records)
+        return if records.empty?
         records = find(records) if records.any? { |record| record.kind_of?(Fixnum) || record.kind_of?(String) }
         delete_or_destroy(records, :destroy)
       end
@@ -375,7 +368,10 @@ module ActiveRecord
         if owner.new_record?
           replace_records(other_array, original_target)
         else
-          transaction { replace_records(other_array, original_target) }
+          replace_common_records_in_memory(other_array, original_target)
+          if other_array != original_target
+            transaction { replace_records(other_array, original_target) }
+          end
         end
       end
 
@@ -384,7 +380,7 @@ module ActiveRecord
           if record.new_record?
             include_in_memory?(record)
           else
-            loaded? ? target.include?(record) : scope.exists?(record)
+            loaded? ? target.include?(record) : scope.exists?(record.id)
           end
         else
           false
@@ -400,11 +396,18 @@ module ActiveRecord
         target
       end
 
-      def add_to_target(record, skip_callbacks = false)
+      def add_to_target(record, skip_callbacks = false, &block)
+        if association_scope.distinct_value
+          index = @target.index(record)
+        end
+        replace_on_target(record, index, skip_callbacks, &block)
+      end
+
+      def replace_on_target(record, index, skip_callbacks)
         callback(:before_add, record) unless skip_callbacks
         yield(record) if block_given?
 
-        if association_scope.distinct_value && index = @target.index(record)
+        if index
           @target[index] = record
         else
           @target << record
@@ -427,9 +430,29 @@ module ActiveRecord
       end
 
       private
+      def get_records
+        if reflection.scope_chain.any?(&:any?) ||
+          scope.eager_loading? ||
+          klass.current_scope ||
+          klass.default_scopes.any?
+
+          return scope.to_a
+        end
+
+        conn = klass.connection
+        sc = reflection.association_scope_cache(conn, owner) do
+          StatementCache.create(conn) { |params|
+            as = AssociationScope.create { params.bind }
+            target_scope.merge as.scope(self, conn)
+          }
+        end
+
+        binds = AssociationScope.get_bind_values(owner, reflection.chain)
+        sc.execute binds, klass, klass.connection
+      end
 
         def find_target
-          records = scope.to_a
+          records = get_records
           records.each { |record| set_inverse_instance(record) }
           records
         end
@@ -527,6 +550,14 @@ module ActiveRecord
           end
 
           target
+        end
+
+        def replace_common_records_in_memory(new_target, original_target)
+          common_records = new_target & original_target
+          common_records.each do |record|
+            skip_callbacks = true
+            replace_on_target(record, @target.index(record), skip_callbacks)
+          end
         end
 
         def concat_records(records, should_raise = false)

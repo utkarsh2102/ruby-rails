@@ -1,5 +1,6 @@
 require 'cases/helper'
 require 'models/developer'
+require 'models/computer'
 require 'models/project'
 require 'models/company'
 require 'models/topic'
@@ -57,6 +58,35 @@ class BelongsToAssociationsTest < ActiveRecord::TestCase
     end
   end
 
+  def test_default_scope_on_relations_is_not_cached
+    counter = 0
+
+    comments = Class.new(ActiveRecord::Base) {
+      self.table_name = 'comments'
+      self.inheritance_column = 'not_there'
+
+      posts = Class.new(ActiveRecord::Base) {
+        self.table_name = 'posts'
+        self.inheritance_column = 'not_there'
+
+        default_scope -> {
+          counter += 1
+          where("id = :inc", :inc => counter)
+        }
+
+        has_many :comments, :anonymous_class => comments
+      }
+      belongs_to :post, :anonymous_class => posts, :inverse_of => false
+    }
+
+    assert_equal 0, counter
+    comment = comments.first
+    assert_equal 0, counter
+    sql = capture_sql { comment.post }
+    comment.reload
+    assert_not_equal sql, capture_sql { comment.post }
+  end
+
   def test_proxy_assignment
     account = Account.find(1)
     assert_nothing_raised { account.firm = account.firm }
@@ -92,14 +122,14 @@ class BelongsToAssociationsTest < ActiveRecord::TestCase
     Firm.create("name" => "Apple")
     Client.create("name" => "Citibank", :firm_name => "Apple")
     citibank_result = Client.all.merge!(:where => {:name => "Citibank"}, :includes => :firm_with_primary_key).first
-    assert citibank_result.association_cache.key?(:firm_with_primary_key)
+    assert citibank_result.association(:firm_with_primary_key).loaded?
   end
 
   def test_eager_loading_with_primary_key_as_symbol
     Firm.create("name" => "Apple")
     Client.create("name" => "Citibank", :firm_name => "Apple")
     citibank_result = Client.all.merge!(:where => {:name => "Citibank"}, :includes => :firm_with_primary_key_symbols).first
-    assert citibank_result.association_cache.key?(:firm_with_primary_key_symbols)
+    assert citibank_result.association(:firm_with_primary_key_symbols).loaded?
   end
 
   def test_creating_the_belonging_object
@@ -233,13 +263,13 @@ class BelongsToAssociationsTest < ActiveRecord::TestCase
 
   def test_belongs_to_counter
     debate = Topic.create("title" => "debate")
-    assert_equal 0, debate.send(:read_attribute, "replies_count"), "No replies yet"
+    assert_equal 0, debate.read_attribute("replies_count"), "No replies yet"
 
     trash = debate.replies.create("title" => "blah!", "content" => "world around!")
-    assert_equal 1, Topic.find(debate.id).send(:read_attribute, "replies_count"), "First reply created"
+    assert_equal 1, Topic.find(debate.id).read_attribute("replies_count"), "First reply created"
 
     trash.destroy
-    assert_equal 0, Topic.find(debate.id).send(:read_attribute, "replies_count"), "First reply deleted"
+    assert_equal 0, Topic.find(debate.id).read_attribute("replies_count"), "First reply deleted"
   end
 
   def test_belongs_to_counter_with_assigning_nil
@@ -367,6 +397,13 @@ class BelongsToAssociationsTest < ActiveRecord::TestCase
     Invoice.create!(line_items: [line_item])
 
     assert_queries(2) { line_item.update amount: 10 }
+  end
+
+  def test_belongs_to_with_touch_option_on_empty_update
+    line_item = LineItem.create!
+    Invoice.create!(line_items: [line_item])
+
+    assert_queries(0) { line_item.save }
   end
 
   def test_belongs_to_with_touch_option_on_destroy
@@ -498,6 +535,27 @@ class BelongsToAssociationsTest < ActiveRecord::TestCase
     assert_equal 4, topic.reload[:replies_count]
 
     reply.destroy
+    assert_equal 4, topic.reload[:replies_count]
+    assert_equal 4, topic.replies.size
+  end
+
+  def test_concurrent_counter_cache_double_destroy
+    topic = Topic.create :title => "Zoom-zoom-zoom"
+
+    5.times do
+      topic.replies.create(:title => "re: zoom", :content => "speedy quick!")
+    end
+
+    assert_equal 5, topic.reload[:replies_count]
+    assert_equal 5, topic.replies.size
+
+    reply = topic.replies.first
+    reply_clone = Reply.find(reply.id)
+
+    reply.destroy
+    assert_equal 4, topic.reload[:replies_count]
+
+    reply_clone.destroy
     assert_equal 4, topic.reload[:replies_count]
     assert_equal 4, topic.replies.size
   end
@@ -759,8 +817,8 @@ class BelongsToAssociationsTest < ActiveRecord::TestCase
     post    = posts(:welcome)
     comment = comments(:greetings)
 
-    assert_difference lambda { post.reload.taggings_count }, -1 do
-      assert_difference 'comment.reload.taggings_count', +1 do
+    assert_difference lambda { post.reload.tags_count }, -1 do
+      assert_difference 'comment.reload.tags_count', +1 do
         tagging.taggable = comment
       end
     end
@@ -905,5 +963,16 @@ class BelongsToAssociationsTest < ActiveRecord::TestCase
     record = Record.create!
     Column.create! record: record
     assert_equal 1, Column.count
+  end
+end
+
+class BelongsToWithForeignKeyTest < ActiveRecord::TestCase
+  fixtures :authors, :author_addresses
+
+  def test_destroy_linked_models
+    address = AuthorAddress.create!
+    author = Author.create! name: "Author", author_address_id: address.id
+
+    author.destroy!
   end
 end

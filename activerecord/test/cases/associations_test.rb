@@ -1,6 +1,7 @@
 require "cases/helper"
 require 'models/computer'
 require 'models/developer'
+require 'models/computer'
 require 'models/project'
 require 'models/company'
 require 'models/categorization'
@@ -261,6 +262,11 @@ class AssociationProxyTest < ActiveRecord::TestCase
     assert_queries(1) do
       assert_equal man, man.interests.where("1=1").first.man
     end
+  end
+
+  test "first! works on loaded associations" do
+    david = authors(:david)
+    assert_equal david.posts.first, david.posts.reload.first!
   end
 
   def test_reset_unloads_target

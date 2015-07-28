@@ -30,6 +30,10 @@ module ActiveSupport #:nodoc:
     mattr_accessor :loaded
     self.loaded = Set.new
 
+    # Stack of files being loaded.
+    mattr_accessor :loading
+    self.loading = []
+
     # Should we load files or require them?
     mattr_accessor :mechanism
     self.mechanism = ENV['NO_RELOAD'] ? :require : :load
@@ -180,10 +184,11 @@ module ActiveSupport #:nodoc:
         Dependencies.load_missing_constant(from_mod, const_name)
       end
 
-      # Dependencies assumes the name of the module reflects the nesting (unless
-      # it can be proven that is not the case), and the path to the file that
-      # defines the constant. Anonymous modules cannot follow these conventions
-      # and we assume therefore the user wants to refer to a top-level constant.
+      # We assume that the name of the module reflects the nesting
+      # (unless it can be proven that is not the case) and the path to the file
+      # that defines the constant. Anonymous modules cannot follow these
+      # conventions and therefore we assume that the user wants to refer to a
+      # top-level constant.
       def guess_for_anonymous(const_name)
         if Object.const_defined?(const_name)
           raise NameError.new "#{const_name} cannot be autoloaded from an anonymous class or module", const_name
@@ -200,7 +205,10 @@ module ActiveSupport #:nodoc:
     # Object includes this module.
     module Loadable #:nodoc:
       def self.exclude_from(base)
-        base.class_eval { define_method(:load, Kernel.instance_method(:load)) }
+        base.class_eval do
+          define_method(:load, Kernel.instance_method(:load))
+          private :load
+        end
       end
 
       def require_or_load(file_name)
@@ -236,18 +244,6 @@ module ActiveSupport #:nodoc:
         raise
       end
 
-      def load(file, wrap = false)
-        result = false
-        load_dependency(file) { result = super }
-        result
-      end
-
-      def require(file)
-        result = false
-        load_dependency(file) { result = super }
-        result
-      end
-
       # Mark the given constant as unloadable. Unloadable constants are removed
       # each time dependencies are cleared.
       #
@@ -263,6 +259,20 @@ module ActiveSupport #:nodoc:
       # +false+ otherwise.
       def unloadable(const_desc)
         Dependencies.mark_for_unload const_desc
+      end
+
+      private
+
+      def load(file, wrap = false)
+        result = false
+        load_dependency(file) { result = super }
+        result
+      end
+
+      def require(file)
+        result = false
+        load_dependency(file) { result = super }
+        result
       end
     end
 
@@ -316,6 +326,7 @@ module ActiveSupport #:nodoc:
     def clear
       log_call
       loaded.clear
+      loading.clear
       remove_unloadable_constants!
     end
 
@@ -328,6 +339,7 @@ module ActiveSupport #:nodoc:
       # Record that we've seen this file *before* loading it to avoid an
       # infinite loop with mutual dependencies.
       loaded << expanded
+      loading << expanded
 
       begin
         if load?
@@ -350,6 +362,8 @@ module ActiveSupport #:nodoc:
       rescue Exception
         loaded.delete expanded
         raise
+      ensure
+        loading.pop
       end
 
       # Record history *after* loading so first load gets warnings.
@@ -474,7 +488,7 @@ module ActiveSupport #:nodoc:
         expanded = File.expand_path(file_path)
         expanded.sub!(/\.rb\z/, '')
 
-        if loaded.include?(expanded)
+        if loading.include?(expanded)
           raise "Circular dependency detected while autoloading constant #{qualified_name}"
         else
           require_or_load(expanded, qualified_name)

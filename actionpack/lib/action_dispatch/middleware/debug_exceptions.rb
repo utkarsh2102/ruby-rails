@@ -35,14 +35,25 @@ module ActionDispatch
 
       if env['action_dispatch.show_detailed_exceptions']
         request = Request.new(env)
+        traces = wrapper.traces
+
+        trace_to_show = 'Application Trace'
+        if traces[trace_to_show].empty? && wrapper.rescue_template != 'routing_error'
+          trace_to_show = 'Full Trace'
+        end
+
+        if source_to_show = traces[trace_to_show].first
+          source_to_show_id = source_to_show[:id]
+        end
+
         template = ActionView::Base.new([RESCUES_TEMPLATE_PATH],
           request: request,
           exception: wrapper.exception,
-          application_trace: wrapper.application_trace,
-          framework_trace: wrapper.framework_trace,
-          full_trace: wrapper.full_trace,
+          traces: traces,
+          show_source_idx: source_to_show_id,
+          trace_to_show: trace_to_show,
           routes_inspector: routes_inspector(exception),
-          source_extract: wrapper.source_extract,
+          source_extracts: wrapper.source_extracts,
           line_number: wrapper.line_number,
           file: wrapper.file
         )

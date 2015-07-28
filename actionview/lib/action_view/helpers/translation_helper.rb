@@ -1,4 +1,5 @@
 require 'action_view/helpers/tag_helper'
+require 'active_support/core_ext/string/access'
 require 'i18n/exceptions'
 
 module ActionView
@@ -8,7 +9,7 @@ module ActionView
       include TagHelper
       # Delegates to <tt>I18n#translate</tt> but also performs three additional functions.
       #
-      # First, it will ensure that any thrown +MissingTranslation+ messages will be turned 
+      # First, it will ensure that any thrown +MissingTranslation+ messages will be turned
       # into inline spans that:
       #
       #   * have a "translation-missing" class set,
@@ -37,10 +38,10 @@ module ActionView
       def translate(key, options = {})
         options = options.dup
         has_default = options.has_key?(:default)
-        remaining_defaults = Array(options.delete(:default))
+        remaining_defaults = Array(options.delete(:default)).compact
 
         if has_default && !remaining_defaults.first.kind_of?(Symbol)
-          options[:default] = remaining_defaults.shift
+          options[:default] = remaining_defaults
         end
 
         # If the user has explicitly decided to NOT raise errors, pass that option to I18n.
@@ -48,10 +49,10 @@ module ActionView
         # Note: `raise_error` refers to us re-raising the error in this method. I18n is forced to raise by default.
         if options[:raise] == false || (options.key?(:rescue_format) && options[:rescue_format].nil?)
           raise_error = false
-          options[:raise] = false
+          i18n_raise = false
         else
           raise_error = options[:raise] || options[:rescue_format] || ActionView::Base.raise_on_missing_translations
-          options[:raise] = true
+          i18n_raise = true
         end
 
         if html_safe_translation_key?(key)
@@ -61,11 +62,11 @@ module ActionView
               html_safe_options[name] = ERB::Util.html_escape(value.to_s)
             end
           end
-          translation = I18n.translate(scope_key_by_partial(key), html_safe_options)
+          translation = I18n.translate(scope_key_by_partial(key), html_safe_options.merge(raise: i18n_raise))
 
           translation.respond_to?(:html_safe) ? translation.html_safe : translation
         else
-          I18n.translate(scope_key_by_partial(key), options)
+          I18n.translate(scope_key_by_partial(key), options.merge(raise: i18n_raise))
         end
       rescue I18n::MissingTranslationData => e
         if remaining_defaults.present?

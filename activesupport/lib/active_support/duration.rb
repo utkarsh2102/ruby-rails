@@ -1,4 +1,3 @@
-require 'active_support/proxy_object'
 require 'active_support/core_ext/array/conversions'
 require 'active_support/core_ext/object/acts_like'
 
@@ -7,7 +6,7 @@ module ActiveSupport
   # Time#advance, respectively. It mainly supports the methods on Numeric.
   #
   #   1.month.ago       # equivalent to Time.now.advance(months: -1)
-  class Duration < ProxyObject
+  class Duration
     attr_accessor :value, :parts
 
     def initialize(value, parts) #:nodoc:
@@ -39,6 +38,10 @@ module ActiveSupport
     end
     alias :kind_of? :is_a?
 
+    def instance_of?(klass) # :nodoc:
+      Duration == klass || value.instance_of?(klass)
+    end
+
     # Returns +true+ if +other+ is also a Duration instance with the
     # same +value+, or if <tt>other == value</tt>.
     def ==(other)
@@ -49,8 +52,42 @@ module ActiveSupport
       end
     end
 
+    def to_s
+      @value.to_s
+    end
+
+    # Returns the number of seconds that this Duration represents.
+    #
+    #   1.minute.to_i   # => 60
+    #   1.hour.to_i     # => 3600
+    #   1.day.to_i      # => 86400
+    #
+    # Note that this conversion makes some assumptions about the
+    # duration of some periods, e.g. months are always 30 days
+    # and years are 365.25 days:
+    #
+    #   # equivalent to 30.days.to_i
+    #   1.month.to_i    # => 2592000
+    #
+    #   # equivalent to 365.25.days.to_i
+    #   1.year.to_i     # => 31557600
+    #
+    # In such cases, Ruby's core
+    # Date[http://ruby-doc.org/stdlib/libdoc/date/rdoc/Date.html] and
+    # Time[http://ruby-doc.org/stdlib/libdoc/time/rdoc/Time.html] should be used for precision
+    # date and time arithmetic.
+    def to_i
+      @value.to_i
+    end
+
+    # Returns +true+ if +other+ is also a Duration instance, which has the
+    # same parts as this one.
     def eql?(other)
-      other.is_a?(Duration) && self == other
+      Duration === other && other.value.eql?(value)
+    end
+
+    def hash
+      @value.hash
     end
 
     def self.===(other) #:nodoc:
@@ -85,6 +122,12 @@ module ActiveSupport
       to_i
     end
 
+    def respond_to_missing?(method, include_private=false) #:nodoc
+      @value.respond_to?(method, include_private)
+    end
+
+    delegate :<=>, to: :value
+
     protected
 
       def sum(sign, time = ::Time.current) #:nodoc:
@@ -105,8 +148,7 @@ module ActiveSupport
 
       # We define it as a workaround to Ruby 2.0.0-p353 bug.
       # For more information, check rails/rails#13055.
-      # It should be dropped once a new Ruby patch-level
-      # release after 2.0.0-p353 happens.
+      # Remove it when we drop support for 2.0.0-p353.
       def ===(other) #:nodoc:
         value === other
       end

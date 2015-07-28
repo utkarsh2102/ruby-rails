@@ -189,7 +189,7 @@ render file: "/u/apps/warehouse_app/current/app/views/products/show"
 
 The `:file` option takes an absolute file-system path. Of course, you need to have rights to the view that you're using to render the content.
 
-NOTE: By default, the file is rendered without using the current layout. If you want Rails to put the file into the current layout, you need to add the `layout: true` option.
+NOTE: By default, the file is rendered using the current layout.
 
 TIP: If you're running Rails on Microsoft Windows, you should use the `:file` option to render a file, because Windows filenames do not have the same format as Unix filenames.
 
@@ -248,7 +248,8 @@ service requests that are expecting something other than proper HTML.
 
 NOTE: By default, if you use the `:plain` option, the text is rendered without
 using the current layout. If you want Rails to put the text into the current
-layout, you need to add the `layout: true` option.
+layout, you need to add the `layout: true` option and use the `.txt.erb`
+extension for the layout file.
 
 #### Rendering HTML
 
@@ -263,7 +264,7 @@ TIP: This is useful when you're rendering a small snippet of HTML code.
 However, you might want to consider moving it to a template file if the markup
 is complex.
 
-NOTE: This option will escape HTML entities if the string is not html safe.
+NOTE: This option will escape HTML entities if the string is not HTML safe.
 
 #### Rendering JSON
 
@@ -308,7 +309,7 @@ TIP: This option should be used only if you don't care about the content type of
 the response. Using `:plain` or `:html` might be more appropriate in most of the
 time.
 
-NOTE: Unless overriden, your response returned from this render option will be
+NOTE: Unless overridden, your response returned from this render option will be
 `text/html`, as that is the default content type of Action Dispatch response.
 
 #### Options for `render`
@@ -506,33 +507,33 @@ Layout declarations cascade downward in the hierarchy, and more specific layout 
     end
     ```
 
-* `posts_controller.rb`
+* `articles_controller.rb`
 
     ```ruby
-    class PostsController < ApplicationController
+    class ArticlesController < ApplicationController
     end
     ```
 
-* `special_posts_controller.rb`
+* `special_articles_controller.rb`
 
     ```ruby
-    class SpecialPostsController < PostsController
+    class SpecialArticlesController < ArticlesController
       layout "special"
     end
     ```
 
-* `old_posts_controller.rb`
+* `old_articles_controller.rb`
 
     ```ruby
-    class OldPostsController < SpecialPostsController
+    class OldArticlesController < SpecialArticlesController
       layout false
 
       def show
-        @post = Post.find(params[:id])
+        @article = Article.find(params[:id])
       end
 
       def index
-        @old_posts = Post.older
+        @old_articles = Article.older
         render layout: "old"
       end
       # ...
@@ -542,10 +543,10 @@ Layout declarations cascade downward in the hierarchy, and more specific layout 
 In this application:
 
 * In general, views will be rendered in the `main` layout
-* `PostsController#index` will use the `main` layout
-* `SpecialPostsController#index` will use the `special` layout
-* `OldPostsController#show` will use no layout at all
-* `OldPostsController#index` will use the `old` layout
+* `ArticlesController#index` will use the `main` layout
+* `SpecialArticlesController#index` will use the `special` layout
+* `OldArticlesController#show` will use no layout at all
+* `OldArticlesController#index` will use the `old` layout
 
 #### Avoiding Double Render Errors
 
@@ -903,7 +904,7 @@ You can also specify multiple videos to play by passing an array of videos to th
 This will produce:
 
 ```erb
-<video><source src="trailer.ogg" /><source src="movie.ogg" /></video>
+<video><source src="/videos/trailer.ogg" /><source src="/videos/trailer.flv" /></video>
 ```
 
 #### Linking to Audio Files with the `audio_tag`

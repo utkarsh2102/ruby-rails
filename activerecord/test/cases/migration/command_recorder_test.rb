@@ -157,6 +157,23 @@ module ActiveRecord
         assert_equal [:remove_column, [:table, :column, :type, {}], nil], remove
       end
 
+      def test_invert_change_column
+        assert_raises(ActiveRecord::IrreversibleMigration) do
+          @recorder.inverse_of :change_column, [:table, :column, :type, {}]
+        end
+      end
+
+      def test_invert_change_column_default
+        assert_raises(ActiveRecord::IrreversibleMigration) do
+          @recorder.inverse_of :change_column_default, [:table, :column, 'default_value']
+        end
+      end
+
+      def test_invert_change_column_null
+        add = @recorder.inverse_of :change_column_null, [:table, :column, true]
+        assert_equal [:change_column_null, [:table, :column, false]], add
+      end
+
       def test_invert_remove_column
         add = @recorder.inverse_of :remove_column, [:table, :column, :type, {}]
         assert_equal [:add_column, [:table, :column, :type, {}], nil], add
@@ -220,8 +237,8 @@ module ActiveRecord
       end
 
       def test_invert_remove_timestamps
-        add = @recorder.inverse_of :remove_timestamps, [:table]
-        assert_equal [:add_timestamps, [:table], nil], add
+        add = @recorder.inverse_of :remove_timestamps, [:table, { null: true }]
+        assert_equal [:add_timestamps, [:table, {null: true }], nil], add
       end
 
       def test_invert_add_reference
@@ -239,6 +256,11 @@ module ActiveRecord
         assert_equal [:add_reference, [:table, :taggable, { polymorphic: true }], nil], add
       end
 
+      def test_invert_remove_reference_with_index_and_foreign_key
+        add = @recorder.inverse_of :remove_reference, [:table, :taggable, { index: true, foreign_key: true }]
+        assert_equal [:add_reference, [:table, :taggable, { index: true, foreign_key: true }], nil], add
+      end
+
       def test_invert_remove_belongs_to_alias
         add = @recorder.inverse_of :remove_belongs_to, [:table, :user]
         assert_equal [:add_reference, [:table, :user], nil], add
@@ -252,6 +274,31 @@ module ActiveRecord
       def test_invert_disable_extension
         enable = @recorder.inverse_of :disable_extension, ['uuid-ossp']
         assert_equal [:enable_extension, ['uuid-ossp'], nil], enable
+      end
+
+      def test_invert_add_foreign_key
+        enable = @recorder.inverse_of :add_foreign_key, [:dogs, :people]
+        assert_equal [:remove_foreign_key, [:dogs, :people]], enable
+      end
+
+      def test_invert_add_foreign_key_with_column
+        enable = @recorder.inverse_of :add_foreign_key, [:dogs, :people, column: "owner_id"]
+        assert_equal [:remove_foreign_key, [:dogs, column: "owner_id"]], enable
+      end
+
+      def test_invert_add_foreign_key_with_column_and_name
+        enable = @recorder.inverse_of :add_foreign_key, [:dogs, :people, column: "owner_id", name: "fk"]
+        assert_equal [:remove_foreign_key, [:dogs, name: "fk"]], enable
+      end
+
+      def test_remove_foreign_key_is_irreversible
+        assert_raises ActiveRecord::IrreversibleMigration do
+          @recorder.inverse_of :remove_foreign_key, [:dogs, column: "owner_id"]
+        end
+
+        assert_raises ActiveRecord::IrreversibleMigration do
+          @recorder.inverse_of :remove_foreign_key, [:dogs, name: "fk"]
+        end
       end
     end
   end

@@ -9,13 +9,14 @@ ActiveRecord::Schema.define do
 
   #put adapter specific setup here
   case adapter_name
-    # For Firebird, set the sequence values 10000 when create_table is called;
-    # this prevents primary key collisions between "normally" created records
-    # and fixture-based (YAML) records.
-  when "Firebird"
-    def create_table(*args, &block)
-      ActiveRecord::Base.connection.create_table(*args, &block)
-      ActiveRecord::Base.connection.execute "SET GENERATOR #{args.first}_seq TO 10000"
+  when "PostgreSQL"
+    enable_extension!('uuid-ossp', ActiveRecord::Base.connection)
+    create_table :uuid_parents, id: :uuid, force: true do |t|
+      t.string :name
+    end
+    create_table :uuid_children, id: :uuid, force: true do |t|
+      t.string :name
+      t.uuid :uuid_parent_id
     end
   end
 
@@ -83,6 +84,8 @@ ActiveRecord::Schema.define do
   create_table :author_addresses, force: true do |t|
   end
 
+  add_foreign_key :authors, :author_addresses
+
   create_table :author_favorites, force: true do |t|
     t.column :author_id, :integer
     t.column :favorite_author_id, :integer
@@ -135,7 +138,7 @@ ActiveRecord::Schema.define do
     t.integer :engines_count
     t.integer :wheels_count
     t.column :lock_version, :integer, null: false, default: 0
-    t.timestamps
+    t.timestamps null: false
   end
 
   create_table :categories, force: true do |t|
@@ -189,7 +192,7 @@ ActiveRecord::Schema.define do
       t.text    :body, null: false
     end
     t.string  :type
-    t.integer :taggings_count, default: 0
+    t.integer :tags_count, default: 0
     t.integer :children_count, default: 0
     t.integer :parent_id
     t.references :author, polymorphic: true
@@ -223,6 +226,11 @@ ActiveRecord::Schema.define do
     t.string :system
     t.integer :developer, null: false
     t.integer :extendedWarranty, null: false
+  end
+
+  create_table :computers_developers, id: false, force: true do |t|
+    t.references :computer
+    t.references :developer
   end
 
   create_table :contracts, force: true do |t|
@@ -273,6 +281,11 @@ ActiveRecord::Schema.define do
     t.string  :alias
   end
 
+  create_table :doubloons, force: true do |t|
+    t.integer :pirate_id
+    t.integer :weight
+  end
+
   create_table :edges, force: true, id: false do |t|
     t.column :source_id, :integer, null: false
     t.column :sink_id,   :integer, null: false
@@ -308,7 +321,7 @@ ActiveRecord::Schema.define do
   end
 
   create_table :cold_jokes, force: true do |t|
-    t.string :name
+    t.string :cold_name
   end
 
   create_table :friendships, force: true do |t|
@@ -535,7 +548,7 @@ ActiveRecord::Schema.define do
     t.references :best_friend_of
     t.integer    :insures, null: false, default: 0
     t.timestamp :born_at
-    t.timestamps
+    t.timestamps null: false
   end
 
   create_table :peoples_treasures, id: false, force: true do |t|
@@ -543,10 +556,16 @@ ActiveRecord::Schema.define do
     t.column :treasure_id, :integer
   end
 
+  create_table :personal_legacy_things, force: true do |t|
+    t.integer :tps_report_number
+    t.integer :person_id
+    t.integer :version, null: false, default: 0
+  end
+
   create_table :pets, primary_key: :pet_id, force: true do |t|
     t.string :name
     t.integer :owner_id, :integer
-    t.timestamps
+    t.timestamps null: false
   end
 
   create_table :pirates, force: true do |t|
@@ -569,12 +588,21 @@ ActiveRecord::Schema.define do
     end
     t.string  :type
     t.integer :comments_count, default: 0
-    t.integer :taggings_count, default: 0
     t.integer :taggings_with_delete_all_count, default: 0
     t.integer :taggings_with_destroy_count, default: 0
     t.integer :tags_count, default: 0
     t.integer :tags_with_destroy_count, default: 0
     t.integer :tags_with_nullify_count, default: 0
+  end
+
+  create_table :serialized_posts, force: true do |t|
+    t.integer :author_id
+    t.string :title, null: false
+  end
+
+  create_table :images, force: true do |t|
+    t.integer :imageable_identifier
+    t.string :imageable_class
   end
 
   create_table :price_estimates, force: true do |t|
@@ -699,10 +727,14 @@ ActiveRecord::Schema.define do
   end
 
   create_table :topics, force: true do |t|
-    t.string   :title
+    t.string   :title, limit: 250
     t.string   :author_name
     t.string   :author_email_address
-    t.datetime :written_on
+    if mysql_56?
+      t.datetime :written_on, precision: 6
+    else
+      t.datetime :written_on
+    end
     t.time     :bonus_time
     t.date     :last_read
     # use VARCHAR2(4000) instead of CLOB datatype as CLOB data type has many limitations in
@@ -721,13 +753,13 @@ ActiveRecord::Schema.define do
     t.string   :parent_title
     t.string   :type
     t.string   :group
-    t.timestamps
+    t.timestamps null: true
   end
 
   create_table :toys, primary_key: :toy_id, force: true do |t|
     t.string :name
     t.integer :pet_id, :integer
-    t.timestamps
+    t.timestamps null: false
   end
 
   create_table :traffic_lights, force: true do |t|
@@ -743,6 +775,7 @@ ActiveRecord::Schema.define do
     t.column :type, :string
     t.column :looter_id, :integer
     t.column :looter_type, :string
+    t.belongs_to :ship
   end
 
   create_table :tyres, force: true do |t|
@@ -852,12 +885,18 @@ ActiveRecord::Schema.define do
       t.integer :fk_id, null: false
     end
 
-    create_table :fk_test_has_pk, force: true do |t|
+    create_table :fk_test_has_pk, force: true, primary_key: "pk_id" do |t|
     end
 
-    execute "ALTER TABLE fk_test_has_fk ADD CONSTRAINT fk_name FOREIGN KEY (#{quote_column_name 'fk_id'}) REFERENCES #{quote_table_name 'fk_test_has_pk'} (#{quote_column_name 'id'})"
+    add_foreign_key :fk_test_has_fk, :fk_test_has_pk, column: "fk_id", name: "fk_name", primary_key: "pk_id"
+    add_foreign_key :lessons_students, :students
+  end
 
-    execute "ALTER TABLE lessons_students ADD CONSTRAINT student_id_fk FOREIGN KEY (#{quote_column_name 'student_id'}) REFERENCES #{quote_table_name 'students'} (#{quote_column_name 'id'})"
+  create_table :overloaded_types, force: true do |t|
+    t.float :overloaded_float, default: 500
+    t.float :unoverloaded_float
+    t.string :overloaded_string_with_limit, limit: 255
+    t.string :string_with_default, default: 'the original default'
   end
 end
 

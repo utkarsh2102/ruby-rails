@@ -194,22 +194,15 @@ module ActionView
       def with_output_buffer(buf = nil) #:nodoc:
         unless buf
           buf = ActionView::OutputBuffer.new
-          buf.force_encoding(output_buffer.encoding) if output_buffer
+          if output_buffer && output_buffer.respond_to?(:encoding)
+            buf.force_encoding(output_buffer.encoding)
+          end
         end
         self.output_buffer, old_buffer = buf, output_buffer
         yield
         output_buffer
       ensure
         self.output_buffer = old_buffer
-      end
-
-      # Add the output buffer to the response body and start a new one.
-      def flush_output_buffer #:nodoc:
-        if output_buffer && !output_buffer.empty?
-          response.stream.write output_buffer
-          self.output_buffer = output_buffer.respond_to?(:clone_empty) ? output_buffer.clone_empty : output_buffer[0, 0]
-          nil
-        end
       end
     end
   end

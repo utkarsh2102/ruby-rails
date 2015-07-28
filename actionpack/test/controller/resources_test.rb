@@ -43,11 +43,11 @@ class ResourcesTest < ActionController::TestCase
           :member => member_methods,
           :path_names => path_names do |options|
 
-        collection_methods.keys.each do |action|
+        collection_methods.each_key do |action|
           assert_named_route "/messages/#{path_names[action] || action}", "#{action}_messages_path", :action => action
         end
 
-        member_methods.keys.each do |action|
+        member_methods.each_key do |action|
           assert_named_route "/messages/1/#{path_names[action] || action}", "#{action}_message_path", :action => action, :id => "1"
         end
 
@@ -150,7 +150,7 @@ class ResourcesTest < ActionController::TestCase
       end
 
       assert_restful_named_routes_for :messages do |options|
-        actions.keys.each do |action|
+        actions.each_key do |action|
           assert_named_route "/messages/#{action}", "#{action}_messages_path", :action => action
         end
       end
@@ -180,7 +180,7 @@ class ResourcesTest < ActionController::TestCase
       end
 
       assert_restful_named_routes_for :messages, :path_prefix => 'threads/1/', :name_prefix => 'thread_', :options => { :thread_id => '1' } do |options|
-        actions.keys.each do |action|
+        actions.each_key do |action|
           assert_named_route "/threads/1/messages/#{action}", "#{action}_thread_messages_path", :action => action
         end
       end
@@ -207,7 +207,7 @@ class ResourcesTest < ActionController::TestCase
       end
 
       assert_restful_named_routes_for :messages, :path_prefix => 'threads/1/', :name_prefix => 'thread_', :options => { :thread_id => '1' } do |options|
-        actions.keys.each do |action|
+        actions.each_key do |action|
           assert_named_route "/threads/1/messages/#{action}", "#{action}_thread_messages_path", :action => action
         end
       end
@@ -237,7 +237,7 @@ class ResourcesTest < ActionController::TestCase
       end
 
       assert_restful_named_routes_for :messages, :path_prefix => 'threads/1/', :name_prefix => 'thread_', :options => { :thread_id => '1' } do |options|
-        actions.keys.each do |action|
+        actions.each_key do |action|
           assert_named_route "/threads/1/messages/#{action}.xml", "#{action}_thread_messages_path", :action => action, :format => 'xml'
         end
       end
@@ -1044,6 +1044,28 @@ class ResourcesTest < ActionController::TestCase
 
       assert_routing '/product', :controller => 'products', :action => 'show'
       assert set.recognize_path("/product", :method => :get)
+    end
+  end
+
+  def test_assert_routing_accepts_all_as_a_valid_method
+    with_routing do |set|
+      set.draw do
+        match "/products", to: "products#show", via: :all
+      end
+
+      assert_routing({ method: "all", path: "/products" }, { controller: "products", action: "show" })
+    end
+  end
+
+  def test_assert_routing_fails_when_not_all_http_methods_are_recognized
+    with_routing do |set|
+      set.draw do
+        match "/products", to: "products#show", via: [:get, :post, :put]
+      end
+
+      assert_raises(Minitest::Assertion) do
+        assert_routing({ method: "all", path: "/products" }, { controller: "products", action: "show" })
+      end
     end
   end
 

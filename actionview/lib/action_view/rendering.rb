@@ -35,12 +35,13 @@ module ActionView
     module ClassMethods
       def view_context_class
         @view_context_class ||= begin
-          routes = respond_to?(:_routes) && _routes
+          supports_path = supports_path?
+          routes  = respond_to?(:_routes)  && _routes
           helpers = respond_to?(:_helpers) && _helpers
 
           Class.new(ActionView::Base) do
             if routes
-              include routes.url_helpers
+              include routes.url_helpers(supports_path)
               include routes.mounted_helpers
             end
 
@@ -62,8 +63,8 @@ module ActionView
     #
     # The view class must have the following methods:
     # View.new[lookup_context, assigns, controller]
-    #   Create a new ActionView instance for a controller
-    # View#render[options]
+    #   Create a new ActionView instance for a controller and we can also pass the arguments.
+    # View#render(option)
     #   Returns String with the rendered template
     #
     # Override this method in a module to change the default behavior.
@@ -107,7 +108,7 @@ module ActionView
       end
 
       # Normalize args by converting render "foo" to render :action => "foo" and
-      # render "foo/bar" to render :file => "foo/bar".
+      # render "foo/bar" to render :template => "foo/bar".
       # :api: private
       def _normalize_args(action=nil, options={})
         options = super(action, options)
@@ -117,7 +118,7 @@ module ActionView
           options = action
         when String, Symbol
           action = action.to_s
-          key = action.include?(?/) ? :file : :action
+          key = action.include?(?/) ? :template : :action
           options[key] = action
         else
           options[:partial] = action

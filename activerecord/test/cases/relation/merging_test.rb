@@ -2,6 +2,7 @@ require 'cases/helper'
 require 'models/author'
 require 'models/comment'
 require 'models/developer'
+require 'models/computer'
 require 'models/post'
 require 'models/project'
 require 'models/rating'
@@ -19,9 +20,7 @@ class RelationMergingTest < ActiveRecord::TestCase
 
   def test_relation_to_sql
     post = Post.first
-    sql = Post.connection.unprepared_statement do
-      post.comments.to_sql
-    end
+    sql = post.comments.to_sql
     assert_match(/.?post_id.? = #{post.id}\Z/i, sql)
   end
 
@@ -83,31 +82,20 @@ class RelationMergingTest < ActiveRecord::TestCase
     left  = Post.where(title: "omg").where(comments_count: 1)
     right = Post.where(title: "wtf").where(title: "bbq")
 
-    expected = [left.where_values[1]] + right.where_values
+    expected = [left.bind_values[1]] + right.bind_values
     merged   = left.merge(right)
 
-    assert_equal expected, merged.where_values
+    assert_equal expected, merged.bind_values
     assert !merged.to_sql.include?("omg")
     assert merged.to_sql.include?("wtf")
     assert merged.to_sql.include?("bbq")
-  end
-
-  def test_merging_removes_rhs_bind_parameters
-    left  = Post.where(id: Arel::Nodes::BindParam.new('?'))
-    column = Post.columns_hash['id']
-    left.bind_values += [[column, 20]]
-    right   = Post.where(id: 10)
-
-    merged = left.merge(right)
-    assert_equal [], merged.bind_values
   end
 
   def test_merging_keeps_lhs_bind_parameters
     column = Post.columns_hash['id']
     binds = [[column, 20]]
 
-    right  = Post.where(id: Arel::Nodes::BindParam.new('?'))
-    right.bind_values += binds
+    right  = Post.where(id: 20)
     left   = Post.where(id: 10)
 
     merged = left.merge(right)
@@ -115,17 +103,9 @@ class RelationMergingTest < ActiveRecord::TestCase
   end
 
   def test_merging_reorders_bind_params
-    post         = Post.first
-    id_column    = Post.columns_hash['id']
-    title_column = Post.columns_hash['title']
-
-    bv = Post.connection.substitute_at id_column, 0
-
-    right  = Post.where(id: bv)
-    right.bind_values += [[id_column, post.id]]
-
-    left   = Post.where(title: bv)
-    left.bind_values += [[title_column, post.title]]
+    post  = Post.first
+    right = Post.where(id: 1)
+    left  = Post.where(title: post.title)
 
     merged = left.merge(right)
     assert_equal post, merged.first
@@ -138,7 +118,7 @@ class RelationMergingTest < ActiveRecord::TestCase
 end
 
 class MergingDifferentRelationsTest < ActiveRecord::TestCase
-  fixtures :posts, :authors
+  fixtures :posts, :authors, :developers
 
   test "merging where relations" do
     hello_by_bob = Post.where(body: "hello").joins(:author).

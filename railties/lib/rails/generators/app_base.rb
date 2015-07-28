@@ -41,9 +41,6 @@ module Rails
         class_option :skip_active_record, type: :boolean, aliases: '-O', default: false,
                                           desc: 'Skip Active Record files'
 
-        class_option :skip_action_view,   type: :boolean, aliases: '-V', default: false,
-                                          desc: 'Skip Action View files'
-
         class_option :skip_sprockets,     type: :boolean, aliases: '-S', default: false,
                                           desc: 'Skip Sprockets files'
 
@@ -65,6 +62,9 @@ module Rails
         class_option :edge,               type: :boolean, default: false,
                                           desc: "Setup the #{name} with Gemfile pointing to Rails repository"
 
+        class_option :skip_turbolinks,    type: :boolean, default: false,
+                                          desc: 'Skip turbolinks gem'
+
         class_option :skip_test_unit,     type: :boolean, aliases: '-T', default: false,
                                           desc: 'Skip Test::Unit files'
 
@@ -79,7 +79,6 @@ module Rails
       end
 
       def initialize(*args)
-        @original_wd   = Dir.pwd
         @gem_filter    = lambda { |gem| true }
         @extra_entries = []
         super
@@ -105,14 +104,14 @@ module Rails
       end
 
       def gemfile_entries
-        [ rails_gemfile_entry,
-          database_gemfile_entry,
-          assets_gemfile_entry,
-          javascript_gemfile_entry,
-          jbuilder_gemfile_entry,
-          sdoc_gemfile_entry,
-          spring_gemfile_entry,
-          @extra_entries].flatten.find_all(&@gem_filter)
+        [rails_gemfile_entry,
+         database_gemfile_entry,
+         assets_gemfile_entry,
+         javascript_gemfile_entry,
+         jbuilder_gemfile_entry,
+         sdoc_gemfile_entry,
+         psych_gemfile_entry,
+         @extra_entries].flatten.find_all(&@gem_filter)
       end
 
       def add_gem_entry_filter
@@ -165,11 +164,15 @@ module Rails
       end
 
       def include_all_railties?
-        !options[:skip_active_record] && !options[:skip_action_view] && !options[:skip_test_unit] && !options[:skip_sprockets]
+        !options[:skip_active_record] && !options[:skip_test_unit] && !options[:skip_sprockets]
       end
 
       def comment_if(value)
         options[value] ? '# ' : ''
+      end
+
+      def sqlite3?
+        !options[:skip_active_record] && options[:database] == 'sqlite3'
       end
 
       class GemfileEntry < Struct.new(:name, :version, :comment, :options, :commented_out)
@@ -192,18 +195,13 @@ module Rails
         def self.path(name, path, comment = nil)
           new(name, nil, comment, path: path)
         end
-
-        def padding(max_width)
-          ' ' * (max_width - name.length + 2)
-        end
       end
 
       def rails_gemfile_entry
         if options.dev?
-          [GemfileEntry.path('rails', Rails::Generators::RAILS_DEV_PATH),
-           GemfileEntry.github('arel', 'rails/arel', '5-0-stable')]
+          [GemfileEntry.path('rails', Rails::Generators::RAILS_DEV_PATH)]
         elsif options.edge?
-          [GemfileEntry.github('rails', 'rails/rails', '4-1-stable')]
+          [GemfileEntry.github('rails', 'rails/rails', '4-2-stable')]
         else
           [GemfileEntry.version('rails',
                             Rails::VERSION::STRING,
@@ -241,14 +239,15 @@ module Rails
       def assets_gemfile_entry
         return [] if options[:skip_sprockets]
 
-        [
-          GemfileEntry.version('sass-rails',
-                               '~> 4.0.3',
-                               'Use SCSS for stylesheets'),
-          GemfileEntry.version('uglifier',
-                               '>= 1.3.0',
-                               'Use Uglifier as compressor for JavaScript assets')
-        ]
+        gems = []
+        gems << GemfileEntry.version('sass-rails', '~> 5.0',
+                                     'Use SCSS for stylesheets')
+
+        gems << GemfileEntry.version('uglifier',
+                                   '>= 1.3.0',
+                                   'Use Uglifier as compressor for JavaScript assets')
+
+        gems
       end
 
       def jbuilder_gemfile_entry
@@ -262,12 +261,8 @@ module Rails
       end
 
       def coffee_gemfile_entry
-        comment = 'Use CoffeeScript for .js.coffee assets and views'
-        if options.dev? || options.edge?
-          GemfileEntry.github 'coffee-rails', 'rails/coffee-rails', nil, comment
-        else
-          GemfileEntry.version 'coffee-rails', '~> 4.0.0', comment
-        end
+        comment = 'Use CoffeeScript for .coffee assets and views'
+        GemfileEntry.version 'coffee-rails', '~> 4.1.0', comment
       end
 
       def javascript_gemfile_entry
@@ -276,10 +271,13 @@ module Rails
         else
           gems = [coffee_gemfile_entry, javascript_runtime_gemfile_entry]
           gems << GemfileEntry.version("#{options[:javascript]}-rails", nil,
-                                 "Use #{options[:javascript]} as the JavaScript library")
+                                       "Use #{options[:javascript]} as the JavaScript library")
 
-          gems << GemfileEntry.version("turbolinks", nil,
-            "Turbolinks makes following links in your web application faster. Read more: https://github.com/rails/turbolinks")
+          unless options[:skip_turbolinks]
+            gems << GemfileEntry.version("turbolinks", nil,
+             "Turbolinks makes following links in your web application faster. Read more: https://github.com/rails/turbolinks")
+          end
+
           gems
         end
       end
@@ -293,10 +291,12 @@ module Rails
         end
       end
 
-      def spring_gemfile_entry
-        return [] unless spring_install?
-        comment = 'Spring speeds up development by keeping your application running in the background. Read more: https://github.com/rails/spring'
-        GemfileEntry.new('spring', nil, comment, group: :development)
+      def psych_gemfile_entry
+        return [] unless defined?(Rubinius)
+
+        comment = 'Use Psych as the YAML engine, instead of Syck, so serialized ' \
+                  'data can be read safely from different rubies (see http://git.io/uuLVag)'
+        GemfileEntry.new('psych', '~> 2.0', comment, platforms: :rbx)
       end
 
       def bundle_command(command)
@@ -328,7 +328,7 @@ module Rails
       end
 
       def spring_install?
-        !options[:skip_spring] && Process.respond_to?(:fork)
+        !options[:skip_spring] && Process.respond_to?(:fork) && !RUBY_PLATFORM.include?("cygwin")
       end
 
       def run_bundle

@@ -17,7 +17,7 @@ module Rails
 
           middleware.use ::Rack::Sendfile, config.action_dispatch.x_sendfile_header
 
-          if config.serve_static_assets
+          if config.serve_static_files
             middleware.use ::ActionDispatch::Static, paths["public"].first, config.static_cache_control
           end
 
@@ -66,7 +66,11 @@ module Rails
         end
 
         def allow_concurrency?
-          config.allow_concurrency.nil? ? config.cache_classes : config.allow_concurrency
+          if config.allow_concurrency.nil?
+            config.cache_classes && config.eager_load
+          else
+            config.allow_concurrency
+          end
         end
 
         def load_rack_cache

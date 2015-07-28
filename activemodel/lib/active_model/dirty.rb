@@ -1,5 +1,6 @@
 require 'active_support/hash_with_indifferent_access'
 require 'active_support/core_ext/object/duplicable'
+require 'active_support/core_ext/string/filters'
 
 module ActiveModel
   # == Active \Model \Dirty
@@ -15,8 +16,9 @@ module ActiveModel
   # * Call <tt>attr_name_will_change!</tt> before each change to the tracked
   #   attribute.
   # * Call <tt>changes_applied</tt> after the changes are persisted.
-  # * Call <tt>reset_changes</tt> when you want to reset the changes
+  # * Call <tt>clear_changes_information</tt> when you want to reset the changes
   #   information.
+  # * Call <tt>restore_attributes</tt> when you want to restore previous data.
   #
   # A minimal implementation could be:
   #
@@ -36,18 +38,25 @@ module ActiveModel
   #
   #     def save
   #       # do persistence work
+  #
   #       changes_applied
   #     end
   #
   #     def reload!
-  #       reset_changes
+  #       # get the values from the persistence layer
+  #
+  #       clear_changes_information
+  #     end
+  #
+  #     def rollback!
+  #       restore_attributes
   #     end
   #   end
   #
-  # A newly instantiated object is unchanged:
+  # A newly instantiated +Person+ object is unchanged:
   #
-  #   person = Person.find_by(name: 'Uncle Bob')
-  #   person.changed?       # => false
+  #   person = Person.new
+  #   person.changed? # => false
   #
   # Change the name:
   #
@@ -63,8 +72,8 @@ module ActiveModel
   # Save the changes:
   #
   #   person.save
-  #   person.changed?       # => false
-  #   person.name_changed?  # => false
+  #   person.changed?      # => false
+  #   person.name_changed? # => false
   #
   # Reset the changes:
   #
@@ -72,26 +81,35 @@ module ActiveModel
   #   person.reload!
   #   person.previous_changes # => {}
   #
+  # Rollback the changes:
+  #
+  #   person.name = "Uncle Bob"
+  #   person.rollback!
+  #   person.name          # => "Bill"
+  #   person.name_changed? # => false
+  #
   # Assigning the same value leaves the attribute unchanged:
   #
   #   person.name = 'Bill'
-  #   person.name_changed?  # => false
-  #   person.name_change    # => nil
+  #   person.name_changed? # => false
+  #   person.name_change   # => nil
   #
   # Which attributes have changed?
   #
   #   person.name = 'Bob'
-  #   person.changed        # => ["name"]
-  #   person.changes        # => {"name" => ["Bill", "Bob"]}
+  #   person.changed # => ["name"]
+  #   person.changes # => {"name" => ["Bill", "Bob"]}
   #
-  # If an attribute is modified in-place then make use of <tt>[attribute_name]_will_change!</tt>
-  # to mark that the attribute is changing. Otherwise ActiveModel can't track
-  # changes to in-place attributes.
+  # If an attribute is modified in-place then make use of
+  # +[attribute_name]_will_change!+ to mark that the attribute is changing.
+  # Otherwise Active Model can't track changes to in-place attributes. Note
+  # that Active Record can detect in-place modifications automatically. You do
+  # not need to call +[attribute_name]_will_change!+ on Active Record models.
   #
   #   person.name_will_change!
-  #   person.name_change    # => ["Bill", "Bill"]
+  #   person.name_change # => ["Bill", "Bill"]
   #   person.name << 'y'
-  #   person.name_change    # => ["Bill", "Billy"]
+  #   person.name_change # => ["Bill", "Billy"]
   module Dirty
     extend ActiveSupport::Concern
     include ActiveModel::AttributeMethods
@@ -99,6 +117,7 @@ module ActiveModel
     included do
       attribute_method_suffix '_changed?', '_change', '_will_change!', '_was'
       attribute_method_affix prefix: 'reset_', suffix: '!'
+      attribute_method_affix prefix: 'restore_', suffix: '!'
     end
 
     # Returns +true+ if any attribute have unsaved changes, +false+ otherwise.
@@ -151,7 +170,7 @@ module ActiveModel
 
     # Handle <tt>*_changed?</tt> for +method_missing+.
     def attribute_changed?(attr, options = {}) #:nodoc:
-      result = changed_attributes.include?(attr)
+      result = changes_include?(attr)
       result &&= options[:to] == __send__(attr) if options.key?(:to)
       result &&= options[:from] == changed_attributes[attr] if options.key?(:from)
       result
@@ -162,18 +181,37 @@ module ActiveModel
       attribute_changed?(attr) ? changed_attributes[attr] : __send__(attr)
     end
 
+    # Restore all previous data of the provided attributes.
+    def restore_attributes(attributes = changed)
+      attributes.each { |attr| restore_attribute! attr }
+    end
+
     private
 
+      def changes_include?(attr_name)
+        attributes_changed_by_setter.include?(attr_name)
+      end
+      alias attribute_changed_by_setter? changes_include?
+
       # Removes current changes and makes them accessible through +previous_changes+.
-      def changes_applied
+      def changes_applied # :doc:
         @previously_changed = changes
         @changed_attributes = ActiveSupport::HashWithIndifferentAccess.new
       end
 
-      # Removes all dirty data: current changes and previous changes
-      def reset_changes
+      # Clear all dirty data: current changes and previous changes.
+      def clear_changes_information # :doc:
         @previously_changed = ActiveSupport::HashWithIndifferentAccess.new
         @changed_attributes = ActiveSupport::HashWithIndifferentAccess.new
+      end
+
+      def reset_changes
+        ActiveSupport::Deprecation.warn(<<-MSG.squish)
+          `#reset_changes` is deprecated and will be removed on Rails 5.
+          Please use `#clear_changes_information` instead.
+        MSG
+
+        clear_changes_information
       end
 
       # Handle <tt>*_change</tt> for +method_missing+.
@@ -191,15 +229,39 @@ module ActiveModel
         rescue TypeError, NoMethodError
         end
 
-        changed_attributes[attr] = value
+        set_attribute_was(attr, value)
       end
 
       # Handle <tt>reset_*!</tt> for +method_missing+.
       def reset_attribute!(attr)
+        ActiveSupport::Deprecation.warn(<<-MSG.squish)
+          `#reset_#{attr}!` is deprecated and will be removed on Rails 5.
+          Please use `#restore_#{attr}!` instead.
+        MSG
+
+        restore_attribute!(attr)
+      end
+
+      # Handle <tt>restore_*!</tt> for +method_missing+.
+      def restore_attribute!(attr)
         if attribute_changed?(attr)
           __send__("#{attr}=", changed_attributes[attr])
-          changed_attributes.delete(attr)
+          clear_attribute_changes([attr])
         end
+      end
+
+      # This is necessary because `changed_attributes` might be overridden in
+      # other implemntations (e.g. in `ActiveRecord`)
+      alias_method :attributes_changed_by_setter, :changed_attributes # :nodoc:
+
+      # Force an attribute to have a particular "before" value
+      def set_attribute_was(attr, old_value)
+        attributes_changed_by_setter[attr] = old_value
+      end
+
+      # Remove changes information for the provided attributes.
+      def clear_attribute_changes(attributes) # :doc:
+        attributes_changed_by_setter.except!(*attributes)
       end
   end
 end

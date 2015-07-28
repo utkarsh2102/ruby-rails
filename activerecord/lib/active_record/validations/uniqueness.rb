@@ -13,14 +13,17 @@ module ActiveRecord
       def validate_each(record, attribute, value)
         finder_class = find_finder_class_for(record)
         table = finder_class.arel_table
-        value = map_enum_attribute(finder_class,attribute,value)
-        value = deserialize_attribute(record, attribute, value)
+        value = map_enum_attribute(finder_class, attribute, value)
 
-        relation = build_relation(finder_class, table, attribute, value)
-        relation = relation.and(table[finder_class.primary_key.to_sym].not_eq(record.id)) if record.persisted?
-        relation = scope_relation(record, table, relation)
-        relation = finder_class.unscoped.where(relation)
-        relation = relation.merge(options[:conditions]) if options[:conditions]
+        begin
+          relation = build_relation(finder_class, table, attribute, value)
+          relation = relation.and(table[finder_class.primary_key.to_sym].not_eq(record.id)) if record.persisted?
+          relation = scope_relation(record, table, relation)
+          relation = finder_class.unscoped.where(relation)
+          relation = relation.merge(options[:conditions]) if options[:conditions]
+        rescue RangeError
+          relation = finder_class.none
+        end
 
         if relation.exists?
           error_options = options.except(:case_sensitive, :scope, :conditions)
@@ -49,7 +52,7 @@ module ActiveRecord
       def build_relation(klass, table, attribute, value) #:nodoc:
         if reflection = klass._reflect_on_association(attribute)
           attribute = reflection.foreign_key
-          value = value.attributes[reflection.primary_key_column.name] unless value.nil?
+          value = value.attributes[reflection.klass.primary_key] unless value.nil?
         end
 
         attribute_name = attribute.to_s
@@ -62,14 +65,15 @@ module ActiveRecord
 
         column = klass.columns_hash[attribute_name]
         value  = klass.connection.type_cast(value, column)
-        value  = value.to_s[0, column.limit] if value && column.limit && column.text?
+        if value.is_a?(String) && column.limit
+          value = value.to_s[0, column.limit]
+        end
 
         if !options[:case_sensitive] && value && column.text?
           # will use SQL LOWER function before comparison, unless it detects a case insensitive collation
           klass.connection.case_insensitive_comparison(table, attribute, column, value)
         else
-          value = klass.connection.case_sensitive_modifier(value) unless value.nil?
-          table[attribute].eq(value)
+          klass.connection.case_sensitive_comparison(table, attribute, column, value)
         end
       end
 
@@ -79,26 +83,12 @@ module ActiveRecord
             scope_value = record.send(reflection.foreign_key)
             scope_item  = reflection.foreign_key
           else
-            scope_value = record.read_attribute(scope_item)
+            scope_value = record._read_attribute(scope_item)
           end
-
-          # This is basically emulating an Arel::Nodes::Casted
-          column = record.class.columns_hash[scope_item.to_s]
-          quoted_value = record.class.connection.quote(scope_value, column)
-          unless scope_value.nil?
-            node = Arel::Nodes::SqlLiteral.new(quoted_value)
-          end
-
-          relation = relation.and(table[scope_item].eq(node))
+          relation = relation.and(table[scope_item].eq(scope_value))
         end
 
         relation
-      end
-
-      def deserialize_attribute(record, attribute, value)
-        coder = record.class.serialized_attributes[attribute.to_s]
-        value = coder.dump value if value && coder
-        value
       end
 
       def map_enum_attribute(klass, attribute, value)
@@ -166,7 +156,7 @@ module ActiveRecord
       #   or <tt>if: Proc.new { |user| user.signup_step > 2 }</tt>). The method,
       #   proc or string should return or evaluate to a +true+ or +false+ value.
       # * <tt>:unless</tt> - Specifies a method, proc or string to call to
-      #   determine if the validation should ot occur (e.g. <tt>unless: :skip_validation</tt>,
+      #   determine if the validation should not occur (e.g. <tt>unless: :skip_validation</tt>,
       #   or <tt>unless: Proc.new { |user| user.signup_step <= 2 }</tt>). The
       #   method, proc or string should return or evaluate to a +true+ or +false+
       #   value.

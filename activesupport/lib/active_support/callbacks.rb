@@ -71,17 +71,19 @@ module ActiveSupport
     # order.
     #
     # If the callback chain was halted, returns +false+. Otherwise returns the
-    # result of the block, or +true+ if no block is given.
+    # result of the block, +nil+ if no callbacks have been set, or +true+
+    # if callbacks have been set but no block is given.
     #
     #   run_callbacks :save do
     #     save
     #   end
     def run_callbacks(kind, &block)
-      cbs = send("_#{kind}_callbacks")
-      if cbs.empty?
+      callbacks = send("_#{kind}_callbacks")
+
+      if callbacks.empty?
         yield if block_given?
       else
-        runner = cbs.compile
+        runner = callbacks.compile
         e = Filters::Environment.new(self, false, nil, block)
         runner.call(e).value
       end
@@ -131,8 +133,6 @@ module ActiveSupport
           end
         end
 
-        private
-
         def self.halting_and_conditional(callback_sequence, user_callback, user_conditions, halted_lambda, filter)
           callback_sequence.before do |env|
             target = env.target
@@ -150,6 +150,7 @@ module ActiveSupport
             env
           end
         end
+        private_class_method :halting_and_conditional
 
         def self.halting(callback_sequence, user_callback, halted_lambda, filter)
           callback_sequence.before do |env|
@@ -168,6 +169,7 @@ module ActiveSupport
             env
           end
         end
+        private_class_method :halting
 
         def self.conditional(callback_sequence, user_callback, user_conditions)
           callback_sequence.before do |env|
@@ -181,6 +183,7 @@ module ActiveSupport
             env
           end
         end
+        private_class_method :conditional
 
         def self.simple(callback_sequence, user_callback)
           callback_sequence.before do |env|
@@ -189,6 +192,7 @@ module ActiveSupport
             env
           end
         end
+        private_class_method :simple
       end
 
       class After
@@ -212,8 +216,6 @@ module ActiveSupport
           end
         end
 
-        private
-
         def self.halting_and_conditional(callback_sequence, user_callback, user_conditions)
           callback_sequence.after do |env|
             target = env.target
@@ -227,6 +229,7 @@ module ActiveSupport
             env
           end
         end
+        private_class_method :halting_and_conditional
 
         def self.halting(callback_sequence, user_callback)
           callback_sequence.after do |env|
@@ -237,6 +240,7 @@ module ActiveSupport
             env
           end
         end
+        private_class_method :halting
 
         def self.conditional(callback_sequence, user_callback, user_conditions)
           callback_sequence.after do |env|
@@ -250,6 +254,7 @@ module ActiveSupport
             env
           end
         end
+        private_class_method :conditional
 
         def self.simple(callback_sequence, user_callback)
           callback_sequence.after do |env|
@@ -258,6 +263,7 @@ module ActiveSupport
             env
           end
         end
+        private_class_method :simple
       end
 
       class Around
@@ -272,8 +278,6 @@ module ActiveSupport
             simple(callback_sequence, user_callback)
           end
         end
-
-        private
 
         def self.halting_and_conditional(callback_sequence, user_callback, user_conditions)
           callback_sequence.around do |env, &run|
@@ -293,6 +297,7 @@ module ActiveSupport
             end
           end
         end
+        private_class_method :halting_and_conditional
 
         def self.halting(callback_sequence, user_callback)
           callback_sequence.around do |env, &run|
@@ -310,6 +315,7 @@ module ActiveSupport
             end
           end
         end
+        private_class_method :halting
 
         def self.conditional(callback_sequence, user_callback, user_conditions)
           callback_sequence.around do |env, &run|
@@ -327,6 +333,7 @@ module ActiveSupport
             end
           end
         end
+        private_class_method :conditional
 
         def self.simple(callback_sequence, user_callback)
           callback_sequence.around do |env, &run|
@@ -337,6 +344,7 @@ module ActiveSupport
             env
           end
         end
+        private_class_method :simple
       end
     end
 
@@ -414,15 +422,8 @@ module ActiveSupport
       #   Procs::   A proc to call with the object.
       #   Objects:: An object with a <tt>before_foo</tt> method on it to call.
       #
-      # All of these objects are compiled into methods and handled
-      # the same after this point:
-      #
-      #   Symbols:: Already methods.
-      #   Strings:: class_eval'd into methods.
-      #   Procs::   using define_method compiled into methods.
-      #   Objects::
-      #     a method is created that calls the before_foo method
-      #     on the object.
+      # All of these objects are converted into a lambda and handled
+      # the same after this point.
       def make_lambda(filter)
         case filter
         when Symbol
@@ -598,7 +599,7 @@ module ActiveSupport
       # This is used internally to append, prepend and skip callbacks to the
       # CallbackChain.
       def __update_callbacks(name) #:nodoc:
-        ([self] + ActiveSupport::DescendantsTracker.descendants(self)).reverse.each do |target|
+        ([self] + ActiveSupport::DescendantsTracker.descendants(self)).reverse_each do |target|
           chain = target.get_callbacks name
           yield target, chain.dup
         end
@@ -608,7 +609,7 @@ module ActiveSupport
       #
       #   set_callback :save, :before, :before_meth
       #   set_callback :save, :after,  :after_meth, if: :condition
-      #   set_callback :save, :around, ->(r, &block) { stuff; result = block.call; stuff }
+      #   set_callback :save, :around, ->(r, block) { stuff; result = block.call; stuff }
       #
       # The second arguments indicates whether the callback is to be run +:before+,
       # +:after+, or +:around+ the event. If omitted, +:before+ is assumed. This
@@ -633,10 +634,12 @@ module ActiveSupport
       #
       # ===== Options
       #
-      # * <tt>:if</tt> - A symbol naming an instance method or a proc; the
-      #   callback will be called only when it returns a +true+ value.
-      # * <tt>:unless</tt> - A symbol naming an instance method or a proc; the
-      #   callback will be called only when it returns a +false+ value.
+      # * <tt>:if</tt> - A symbol, a string or an array of symbols and strings,
+      #   each naming an instance method or a proc; the callback will be called
+      #   only when they all return a true value.
+      # * <tt>:unless</tt> - A symbol, a string or an array of symbols and
+      #   strings, each naming an instance method or a proc; the callback will
+      #   be called only when they all return a false value.
       # * <tt>:prepend</tt> - If +true+, the callback will be prepended to the
       #   existing chain rather than appended.
       def set_callback(name, *filter_list, &block)
@@ -758,14 +761,11 @@ module ActiveSupport
       #     define_callbacks :save, scope: [:name]
       #
       #   would call <tt>Audit#save</tt>.
+      #
+      # NOTE: +method_name+ passed to `define_model_callbacks` must not end with
+      # `!`, `?` or `=`.
       def define_callbacks(*names)
         options = names.extract_options!
-        if options.key?(:terminator) && String === options[:terminator]
-          ActiveSupport::Deprecation.warn "String based terminators are deprecated, please use a lambda"
-          value = options[:terminator]
-          line = class_eval "lambda { |result| #{value} }", __FILE__, __LINE__
-          options[:terminator] = lambda { |target, result| target.instance_exec(result, &line) }
-        end
 
         names.each do |name|
           class_attribute "_#{name}_callbacks"

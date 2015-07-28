@@ -38,8 +38,29 @@ module ActiveRecord
           scope.scope_for_create.stringify_keys.except(klass.primary_key)
         end
 
+        def get_records
+          if reflection.scope_chain.any?(&:any?) ||
+              scope.eager_loading? ||
+              klass.current_scope ||
+              klass.default_scopes.any?
+
+            return scope.limit(1).to_a
+          end
+
+          conn = klass.connection
+          sc = reflection.association_scope_cache(conn, owner) do
+            StatementCache.create(conn) { |params|
+              as = AssociationScope.create { params.bind }
+              target_scope.merge(as.scope(self, conn)).limit(1)
+            }
+          end
+
+          binds = AssociationScope.get_bind_values(owner, reflection.chain)
+          sc.execute binds, klass, klass.connection
+        end
+
         def find_target
-          if record = scope.take
+          if record = get_records.first
             set_inverse_instance record
           end
         end

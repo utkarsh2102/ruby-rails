@@ -1,129 +1,78 @@
-## Rails 4.1.10 (March 19, 2015) ##
+## Rails 4.2.3 (June 25, 2015) ##
+
+* No Changes *
+
+
+## Rails 4.2.2 (June 16, 2015) ##
+
+* No Changes *
+
+
+## Rails 4.2.1 (March 19, 2015) ##
 
 *   No changes.
 
 
-## Rails 4.1.9 (January 6, 2015) ##
+## Rails 4.2.0 (December 20, 2014) ##
 
-*   No changes.
+*   Passwords with spaces only allowed in `ActiveModel::SecurePassword`.
 
+    Presence validation can be used to restore old behavior.
 
-## Rails 4.1.8 (November 16, 2014) ##
+    *Yevhene Shemet*
 
-*   No changes.
+*   Validate options passed to `ActiveModel::Validations.validate`.
 
+    Preventing, in many cases, the simple mistake of using `validate` instead of `validates`.
 
-## Rails 4.1.7.1 (November 19, 2014) ##
+    *Sonny Michaud*
 
-*   No changes.
+*   Deprecate `reset_#{attribute}` in favor of `restore_#{attribute}`.
 
+    These methods may cause confusion with the `reset_changes`, which has
+    different behaviour.
 
-## Rails 4.1.7 (October 29, 2014) ##
+    *Rafael Mendonça França*
 
-*   No changes.
+*   Deprecate `ActiveModel::Dirty#reset_changes` in favor of `#clear_changes_information`.
 
+    Method's name is causing confusion with the `reset_#{attribute}` methods.
+    While `reset_name` sets the value of the name attribute to previous value
+    `reset_changes` only discards the changes.
 
-## Rails 4.1.6 (September 11, 2014) ##
+    *Rafael Mendonça França*
 
-*   No changes.
+*   Added `restore_attributes` method to `ActiveModel::Dirty` API which restores
+    the value of changed attributes to previous value.
 
+    *Igor G.*
 
-## Rails 4.1.5 (August 18, 2014) ##
+*   Allow proc and symbol as values for `only_integer` of `NumericalityValidator`
 
-*   No changes.
+    *Robin Mehner*
 
+*   `has_secure_password` now verifies that the given password is less than 72
+    characters if validations are enabled.
 
-## Rails 4.1.4 (July 2, 2014) ##
+    Fixes #14591.
 
-*   No changes.
+    *Akshay Vishnoi*
 
+*   Remove deprecated `Validator#setup` without replacement.
 
-## Rails 4.1.3 (July 2, 2014) ##
+    See #10716.
 
-*   No changes.
+    *Kuldeep Aggarwal*
 
+*   Add plural and singular form for length validator's default messages.
 
-## Rails 4.1.2 (June 26, 2014) ##
+    *Abd ar-Rahman Hamid*
 
-*   No changes.
+*   Introduce `validate` as an alias for `valid?`.
 
+    This is more intuitive when you want to run validations but don't care about
+    the return value.
 
-## Rails 4.1.1 (May 6, 2014) ##
+    *Henrik Nyh*
 
-*   No changes.
-
-
-## Rails 4.1.0 (April 8, 2014) ##
-
-*   `#to_param` returns `nil` if `#to_key` returns `nil`. Fixes #11399.
-
-    *Yves Senn*
-
-*   Ability to specify multiple contexts when defining a validation.
-
-    Example:
-
-        class Person
-          include ActiveModel::Validations
-
-          attr_reader :name
-          validates_presence_of :name, on: [:verify, :approve]
-        end
-
-        person = Person.new
-        person.valid?                           # => true
-        person.valid?(:verify)                  # => false
-        person.errors.full_messages_for(:name)  # => ["Name can't be blank"]
-        person.valid?(:approve)                 # => false
-        person.errors.full_messages_for(:name)  # => ["Name can't be blank"]
-
-    *Vince Puzzella*
-
-*   `attribute_changed?` now accepts a hash to check if the attribute was
-    changed `:from` and/or `:to` a given value.
-
-    Example:
-
-        model.name_changed?(from: "Pete", to: "Ringo")
-
-    *Tejas Dinkar*
-
-*   Fix `has_secure_password` to honor bcrypt-ruby's cost attribute.
-
-    *T.J. Schuck*
-
-*   Updated the `ActiveModel::Dirty#changed_attributes` method to be indifferent between using
-    symbols and strings as keys.
-
-    *William Myers*
-
-*   Added new API methods `reset_changes` and `changes_applied` to `ActiveModel::Dirty`
-    that control changes state. Previsously you needed to update internal
-    instance variables, but now API methods are available.
-
-    *Bogdan Gusiev*
-
-*   Fix `has_secure_password` not to trigger `password_confirmation` validations
-    if no `password_confirmation` is set.
-
-    *Vladimir Kiselev*
-
-*   `inclusion` / `exclusion` validations with ranges will only use the faster
-    `Range#cover` for numerical ranges, and the more accurate `Range#include?`
-    for non-numerical ones.
-
-    Fixes range validations like `:a..:f` that used to pass with values like `:be`.
-    Fixes #10593.
-
-    *Charles Bergeron*
-
-*   Fix regression in `has_secure_password`. When a password is set, but a
-    confirmation is an empty string, it would incorrectly save.
-
-    *Steve Klabnik* and *Phillip Calvin*
-
-*   Deprecate `Validator#setup`. This should be done manually now in the validator's constructor.
-
-    *Nick Sutterer*
-
-Please check [4-0-stable](https://github.com/rails/rails/blob/4-0-stable/activemodel/CHANGELOG.md) for previous changes.
+Please check [4-1-stable](https://github.com/rails/rails/blob/4-1-stable/activemodel/CHANGELOG.md) for previous changes.

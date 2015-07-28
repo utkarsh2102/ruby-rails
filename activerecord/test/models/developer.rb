@@ -15,6 +15,8 @@ class Developer < ActiveRecord::Base
 
   accepts_nested_attributes_for :projects
 
+  has_and_belongs_to_many :shared_computers, class_name: "Computer"
+
   has_and_belongs_to_many :projects_extended_by_name,
       -> { extending(DeveloperProjectsAssociationExtension) },
       :class_name => "Project",
@@ -76,12 +78,6 @@ end
 class AuditLog < ActiveRecord::Base
   belongs_to :developer, :validate => true
   belongs_to :unvalidated_developer, :class_name => 'Developer'
-end
-
-DeveloperSalary = Struct.new(:amount)
-class DeveloperWithAggregate < ActiveRecord::Base
-  self.table_name = 'developers'
-  composed_of :salary, :class_name => 'DeveloperSalary', :mapping => [%w(salary amount)]
 end
 
 class DeveloperWithBeforeDestroyRaise < ActiveRecord::Base

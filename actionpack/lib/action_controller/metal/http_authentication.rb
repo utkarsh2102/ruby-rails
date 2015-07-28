@@ -53,10 +53,8 @@ module ActionController
     # In your integration tests, you can do something like this:
     #
     #   def test_access_granted_from_xml
-    #     get(
-    #       "/notes/1.xml", nil,
-    #       'HTTP_AUTHORIZATION' => ActionController::HttpAuthentication::Basic.encode_credentials(users(:dhh).name, users(:dhh).password)
-    #     )
+    #     @request.env['HTTP_AUTHORIZATION'] = ActionController::HttpAuthentication::Basic.encode_credentials(users(:dhh).name, users(:dhh).password)
+    #     get "/notes/1.xml"
     #
     #     assert_equal 200, status
     #   end
@@ -463,14 +461,14 @@ module ActionController
         raw_params.map { |param| param.split %r/=(.+)?/ }
       end
 
-      # This removes the `"` characters wrapping the value.
+      # This removes the <tt>"</tt> characters wrapping the value.
       def rewrite_param_values(array_params)
         array_params.each { |param| (param[1] || "").gsub! %r/^"|"$/, '' }
       end
 
       # This method takes an authorization body and splits up the key-value
-      # pairs by the standardized `:`, `;`, or `\t` delimiters defined in
-      # `AUTHN_PAIR_DELIMITERS`.
+      # pairs by the standardized <tt>:</tt>, <tt>;</tt>, or <tt>\t</tt>
+      # delimiters defined in +AUTHN_PAIR_DELIMITERS+.
       def raw_params(auth)
         _raw_params = auth.sub(TOKEN_REGEX, '').split(/\s*#{AUTHN_PAIR_DELIMITERS}\s*/)
 

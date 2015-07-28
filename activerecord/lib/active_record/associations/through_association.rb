@@ -3,7 +3,7 @@ module ActiveRecord
   module Associations
     module ThroughAssociation #:nodoc:
 
-      delegate :source_reflection, :through_reflection, :chain, :to => :reflection
+      delegate :source_reflection, :through_reflection, :to => :reflection
 
       protected
 
@@ -13,12 +13,12 @@ module ActiveRecord
         #   2. To get the type conditions for any STI models in the chain
         def target_scope
           scope = super
-          chain.drop(1).each do |reflection|
+          reflection.chain.drop(1).each do |reflection|
             relation = reflection.klass.all
 
             reflection_scope = reflection.scope
             if reflection_scope && reflection_scope.arity.zero?
-              relation.merge!(reflection_scope)
+              relation = relation.merge(reflection_scope)
             end
 
             scope.merge!(
@@ -71,18 +71,17 @@ module ActiveRecord
         # Note: this does not capture all cases, for example it would be crazy to try to
         # properly support stale-checking for nested associations.
         def stale_state
-          if through_reflection.macro == :belongs_to
+          if through_reflection.belongs_to?
             owner[through_reflection.foreign_key] && owner[through_reflection.foreign_key].to_s
           end
         end
 
         def foreign_key_present?
-          through_reflection.macro == :belongs_to &&
-          !owner[through_reflection.foreign_key].nil?
+          through_reflection.belongs_to? && !owner[through_reflection.foreign_key].nil?
         end
 
         def ensure_mutable
-          if source_reflection.macro != :belongs_to
+          unless source_reflection.belongs_to?
             raise HasManyThroughCantAssociateThroughHasOneOrManyReflection.new(owner, reflection)
           end
         end

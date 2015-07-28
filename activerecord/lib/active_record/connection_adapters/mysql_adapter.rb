@@ -36,9 +36,9 @@ module ActiveRecord
       ConnectionAdapters::MysqlAdapter.new(mysql, logger, options, config)
     rescue Mysql::Error => error
       if error.message.include?("Unknown database")
-        raise ActiveRecord::NoDatabaseError.new(error.message)
+        raise ActiveRecord::NoDatabaseError.new(error.message, error)
       else
-        raise error
+        raise
       end
     end
   end
@@ -57,8 +57,8 @@ module ActiveRecord
     # * <tt>:database</tt> - The name of the database. No default, must be provided.
     # * <tt>:encoding</tt> - (Optional) Sets the client encoding by executing "SET NAMES <encoding>" after connection.
     # * <tt>:reconnect</tt> - Defaults to false (See MySQL documentation: http://dev.mysql.com/doc/refman/5.0/en/auto-reconnect.html).
-    # * <tt>:strict</tt> - Defaults to true. Enable STRICT_ALL_TABLES. (See MySQL documentation: http://dev.mysql.com/doc/refman/5.0/en/server-sql-mode.html)
-    # * <tt>:variables</tt> - (Optional) A hash session variables to send as `SET @@SESSION.key = value` on each database connection. Use the value `:default` to set a variable to its DEFAULT value. (See MySQL documentation: http://dev.mysql.com/doc/refman/5.0/en/set-statement.html).
+    # * <tt>:strict</tt> - Defaults to true. Enable STRICT_ALL_TABLES. (See MySQL documentation: http://dev.mysql.com/doc/refman/5.0/en/sql-mode.html)
+    # * <tt>:variables</tt> - (Optional) A hash session variables to send as <tt>SET @@SESSION.key = value</tt> on each database connection. Use the value +:default+ to set a variable to its DEFAULT value. (See MySQL documentation: http://dev.mysql.com/doc/refman/5.0/en/set-statement.html).
     # * <tt>:sslca</tt> - Necessary to use MySQL with an SSL connection.
     # * <tt>:sslkey</tt> - Necessary to use MySQL with an SSL connection.
     # * <tt>:sslcert</tt> - Necessary to use MySQL with an SSL connection.
@@ -66,36 +66,7 @@ module ActiveRecord
     # * <tt>:sslcipher</tt> - Necessary to use MySQL with an SSL connection.
     #
     class MysqlAdapter < AbstractMysqlAdapter
-
-      class Column < AbstractMysqlAdapter::Column #:nodoc:
-        def self.string_to_time(value)
-          return super unless Mysql::Time === value
-          new_time(
-            value.year,
-            value.month,
-            value.day,
-            value.hour,
-            value.minute,
-            value.second,
-            value.second_part)
-        end
-
-        def self.string_to_dummy_time(v)
-          return super unless Mysql::Time === v
-          new_time(2000, 01, 01, v.hour, v.minute, v.second, v.second_part)
-        end
-
-        def self.string_to_date(v)
-          return super unless Mysql::Time === v
-          new_date(v.year, v.month, v.day)
-        end
-
-        def adapter
-          MysqlAdapter
-        end
-      end
-
-      ADAPTER_NAME = 'MySQL'
+      ADAPTER_NAME = 'MySQL'.freeze
 
       class StatementPool < ConnectionAdapters::StatementPool
         def initialize(connection, max = 1000)
@@ -117,7 +88,7 @@ module ActiveRecord
         end
 
         def clear
-          cache.values.each do |hash|
+          cache.each_value do |hash|
             hash[:stmt].close
           end
           cache.clear
@@ -156,10 +127,6 @@ module ActiveRecord
         end
       end
 
-      def new_column(field, default, type, null, collation, extra = "") # :nodoc:
-        Column.new(field, default, type, null, collation, strict_mode?, extra)
-      end
-
       def error_number(exception) # :nodoc:
         exception.errno if exception.respond_to?(:errno)
       end
@@ -170,7 +137,9 @@ module ActiveRecord
         @connection.quote(string)
       end
 
+      #--
       # CONNECTION MANAGEMENT ====================================
+      #++
 
       def active?
         if @connection.respond_to?(:stat)
@@ -211,7 +180,9 @@ module ActiveRecord
         end
       end
 
+      #--
       # DATABASE STATEMENTS ======================================
+      #++
 
       def select_rows(sql, name = nil, binds = [])
         @connection.query_with_result = true
@@ -222,6 +193,7 @@ module ActiveRecord
 
       # Clears the prepared statements cache.
       def clear_cache!
+        super
         @statements.clear
       end
 
@@ -294,126 +266,70 @@ module ActiveRecord
         @connection.insert_id
       end
 
-      module Fields
-        class Type
-          def type; end
-
-          def type_cast_for_write(value)
-            value
+      module Fields # :nodoc:
+        class DateTime < Type::DateTime # :nodoc:
+          def cast_value(value)
+            if Mysql::Time === value
+              new_time(
+                value.year,
+                value.month,
+                value.day,
+                value.hour,
+                value.minute,
+                value.second,
+                value.second_part)
+            else
+              super
+            end
           end
         end
 
-        class Identity < Type
-          def type_cast(value); value; end
-        end
-
-        class Integer < Type
-          def type_cast(value)
-            return if value.nil?
-
-            value.to_i rescue value ? 1 : 0
+        class Time < Type::Time # :nodoc:
+          def cast_value(value)
+            if Mysql::Time === value
+              new_time(
+                2000,
+                01,
+                01,
+                value.hour,
+                value.minute,
+                value.second,
+                value.second_part)
+            else
+              super
+            end
           end
         end
 
-        class Date < Type
-          def type; :date; end
+        class << self
+          TYPES = Type::HashLookupTypeMap.new # :nodoc:
 
-          def type_cast(value)
-            return if value.nil?
+          delegate :register_type, :alias_type, to: :TYPES
 
-            # FIXME: probably we can improve this since we know it is mysql
-            # specific
-            ConnectionAdapters::Column.value_to_date value
+          def find_type(field)
+            if field.type == Mysql::Field::TYPE_TINY && field.length > 1
+              TYPES.lookup(Mysql::Field::TYPE_LONG)
+            else
+              TYPES.lookup(field.type)
+            end
           end
         end
 
-        class DateTime < Type
-          def type; :datetime; end
-
-          def type_cast(value)
-            return if value.nil?
-
-            # FIXME: probably we can improve this since we know it is mysql
-            # specific
-            ConnectionAdapters::Column.string_to_time value
-          end
-        end
-
-        class Time < Type
-          def type; :time; end
-
-          def type_cast(value)
-            return if value.nil?
-
-            # FIXME: probably we can improve this since we know it is mysql
-            # specific
-            ConnectionAdapters::Column.string_to_dummy_time value
-          end
-        end
-
-        class Float < Type
-          def type; :float; end
-
-          def type_cast(value)
-            return if value.nil?
-
-            value.to_f
-          end
-        end
-
-        class Decimal < Type
-          def type_cast(value)
-            return if value.nil?
-
-            ConnectionAdapters::Column.value_to_decimal value
-          end
-        end
-
-        class Boolean < Type
-          def type_cast(value)
-            return if value.nil?
-
-            ConnectionAdapters::Column.value_to_boolean value
-          end
-        end
-
-        TYPES = {}
-
-        # Register an MySQL +type_id+ with a typecasting object in
-        # +type+.
-        def self.register_type(type_id, type)
-          TYPES[type_id] = type
-        end
-
-        def self.alias_type(new, old)
-          TYPES[new] = TYPES[old]
-        end
-
-        def self.find_type(field)
-          if field.type == Mysql::Field::TYPE_TINY && field.length > 1
-            TYPES[Mysql::Field::TYPE_LONG]
-          else
-            TYPES.fetch(field.type) { Fields::Identity.new }
-          end
-        end
-
-        register_type Mysql::Field::TYPE_TINY,    Fields::Boolean.new
-        register_type Mysql::Field::TYPE_LONG,    Fields::Integer.new
+        register_type Mysql::Field::TYPE_TINY,    Type::Boolean.new
+        register_type Mysql::Field::TYPE_LONG,    Type::Integer.new
         alias_type Mysql::Field::TYPE_LONGLONG,   Mysql::Field::TYPE_LONG
         alias_type Mysql::Field::TYPE_NEWDECIMAL, Mysql::Field::TYPE_LONG
 
-        register_type Mysql::Field::TYPE_VAR_STRING, Fields::Identity.new
-        register_type Mysql::Field::TYPE_BLOB, Fields::Identity.new
-        register_type Mysql::Field::TYPE_DATE, Fields::Date.new
+        register_type Mysql::Field::TYPE_DATE, Type::Date.new
         register_type Mysql::Field::TYPE_DATETIME, Fields::DateTime.new
         register_type Mysql::Field::TYPE_TIME, Fields::Time.new
-        register_type Mysql::Field::TYPE_FLOAT, Fields::Float.new
+        register_type Mysql::Field::TYPE_FLOAT, Type::Float.new
+      end
 
-        Mysql::Field.constants.grep(/TYPE/).map { |class_name|
-          Mysql::Field.const_get class_name
-        }.reject { |const| TYPES.key? const }.each do |const|
-          register_type const, Fields::Identity.new
-        end
+      def initialize_type_map(m) # :nodoc:
+        super
+        m.register_type %r(datetime)i, Fields::DateTime.new
+        m.register_type %r(time)i,     Fields::Time.new
       end
 
       def exec_without_stmt(sql, name = 'SQL') # :nodoc:
@@ -431,7 +347,7 @@ module ActiveRecord
               fields << field_name
 
               if field.decimals > 0
-                types[field_name] = Fields::Decimal.new
+                types[field_name] = Type::Decimal.new
               else
                 types[field_name] = Fields.find_type field
               end
@@ -447,7 +363,7 @@ module ActiveRecord
         end
       end
 
-      def execute_and_free(sql, name = nil)
+      def execute_and_free(sql, name = nil) # :nodoc:
         result = execute(sql, name)
         ret = yield result
         result.free
@@ -460,7 +376,7 @@ module ActiveRecord
       end
       alias :create :insert_sql
 
-      def exec_delete(sql, name, binds)
+      def exec_delete(sql, name, binds) # :nodoc:
         affected_rows = 0
 
         exec_query(sql, name, binds) do |n|
@@ -497,7 +413,7 @@ module ActiveRecord
             stmt.execute(*type_casted_binds.map { |_, val| val })
           rescue Mysql::Error => e
             # Older versions of MySQL leave the prepared statement in a bad
-            # place when an error occurs. To support older mysql versions, we
+            # place when an error occurs. To support older MySQL versions, we
             # need to close the statement and delete the statement from the
             # cache.
             stmt.close
@@ -553,7 +469,7 @@ module ActiveRecord
 
       def select(sql, name = nil, binds = [])
         @connection.query_with_result = true
-        rows = exec_query(sql, name, binds)
+        rows = super
         @connection.more_results && @connection.next_result    # invoking stored procedures with CLIENT_MULTI_RESULTS requires this to tidy up else connection will be dropped
         rows
       end

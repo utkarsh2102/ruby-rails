@@ -2,20 +2,26 @@ source 'https://rubygems.org'
 
 gemspec
 
+# We need a newish Rake since Active Job sets its test tasks' descriptions.
+gem 'rake', '>= 10.3'
+
 # This needs to be with require false as it is
 # loaded after loading the test library to
 # ensure correct loading order
 gem 'mocha', '~> 0.14', require: false
 
 gem 'rack-cache', '~> 1.2'
-gem 'jquery-rails', '~> 3.1.0'
+gem 'jquery-rails', '~> 4.0'
+gem 'coffee-rails', '~> 4.1.0'
 gem 'turbolinks'
-gem 'coffee-rails', '~> 4.0.0'
+
+gem 'sprockets', '~> 3.0.0.rc.1'
+gem 'execjs', '< 2.5'
 
 # require: false so bcrypt is loaded only when has_secure_password is used.
 # This is to avoid ActiveModel (and by extension the entire framework)
 # being dependent on a binary library.
-gem 'bcrypt', '~> 3.1.7', require: false
+gem 'bcrypt', '~> 3.1.10', require: false
 
 # This needs to be with require false to avoid
 # it being automatically loaded by sprockets
@@ -23,7 +29,7 @@ gem 'uglifier', '>= 1.3.0', require: false
 
 group :doc do
   gem 'sdoc', '~> 0.4.0'
-  gem 'redcarpet', '~> 2.2.2', platforms: :ruby
+  gem 'redcarpet', '~> 3.1.2', platforms: :ruby
   gem 'w3c_validators'
   gem 'kindlerb', '0.1.1'
   gem 'mustache', '~> 0.99.8'
@@ -31,6 +37,23 @@ end
 
 # AS
 gem 'dalli', '>= 2.2.1'
+
+# ActiveJob
+group :job do
+  gem 'resque', require: false
+  gem 'resque-scheduler', require: false
+  gem 'sidekiq', require: false
+  gem 'sucker_punch', require: false
+  gem 'delayed_job', require: false
+  gem 'queue_classic', require: false, platforms: :ruby
+  gem 'sneakers', '0.1.1.pre', require: false
+  gem 'que', require: false
+  gem 'backburner', require: false
+  gem 'qu-rails', github: "bkeepers/qu", branch: "master", require: false
+  gem 'qu-redis', require: false
+  gem 'delayed_job_active_record', require: false
+  gem 'sequel', require: false
+end
 
 # Add your own local bundler stuff
 local_gemfile = File.dirname(__FILE__) + "/.Gemfile"
@@ -48,6 +71,10 @@ group :test do
   #   gem 'debugger'
   # end
 
+  platforms :mri do
+    gem 'stackprof'
+  end
+
   gem 'benchmark-ips'
 end
 
@@ -61,7 +88,7 @@ platforms :ruby do
   gem 'sqlite3', '~> 1.3.6'
 
   group :db do
-    gem 'pg', '>= 0.11.0'
+    gem 'pg', '>= 0.15.0'
     gem 'mysql', '>= 2.9.0'
     gem 'mysql2', '>= 0.3.13'
   end
@@ -84,10 +111,16 @@ platforms :jruby do
   end
 end
 
+platforms :rbx do
+  # The rubysl-yaml gem doesn't ship with Psych by default
+  # as it needs libyaml that isn't always available.
+  gem 'psych', '~> 2.0'
+end
+
 # gems that are necessary for ActiveRecord tests with Oracle database
 if ENV['ORACLE_ENHANCED']
   platforms :ruby do
-    gem 'ruby-oci8', '>= 2.0.4'
+    gem 'ruby-oci8', '~> 2.1'
   end
   gem 'activerecord-oracle_enhanced-adapter', github: 'rsim/oracle-enhanced', branch: 'master'
 end

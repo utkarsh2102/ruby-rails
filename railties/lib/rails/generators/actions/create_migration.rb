@@ -39,7 +39,7 @@ module Rails
 
         protected
 
-        def on_conflict_behavior(&block)
+        def on_conflict_behavior
           options = base.options.merge(config)
           if identical?
             say_status :identical, :blue, relative_existing_migration
@@ -48,14 +48,15 @@ module Rails
             say_status :create, :green
             unless pretend?
               ::FileUtils.rm_rf(existing_migration)
-              block.call
+              yield
             end
           elsif options[:skip]
             say_status :skip, :yellow
           else
             say_status :conflict, :red
             raise Error, "Another migration is already named #{migration_file_name}: " +
-                         "#{existing_migration}. Use --force to replace this migration file."
+              "#{existing_migration}. Use --force to replace this migration " +
+              "or --skip to ignore conflicted file."
           end
         end
 

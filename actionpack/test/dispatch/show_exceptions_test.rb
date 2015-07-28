@@ -8,7 +8,7 @@ class ShowExceptionsTest < ActionDispatch::IntegrationTest
       case req.path
       when "/not_found"
         raise AbstractController::ActionNotFound
-      when "/bad_params", "/bad_params?x[y]=1&x[y][][w]=2"
+      when "/bad_params"
         raise ActionDispatch::ParamsParser::ParseError.new("", StandardError.new)
       when "/method_not_allowed"
         raise ActionController::MethodNotAllowed
@@ -37,7 +37,7 @@ class ShowExceptionsTest < ActionDispatch::IntegrationTest
     get "/", {}, {'action_dispatch.show_exceptions' => true}
     assert_response 500
     assert_equal "500 error fixture\n", body
-    
+
     get "/bad_params", {}, {'action_dispatch.show_exceptions' => true}
     assert_response 400
     assert_equal "400 error fixture\n", body
@@ -53,12 +53,6 @@ class ShowExceptionsTest < ActionDispatch::IntegrationTest
     get "/unknown_http_method", {}, {'action_dispatch.show_exceptions' => true}
     assert_response 405
     assert_equal "", body
-
-    # Use #post instead of #get as Rack::Test::Session parses
-    # a query string before ActionDispatch::Request does it.
-    post "/bad_params?x[y]=1&x[y][][w]=2", {}, {'action_dispatch.show_exceptions' => true}
-    assert_response 400
-    assert_equal "400 error fixture\n", body
   end
 
   test "localize rescue error page" do
@@ -98,6 +92,7 @@ class ShowExceptionsTest < ActionDispatch::IntegrationTest
     exceptions_app = lambda do |env|
       assert_kind_of AbstractController::ActionNotFound, env["action_dispatch.exception"]
       assert_equal "/404", env["PATH_INFO"]
+      assert_equal "/not_found_original_exception", env["action_dispatch.original_path"]
       [404, { "Content-Type" => "text/plain" }, ["YOU FAILED BRO"]]
     end
 

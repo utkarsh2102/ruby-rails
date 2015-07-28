@@ -1,6 +1,9 @@
 require 'active_support/core_ext/kernel/reporting'
+require 'active_support/core_ext/string/filters'
 require 'active_support/file_update_checker'
+require 'active_support/deprecation'
 require 'rails/engine/configuration'
+require 'rails/source_annotation_extractor'
 
 module Rails
   class Application
@@ -10,11 +13,10 @@ module Rails
                     :eager_load, :exceptions_app, :file_watcher, :filter_parameters,
                     :force_ssl, :helpers_paths, :logger, :log_formatter, :log_tags,
                     :railties_order, :relative_url_root, :secret_key_base, :secret_token,
-                    :serve_static_assets, :ssl_options, :static_cache_control, :session_options,
+                    :serve_static_files, :ssl_options, :static_cache_control, :session_options,
                     :time_zone, :reload_classes_only_on_change,
-                    :beginning_of_week, :filter_redirect
+                    :beginning_of_week, :filter_redirect, :x
 
-      attr_writer :log_level
       attr_reader :encoding
 
       def initialize(*)
@@ -25,7 +27,7 @@ module Rails
         @filter_parameters             = []
         @filter_redirect               = []
         @helpers_paths                 = []
-        @serve_static_assets           = true
+        @serve_static_files            = true
         @static_cache_control          = nil
         @force_ssl                     = false
         @ssl_options                   = {}
@@ -33,6 +35,7 @@ module Rails
         @session_options               = {}
         @time_zone                     = "UTC"
         @beginning_of_week             = :monday
+        @has_explicit_log_level        = false
         @log_level                     = nil
         @middleware                    = app_middleware
         @generators                    = app_generators
@@ -47,6 +50,7 @@ module Rails
         @eager_load                    = nil
         @secret_token                  = nil
         @secret_key_base               = nil
+        @x                             = Custom.new
 
         @assets = ActiveSupport::OrderedOptions.new
         @assets.enabled                  = true
@@ -91,9 +95,10 @@ module Rails
       # Loads and returns the entire raw configuration of database from
       # values stored in `config/database.yml`.
       def database_configuration
-        yaml = Pathname.new(paths["config/database"].existent.first || "")
+        path = paths["config/database"].existent.first
+        yaml = Pathname.new(path) if path
 
-        config = if yaml.exist?
+        config = if yaml && yaml.exist?
           require "yaml"
           require "erb"
           YAML.load(ERB.new(yaml.read).result) || {}
@@ -102,7 +107,7 @@ module Rails
           # by Active Record.
           {}
         else
-          raise "Could not load database configuration. No such file - #{yaml}"
+          raise "Could not load database configuration. No such file - #{paths["config/database"].instance_variable_get(:@paths)}"
         end
 
         config
@@ -114,8 +119,17 @@ module Rails
         raise e, "Cannot load `Rails.application.database_configuration`:\n#{e.message}", e.backtrace
       end
 
+      def has_explicit_log_level? # :nodoc:
+        @has_explicit_log_level
+      end
+
+      def log_level=(level)
+        @has_explicit_log_level = !!(level)
+        @log_level = level
+      end
+
       def log_level
-        @log_level ||= Rails.env.production? ? :info : :debug
+        @log_level ||= (Rails.env.production? ? :info : :debug)
       end
 
       def colorize_logging
@@ -125,6 +139,25 @@ module Rails
       def colorize_logging=(val)
         ActiveSupport::LogSubscriber.colorize_logging = val
         self.generators.colorize_logging = val
+      end
+
+      # :nodoc:
+      SERVE_STATIC_ASSETS_DEPRECATION_MESSAGE = <<-MSG.squish
+        The configuration option `config.serve_static_assets` has been renamed
+        to `config.serve_static_files` to clarify its role (it merely enables
+        serving everything in the `public` folder and is unrelated to the asset
+        pipeline). The `serve_static_assets` alias will be removed in Rails 5.0.
+        Please migrate your configuration files accordingly.
+      MSG
+
+      def serve_static_assets
+        ActiveSupport::Deprecation.warn SERVE_STATIC_ASSETS_DEPRECATION_MESSAGE
+        serve_static_files
+      end
+
+      def serve_static_assets=(value)
+        ActiveSupport::Deprecation.warn SERVE_STATIC_ASSETS_DEPRECATION_MESSAGE
+        self.serve_static_files = value
       end
 
       def session_store(*args)
@@ -150,6 +183,26 @@ module Rails
         end
       end
 
+      def annotations
+        SourceAnnotationExtractor::Annotation
+      end
+
+      private
+        class Custom #:nodoc:
+          def initialize
+            @configurations = Hash.new
+          end
+
+          def method_missing(method, *args)
+            if method =~ /=$/
+              @configurations[$`.to_sym] = args.first
+            else
+              @configurations.fetch(method) {
+                @configurations[method] = ActiveSupport::OrderedOptions.new
+              }
+            end
+          end
+        end
     end
   end
 end

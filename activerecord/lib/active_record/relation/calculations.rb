@@ -20,13 +20,21 @@ module ActiveRecord
     #   Person.group(:city).count
     #   # => { 'Rome' => 5, 'Paris' => 3 }
     #
+    # If +count+ is used with +group+ for multiple columns, it returns a Hash whose
+    # keys are an array containing the individual values of each column and the value
+    # of each key would be the +count+.
+    #
+    #   Article.group(:status, :category).count
+    #   # =>  {["draft", "business"]=>10, ["draft", "technology"]=>4,
+    #          ["published", "business"]=>0, ["published", "technology"]=>2}
+    #
     # If +count+ is used with +select+, it will count the selected columns:
     #
     #   Person.select(:age).count
     #   # => counts the number of different age values
     #
     # Note: not all valid +select+ expressions are valid +count+ expressions. The specifics differ
-    # between databases. In invalid cases, an error from the databsae is thrown.
+    # between databases. In invalid cases, an error from the database is thrown.
     def count(column_name = nil, options = {})
       # TODO: Remove options argument as soon we remove support to
       # activerecord-deprecated_finders.
@@ -169,22 +177,8 @@ module ActiveRecord
         relation.select_values = column_names.map { |cn|
           columns_hash.key?(cn) ? arel_table[cn] : cn
         }
-        result = klass.connection.select_all(relation.arel, nil, bind_values)
-        columns = result.columns.map do |key|
-          klass.column_types.fetch(key) {
-            result.column_types.fetch(key) { result.identity_type }
-          }
-        end
-
-        result = result.rows.map do |values|
-          values = result.columns.zip(values).map do |column_name, value|
-            single_attr_hash = { column_name => value }
-            klass.initialize_attributes(single_attr_hash).values.first
-          end
-
-          columns.zip(values).map { |column, value| column.type_cast value }
-        end
-        columns.one? ? result.map!(&:first) : result
+        result = klass.connection.select_all(relation.arel, nil, relation.arel.bind_values + bind_values)
+        result.cast_values(klass.column_types)
       end
     end
 
@@ -246,27 +240,32 @@ module ActiveRecord
 
       column_alias = column_name
 
+      bind_values = nil
+
       if operation == "count" && (relation.limit_value || relation.offset_value)
         # Shortcut when limit is zero.
         return 0 if relation.limit_value == 0
 
         query_builder = build_count_subquery(relation, column_name, distinct)
+        bind_values = query_builder.bind_values + relation.bind_values
       else
         column = aggregate_column(column_name)
 
         select_value = operation_over_aggregate_column(column, operation, distinct)
 
         column_alias = select_value.alias
+        column_alias ||= @klass.connection.column_name_for_operation(operation, select_value)
         relation.select_values = [select_value]
 
         query_builder = relation.arel
+        bind_values = query_builder.bind_values + relation.bind_values
       end
 
-      result = @klass.connection.select_all(query_builder, nil, relation.bind_values)
+      result = @klass.connection.select_all(query_builder, nil, bind_values)
       row    = result.first
       value  = row && row.values.first
       column = result.column_types.fetch(column_alias) do
-        column_for(column_name)
+        type_for(column_name)
       end
 
       type_cast_calculated_value(value, column, operation)
@@ -276,8 +275,8 @@ module ActiveRecord
       group_attrs = group_values
 
       if group_attrs.first.respond_to?(:to_sym)
-        association  = @klass._reflect_on_association(group_attrs.first.to_sym)
-        associated   = group_attrs.size == 1 && association && association.macro == :belongs_to # only count belongs_to associations
+        association  = @klass._reflect_on_association(group_attrs.first)
+        associated   = group_attrs.size == 1 && association && association.belongs_to? # only count belongs_to associations
         group_fields = Array(associated ? association.foreign_key : group_attrs)
       else
         group_fields = group_attrs
@@ -318,7 +317,7 @@ module ActiveRecord
       relation.group_values  = group
       relation.select_values = select_values
 
-      calculated_data = @klass.connection.select_all(relation, nil, bind_values)
+      calculated_data = @klass.connection.select_all(relation, nil, relation.arel.bind_values + bind_values)
 
       if association
         key_ids     = calculated_data.collect { |row| row[group_aliases.first] }
@@ -329,14 +328,14 @@ module ActiveRecord
       Hash[calculated_data.map do |row|
         key = group_columns.map { |aliaz, col_name|
           column = calculated_data.column_types.fetch(aliaz) do
-            column_for(col_name)
+            type_for(col_name)
           end
           type_cast_calculated_value(row[aliaz], column)
         }
         key = key.first if key.size == 1
         key = key_records[key] if associated
 
-        column_type = calculated_data.column_types.fetch(aggregate_alias) { column_for(column_name) }
+        column_type = calculated_data.column_types.fetch(aggregate_alias) { type_for(column_name) }
         [key, type_cast_calculated_value(row[aggregate_alias], column_type, operation)]
       end]
     end
@@ -363,22 +362,18 @@ module ActiveRecord
       @klass.connection.table_alias_for(table_name)
     end
 
-    def column_for(field)
+    def type_for(field)
       field_name = field.respond_to?(:name) ? field.name.to_s : field.to_s.split('.').last
-      @klass.columns_hash[field_name]
+      @klass.type_for_attribute(field_name)
     end
 
-    def type_cast_calculated_value(value, column, operation = nil)
+    def type_cast_calculated_value(value, type, operation = nil)
       case operation
         when 'count'   then value.to_i
-        when 'sum'     then type_cast_using_column(value || 0, column)
+        when 'sum'     then type.type_cast_from_database(value || 0)
         when 'average' then value.respond_to?(:to_d) ? value.to_d : value
-        else type_cast_using_column(value, column)
+        else type.type_cast_from_database(value)
       end
-    end
-
-    def type_cast_using_column(value, column)
-      column ? column.type_cast(value) : value
     end
 
     # TODO: refactor to allow non-string `select_values` (eg. Arel nodes).
@@ -396,9 +391,11 @@ module ActiveRecord
 
       aliased_column = aggregate_column(column_name == :all ? 1 : column_name).as(column_alias)
       relation.select_values = [aliased_column]
-      subquery = relation.arel.as(subquery_alias)
+      arel = relation.arel
+      subquery = arel.as(subquery_alias)
 
       sm = Arel::SelectManager.new relation.engine
+      sm.bind_values = arel.bind_values
       select_value = operation_over_aggregate_column(column_alias, 'count', distinct)
       sm.project(select_value).from(subquery)
     end

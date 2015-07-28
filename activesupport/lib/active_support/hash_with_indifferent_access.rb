@@ -1,4 +1,5 @@
 require 'active_support/core_ext/hash/keys'
+require 'active_support/core_ext/hash/reverse_merge'
 
 module ActiveSupport
   # Implements a hash where keys <tt>:foo</tt> and <tt>"foo"</tt> are considered
@@ -55,7 +56,7 @@ module ActiveSupport
     end
 
     def initialize(constructor = {})
-      if constructor.is_a?(Hash)
+      if constructor.respond_to?(:to_hash)
         super()
         update(constructor)
       else
@@ -75,6 +76,7 @@ module ActiveSupport
       hash = hash.to_hash
       new(hash).tap do |new_hash|
         new_hash.default = hash.default
+        new_hash.default_proc = hash.default_proc if hash.default_proc
       end
     end
 
@@ -176,7 +178,14 @@ module ActiveSupport
       indices.collect { |key| self[convert_key(key)] }
     end
 
-    # Returns an exact copy of the hash.
+    # Returns a shallow copy of the hash.
+    #
+    #   hash = ActiveSupport::HashWithIndifferentAccess.new({ a: { b: 'b' } })
+    #   dup  = hash.dup
+    #   dup[:a][:c] = 'c'
+    #
+    #   hash[:a][:c] # => nil
+    #   dup[:a][:c]  # => "c"
     def dup
       self.class.new(self).tap do |new_hash|
         new_hash.default = default
@@ -238,11 +247,11 @@ module ActiveSupport
 
     # Convert to a regular hash with string keys.
     def to_hash
-      _new_hash= {}
+      _new_hash = Hash.new(default)
       each do |key, value|
-        _new_hash[convert_key(key)] = convert_value(value, for: :to_hash)
+        _new_hash[key] = convert_value(value, for: :to_hash)
       end
-      Hash.new(default).merge!(_new_hash)
+      _new_hash
     end
 
     protected

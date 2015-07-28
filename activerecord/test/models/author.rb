@@ -1,5 +1,6 @@
 class Author < ActiveRecord::Base
   has_many :posts
+  has_many :serialized_posts
   has_one :post
   has_many :very_special_comments, :through => :posts
   has_many :posts_with_comments, -> { includes(:comments) }, :class_name => "Post"
@@ -44,6 +45,7 @@ class Author < ActiveRecord::Base
 
   has_many :special_posts
   has_many :special_post_comments, :through => :special_posts, :source => :comments
+  has_many :special_posts_with_default_scope, :class_name => 'SpecialPostWithDefaultScope'
 
   has_many :sti_posts, :class_name => 'StiPost'
   has_many :sti_post_comments, :through => :sti_posts, :source => :comments
@@ -139,6 +141,16 @@ class Author < ActiveRecord::Base
 
   has_many :posts_with_default_include, :class_name => 'PostWithDefaultInclude'
   has_many :comments_on_posts_with_default_include, :through => :posts_with_default_include, :source => :comments
+
+  has_many :posts_with_signature, ->(record) { where("posts.title LIKE ?", "%by #{record.name.downcase}%") }, class_name: "Post"
+
+  has_many :posts_with_extension, -> { order(:title) }, class_name: "Post" do
+    def extension_method; end
+  end
+
+  has_many :posts_with_extension_and_instance, ->(record) { order(:title) }, class_name: "Post" do
+    def extension_method; end
+  end
 
   scope :relation_include_posts, -> { includes(:posts) }
   scope :relation_include_tags,  -> { includes(:tags) }

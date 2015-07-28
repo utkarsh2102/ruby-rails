@@ -8,7 +8,7 @@ module ActiveRecord
         @connection = Minitest::Mock.new
       end
 
-      def teardown
+      teardown do
         assert @connection.verify
       end
 
@@ -72,17 +72,31 @@ module ActiveRecord
         end
       end
 
+      def test_references_column_type_with_polymorphic_and_type
+        with_change_table do |t|
+          @connection.expect :add_reference, nil, [:delete_me, :taggable, polymorphic: true, type: :string]
+          t.references :taggable, polymorphic: true, type: :string
+        end
+      end
+
+      def test_remove_references_column_type_with_polymorphic_and_type
+        with_change_table do |t|
+          @connection.expect :remove_reference, nil, [:delete_me, :taggable, polymorphic: true, type: :string]
+          t.remove_references :taggable, polymorphic: true, type: :string
+        end
+      end
+
       def test_timestamps_creates_updated_at_and_created_at
         with_change_table do |t|
-          @connection.expect :add_timestamps, nil, [:delete_me, {null: false}]
-          t.timestamps null: false
+          @connection.expect :add_timestamps, nil, [:delete_me, null: true]
+          t.timestamps null: true
         end
       end
 
       def test_remove_timestamps_creates_updated_at_and_created_at
         with_change_table do |t|
-          @connection.expect :remove_timestamps, nil, [:delete_me]
-          t.remove_timestamps
+          @connection.expect :remove_timestamps, nil, [:delete_me, { null: true }]
+          t.remove_timestamps({ null: true })
         end
       end
 
@@ -197,6 +211,12 @@ module ActiveRecord
         with_change_table do |t|
           @connection.expect :rename_column, nil, [:delete_me, :bar, :baz]
           t.rename :bar, :baz
+        end
+      end
+
+      def test_table_name_set
+        with_change_table do |t|
+          assert_equal :delete_me, t.name
         end
       end
     end

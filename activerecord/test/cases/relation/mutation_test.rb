@@ -116,10 +116,18 @@ module ActiveRecord
     end
 
     test 'reverse_order!' do
-      assert relation.reverse_order!.equal?(relation)
-      assert relation.reverse_order_value
-      relation.reverse_order!
-      assert !relation.reverse_order_value
+      order_relation = Post.order('title ASC, comments_count DESC')
+
+      order_relation.reverse_order!
+
+      assert_equal 'title DESC', order_relation.order_values.first
+      assert_equal 'comments_count ASC', order_relation.order_values.last
+
+
+      order_relation.reverse_order!
+
+      assert_equal 'title ASC', order_relation.order_values.first
+      assert_equal 'comments_count DESC', order_relation.order_values.last
     end
 
     test 'create_with!' do

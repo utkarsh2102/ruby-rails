@@ -1,6 +1,6 @@
 require 'abstract_unit'
 require 'controller/fake_controllers'
-require 'action_view/vendor/html-scanner'
+require 'rails/engine'
 
 class SessionTest < ActiveSupport::TestCase
   StubApp = lambda { |env|
@@ -246,6 +246,7 @@ class IntegrationProcessTest < ActionDispatch::IntegrationTest
       respond_to do |format|
         format.html { render :text => "OK", :status => 200 }
         format.js { render :text => "JS OK", :status => 200 }
+        format.xml { render :xml => "<root></root>", :status => 200 }
       end
     end
 
@@ -280,9 +281,9 @@ class IntegrationProcessTest < ActionDispatch::IntegrationTest
       redirect_to action_url('get')
     end
 
-    def remove_default_header
-      response.headers.except! 'X-Frame-Options'
-      head :ok
+    def remove_header
+      response.headers.delete params[:header]
+      head :ok, 'c' => '3'
     end
   end
 
@@ -297,7 +298,23 @@ class IntegrationProcessTest < ActionDispatch::IntegrationTest
       assert_equal({}, cookies.to_hash)
       assert_equal "OK", body
       assert_equal "OK", response.body
-      assert_kind_of HTML::Document, html_document
+      assert_kind_of Nokogiri::HTML::Document, html_document
+      assert_equal 1, request_count
+    end
+  end
+
+  def test_get_xml
+    with_test_route_set do
+      get "/get", {}, {"HTTP_ACCEPT" => "application/xml"}
+      assert_equal 200, status
+      assert_equal "OK", status_message
+      assert_response 200
+      assert_response :success
+      assert_response :ok
+      assert_equal({}, cookies.to_hash)
+      assert_equal "<root></root>", body
+      assert_equal "<root></root>", response.body
+      assert_instance_of Nokogiri::XML::Document, html_document
       assert_equal 1, request_count
     end
   end
@@ -313,7 +330,7 @@ class IntegrationProcessTest < ActionDispatch::IntegrationTest
       assert_equal({}, cookies.to_hash)
       assert_equal "Created", body
       assert_equal "Created", response.body
-      assert_kind_of HTML::Document, html_document
+      assert_kind_of Nokogiri::HTML::Document, html_document
       assert_equal 1, request_count
     end
   end
@@ -373,7 +390,7 @@ class IntegrationProcessTest < ActionDispatch::IntegrationTest
       assert_response :redirect
       assert_response :found
       assert_equal "<html><body>You are being <a href=\"http://www.example.com/get\">redirected</a>.</body></html>", response.body
-      assert_kind_of HTML::Document, html_document
+      assert_kind_of Nokogiri::HTML::Document, html_document
       assert_equal 1, request_count
 
       follow_redirect!
@@ -511,25 +528,27 @@ class IntegrationProcessTest < ActionDispatch::IntegrationTest
     end
   end
 
-  def test_removed_default_headers_on_test_response_are_not_reapplied
+  def test_respect_removal_of_default_headers_by_a_controller_action
     with_test_route_set do
-      begin
-        header_to_remove = 'X-Frame-Options'
-        original_default_headers = ActionDispatch::Response.default_headers
-        ActionDispatch::Response.default_headers = {
-          'X-Content-Type-Options' => 'nosniff',
-          header_to_remove => 'SAMEORIGIN',
-        }
-        get '/remove_default_header'
-        assert_includes headers, 'X-Content-Type-Options'
-        assert_not_includes headers, header_to_remove, "Should not contain removed default header"
-      ensure
-        ActionDispatch::Response.default_headers = original_default_headers
+      with_default_headers 'a' => '1', 'b' => '2' do
+        get '/remove_header', header: 'a'
       end
     end
+
+    assert_not_includes @response.headers, 'a', 'Response should not include default header removed by the controller action'
+    assert_includes @response.headers, 'b'
+    assert_includes @response.headers, 'c'
   end
 
   private
+    def with_default_headers(headers)
+      original = ActionDispatch::Response.default_headers
+      ActionDispatch::Response.default_headers = headers
+      yield
+    ensure
+      ActionDispatch::Response.default_headers = original
+    end
+
     def with_test_route_set
       with_routing do |set|
         controller = ::IntegrationProcessTest::IntegrationController.clone
@@ -618,7 +637,7 @@ class ApplicationIntegrationTest < ActionDispatch::IntegrationTest
     @routes ||= ActionDispatch::Routing::RouteSet.new
   end
 
-  class MountedApp
+  class MountedApp < Rails::Engine
     def self.routes
       @routes ||= ActionDispatch::Routing::RouteSet.new
     end
@@ -638,7 +657,7 @@ class ApplicationIntegrationTest < ActionDispatch::IntegrationTest
     get 'bar', :to => 'application_integration_test/test#index', :as => :bar
 
     mount MountedApp => '/mounted', :as => "mounted"
-    get 'fooz' => proc { |env| [ 200, {'X-Cascade' => 'pass'}, [ "omg" ] ] }, anchor: false
+    get 'fooz' => proc { |env| [ 200, {'X-Cascade' => 'pass'}, [ "omg" ] ] }, :anchor => false
     get 'fooz', :to => 'application_integration_test/test#index'
   end
 
@@ -835,5 +854,65 @@ class HeadWithStatusActionIntegrationTest < ActionDispatch::IntegrationTest
       get '/foo/status'
     end
     assert_response :ok
+  end
+end
+
+class IntegrationWithRoutingTest < ActionDispatch::IntegrationTest
+  class FooController < ActionController::Base
+    def index
+      render plain: 'ok'
+    end
+  end
+
+  def test_with_routing_resets_session
+    klass_namespace = self.class.name.underscore
+
+    with_routing do |routes|
+      routes.draw do
+        namespace klass_namespace do
+          resources :foo, path: '/with'
+        end
+      end
+
+      get '/integration_with_routing_test/with'
+      assert_response 200
+      assert_equal 'ok', response.body
+    end
+
+    with_routing do |routes|
+      routes.draw do
+        namespace klass_namespace do
+          resources :foo, path: '/routing'
+        end
+      end
+
+      get '/integration_with_routing_test/routing'
+      assert_response 200
+      assert_equal 'ok', response.body
+    end
+  end
+end
+
+# to work in contexts like rspec before(:all)
+class IntegrationRequestsWithoutSetup < ActionDispatch::IntegrationTest
+  self._setup_callbacks = []
+  self._teardown_callbacks = []
+
+  class FooController < ActionController::Base
+    def ok
+      cookies[:key] = 'ok'
+      render plain: 'ok'
+    end
+  end
+
+  def test_request
+    with_routing do |routes|
+      routes.draw { get ':action' => FooController }
+      get '/ok'
+
+      assert_response 200
+      assert_equal 'ok', response.body
+      assert_equal 'ok', cookies['key']
+    end
   end
 end

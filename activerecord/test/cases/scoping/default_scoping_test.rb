@@ -1,9 +1,11 @@
 require 'cases/helper'
 require 'models/post'
+require 'models/comment'
 require 'models/developer'
+require 'models/computer'
 
 class DefaultScopingTest < ActiveRecord::TestCase
-  fixtures :developers, :posts
+  fixtures :developers, :posts, :comments
 
   def test_default_scope
     expected = Developer.all.merge!(:order => 'salary DESC').to_a.collect { |dev| dev.salary }
@@ -141,6 +143,18 @@ class DefaultScopingTest < ActiveRecord::TestCase
     expected_5 = Developer.order('salary DESC').collect(&:name)
     received_5 = DeveloperOrderedBySalary.where.not("name" => ["Jamis", "David"]).unscope(where: :name).collect(&:name)
     assert_equal expected_5, received_5
+  end
+
+  def test_unscope_comparison_where_clauses
+    # unscoped for WHERE (`developers`.`id` <= 2)
+    expected = Developer.order('salary DESC').collect(&:name)
+    received = DeveloperOrderedBySalary.where(id: -Float::INFINITY..2).unscope(where: :id).collect { |dev| dev.name }
+    assert_equal expected, received
+
+    # unscoped for WHERE (`developers`.`id` < 2)
+    expected = Developer.order('salary DESC').collect(&:name)
+    received = DeveloperOrderedBySalary.where(id: -Float::INFINITY...2).unscope(where: :id).collect { |dev| dev.name }
+    assert_equal expected, received
   end
 
   def test_unscope_multiple_where_clauses
@@ -376,6 +390,24 @@ class DefaultScopingTest < ActiveRecord::TestCase
     d.audit_logs.create! :message => 'foo'
 
     assert_equal 1, DeveloperWithIncludes.where(:audit_logs => { :message => 'foo' }).count
+  end
+
+  def test_default_scope_with_references_works_through_collection_association
+    post = PostWithCommentWithDefaultScopeReferencesAssociation.create!(title: "Hello World", body: "Here we go.")
+    comment = post.comment_with_default_scope_references_associations.create!(body: "Great post.", developer_id: Developer.first.id)
+    assert_equal comment, post.comment_with_default_scope_references_associations.to_a.first
+  end
+
+  def test_default_scope_with_references_works_through_association
+    post = PostWithCommentWithDefaultScopeReferencesAssociation.create!(title: "Hello World", body: "Here we go.")
+    comment = post.comment_with_default_scope_references_associations.create!(body: "Great post.", developer_id: Developer.first.id)
+    assert_equal comment, post.first_comment
+  end
+
+  def test_default_scope_with_references_works_with_find_by
+    post = PostWithCommentWithDefaultScopeReferencesAssociation.create!(title: "Hello World", body: "Here we go.")
+    comment = post.comment_with_default_scope_references_associations.create!(body: "Great post.", developer_id: Developer.first.id)
+    assert_equal comment, CommentWithDefaultScopeReferencesAssociation.find_by(id: comment.id)
   end
 
   unless in_memory_db?

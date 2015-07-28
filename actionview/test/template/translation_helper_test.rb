@@ -13,7 +13,7 @@ class TranslationHelperTest < ActiveSupport::TestCase
 
   attr_reader :request, :view
 
-  def setup
+  setup do
     I18n.backend.store_translations(:en,
       :translations => {
         :templates => {
@@ -35,6 +35,10 @@ class TranslationHelperTest < ActiveSupport::TestCase
       }
     )
     @view = ::ActionView::Base.new(ActionController::Base.view_paths, {})
+  end
+
+  teardown do
+    I18n.backend.reload!
   end
 
   def test_delegates_to_i18n_setting_the_rescue_format_option_to_html
@@ -153,6 +157,19 @@ class TranslationHelperTest < ActiveSupport::TestCase
     assert_equal true, translation.html_safe?
   end
 
+  def test_translate_with_missing_default
+    translation = translate(:'translations.missing', :default => :'translations.missing_html')
+    expected = '<span class="translation_missing" title="translation missing: en.translations.missing_html">Missing Html</span>'
+    assert_equal expected, translation
+    assert_equal true, translation.html_safe?
+  end
+
+  def test_translate_with_missing_default_and_raise_option
+    assert_raise(I18n::MissingTranslationData) do
+      translate(:'translations.missing', :default => :'translations.missing_html', :raise => true)
+    end
+  end
+
   def test_translate_with_two_defaults_named_html
     translation = translate(:'translations.missing', :default => [:'translations.missing_html', :'translations.hello_html'])
     assert_equal '<a>Hello World</a>', translation
@@ -184,5 +201,21 @@ class TranslationHelperTest < ActiveSupport::TestCase
   def test_translate_with_array_of_string_defaults
     translation = translate(:'translations.missing', default: ['A Generic String', 'Second generic string'])
     assert_equal 'A Generic String', translation
+  end
+
+  def test_translate_with_array_of_defaults_with_nil
+    translation = translate(:'translations.missing', default: [:'also_missing', nil, 'A Generic String'])
+    assert_equal 'A Generic String', translation
+  end
+
+  def test_translate_with_array_of_array_default
+    translation = translate(:'translations.missing', default: [[]])
+    assert_equal [], translation
+  end
+
+  def test_translate_does_not_change_options
+    options = {}
+    translate(:'translations.missing', options)
+    assert_equal({}, options)
   end
 end

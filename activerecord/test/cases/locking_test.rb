@@ -5,6 +5,7 @@ require 'models/job'
 require 'models/reader'
 require 'models/ship'
 require 'models/legacy_thing'
+require 'models/personal_legacy_thing'
 require 'models/reference'
 require 'models/string_key_object'
 require 'models/car'
@@ -28,11 +29,9 @@ end
 class OptimisticLockingTest < ActiveRecord::TestCase
   fixtures :people, :legacy_things, :references, :string_key_objects, :peoples_treasures
 
-  def test_quote_value_passed_lock_col
+  def test_lock_version_is_incremented
     p1 = Person.find(1)
     assert_equal 0, p1.lock_version
-
-    Person.expects(:quote_value).with(0, Person.columns_hash[Person.locking_column]).returns('0').once
 
     p1.first_name = 'anika2'
     p1.save!
@@ -216,10 +215,12 @@ class OptimisticLockingTest < ActiveRecord::TestCase
   def test_lock_with_custom_column_without_default_sets_version_to_zero
     t1 = LockWithCustomColumnWithoutDefault.new
     assert_equal 0, t1.custom_lock_version
+    assert_nil t1.custom_lock_version_before_type_cast
 
-    t1.save
-    t1 = LockWithCustomColumnWithoutDefault.find(t1.id)
+    t1.save!
+    t1.reload
     assert_equal 0, t1.custom_lock_version
+    assert [0, "0"].include?(t1.custom_lock_version_before_type_cast)
   end
 
   def test_readonly_attributes
@@ -273,8 +274,11 @@ class OptimisticLockingTest < ActiveRecord::TestCase
     assert RichPerson.connection.select_all("SELECT * FROM peoples_treasures WHERE rich_person_id = 1").empty?
   end
 
-  def test_quoted_locking_column_is_deprecated
-    assert_deprecated { ActiveRecord::Base.quoted_locking_column }
+  def test_yaml_dumping_with_lock_column
+    t1 = LockWithoutDefault.new
+    t2 = YAML.load(YAML.dump(t1))
+
+    assert_equal t1.attributes, t2.attributes
   end
 end
 
@@ -308,30 +312,24 @@ class OptimisticLockingWithSchemaChangeTest < ActiveRecord::TestCase
 
   # See Lighthouse ticket #1966
   def test_destroy_dependents
-    # Establish dependent relationship between People and LegacyThing
-    add_counter_column_to(Person, 'legacy_things_count')
-    LegacyThing.connection.add_column LegacyThing.table_name, 'person_id', :integer
-    LegacyThing.reset_column_information
-    LegacyThing.class_eval do
-      belongs_to :person, :counter_cache => true
-    end
-    Person.class_eval do
-      has_many :legacy_things, :dependent => :destroy
-    end
+    # Establish dependent relationship between Person and PersonalLegacyThing
+    add_counter_column_to(Person, 'personal_legacy_things_count')
+    PersonalLegacyThing.reset_column_information
 
     # Make sure that counter incrementing doesn't cause problems
     p1 = Person.new(:first_name => 'fjord')
     p1.save!
-    t = LegacyThing.new(:person => p1)
+    t = PersonalLegacyThing.new(:person => p1)
     t.save!
     p1.reload
-    assert_equal 1, p1.legacy_things_count
+    assert_equal 1, p1.personal_legacy_things_count
     assert p1.destroy
     assert_equal true, p1.frozen?
     assert_raises(ActiveRecord::RecordNotFound) { Person.find(p1.id) }
-    assert_raises(ActiveRecord::RecordNotFound) { LegacyThing.find(t.id) }
+    assert_raises(ActiveRecord::RecordNotFound) { PersonalLegacyThing.find(t.id) }
   ensure
-    remove_counter_column_from(Person, 'legacy_things_count')
+    remove_counter_column_from(Person, 'personal_legacy_things_count')
+    PersonalLegacyThing.reset_column_information
   end
 
   private
@@ -339,8 +337,6 @@ class OptimisticLockingWithSchemaChangeTest < ActiveRecord::TestCase
     def add_counter_column_to(model, col='test_count')
       model.connection.add_column model.table_name, col, :integer, :null => false, :default => 0
       model.reset_column_information
-      # OpenBase does not set a value to existing rows when adding a not null default column
-      model.update_all(col => 0) if current_adapter?(:OpenBaseAdapter)
     end
 
     def remove_counter_column_from(model, col = :test_count)
@@ -367,7 +363,7 @@ end
 # is so cumbersome. Will deadlock Ruby threads if the underlying db.execute
 # blocks, so separate script called by Kernel#system is needed.
 # (See exec vs. async_exec in the PostgreSQL adapter.)
-unless current_adapter?(:SybaseAdapter, :OpenBaseAdapter) || in_memory_db?
+unless in_memory_db?
   class PessimisticLockingTest < ActiveRecord::TestCase
     self.use_transactional_fixtures = false
     fixtures :people, :readers

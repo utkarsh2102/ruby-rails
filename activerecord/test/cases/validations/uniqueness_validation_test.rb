@@ -40,15 +40,25 @@ class TopicWithUniqEvent < Topic
   validates :event, uniqueness: true
 end
 
+class BigIntTest < ActiveRecord::Base
+  INT_MAX_VALUE = 2147483647
+  self.table_name = 'cars'
+  validates :engines_count, uniqueness: true, inclusion: { in: 0..INT_MAX_VALUE }
+end
+
+class BigIntReverseTest < ActiveRecord::Base
+  INT_MAX_VALUE = 2147483647
+  self.table_name = 'cars'
+  validates :engines_count, inclusion: { in: 0..INT_MAX_VALUE }
+  validates :engines_count, uniqueness: true
+end
+
 class UniquenessValidationTest < ActiveRecord::TestCase
-  fixtures :topics, 'warehouse-things', :developers
+  INT_MAX_VALUE = 2147483647
+
+  fixtures :topics, 'warehouse-things'
 
   repair_validations(Topic, Reply)
-
-  class ModelWithScopedValidationOnArray < ActiveRecord::Base
-    self.table_name = 'postgresql_arrays'
-    validates_uniqueness_of :name, scope: [:commission_by_quarter]
-  end
 
   def test_validate_uniqueness
     Topic.validates_uniqueness_of(:title)
@@ -88,34 +98,6 @@ class UniquenessValidationTest < ActiveRecord::TestCase
     assert_equal ["has already been taken"], t2.errors[:title]
   end
 
-  def test_validates_uniqueness_with_nil_scope
-    old_validators = Topic._validators.deep_dup
-    old_callbacks = Topic._validate_callbacks.deep_dup
-    Topic.validates_uniqueness_of(:title, scope: :parent_id)
-
-    Topic.create!(title: "test 1", parent_id: nil)
-    topic = Topic.new(title: "test 1", parent_id: nil)
-
-    refute topic.valid?
-  ensure
-    Topic._validators = old_validators
-    Topic._validate_callbacks = old_callbacks
-  end
-
-  def test_validates_uniqueness_with_false_scope
-    old_validators = Topic._validators.deep_dup
-    old_callbacks = Topic._validate_callbacks.deep_dup
-    Topic.validates_uniqueness_of(:title, scope: [:parent_id, :approved])
-
-    Topic.create!(title: "test 1", parent_id: nil, approved: false)
-    topic = Topic.new(title: "test 1", parent_id: nil, approved: false)
-
-    refute topic.valid?
-  ensure
-    Topic._validators = old_validators
-    Topic._validate_callbacks = old_callbacks
-  end
-
   def test_validates_uniqueness_with_validates
     Topic.validates :title, :uniqueness => true
     Topic.create!('title' => 'abc')
@@ -123,6 +105,16 @@ class UniquenessValidationTest < ActiveRecord::TestCase
     t2 = Topic.new('title' => 'abc')
     assert !t2.valid?
     assert t2.errors[:title]
+  end
+
+  def test_validate_uniqueness_when_integer_out_of_range
+    entry = BigIntTest.create(engines_count: INT_MAX_VALUE + 1)
+    assert_equal entry.errors[:engines_count], ['is not included in the list']
+  end
+
+  def test_validate_uniqueness_when_integer_out_of_range_show_order_does_not_matter
+    entry = BigIntReverseTest.create(engines_count: INT_MAX_VALUE + 1)
+    assert_equal entry.errors[:engines_count], ['is not included in the list']
   end
 
   def test_validates_uniqueness_with_newline_chars
@@ -256,7 +248,7 @@ class UniquenessValidationTest < ActiveRecord::TestCase
     assert t_utf8.save, "Should save t_utf8 as unique"
 
     # If database hasn't UTF-8 character set, this test fails
-    if Topic.all.merge!(:select => 'LOWER(title) AS title').find(t_utf8).title == "я тоже уникальный!"
+    if Topic.all.merge!(:select => 'LOWER(title) AS title').find(t_utf8.id).title == "я тоже уникальный!"
       t2_utf8 = Topic.new("title" => "я тоже УНИКАЛЬНЫЙ!")
       assert !t2_utf8.valid?, "Shouldn't be valid"
       assert !t2_utf8.save, "Shouldn't save t2_utf8 as unique"
@@ -420,15 +412,6 @@ class UniquenessValidationTest < ActiveRecord::TestCase
       assert !e2.persisted?, "e2 shouldn't be valid"
       assert e2.errors[:nicknames].any?, "Should have errors for nicknames"
       assert_equal ["has already been taken"], e2.errors[:nicknames], "Should have uniqueness message for nicknames"
-    end
-
-    def test_validate_uniqueness_scoped_to_array
-      record = ModelWithScopedValidationOnArray.new(
-        name: "Sheldon Cooper",
-        commission_by_quarter: [1, 2, 3]
-      )
-
-      assert_nothing_raised { record.valid? }
     end
   end
 

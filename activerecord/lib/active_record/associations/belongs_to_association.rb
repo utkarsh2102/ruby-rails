@@ -31,6 +31,14 @@ module ActiveRecord
         @updated
       end
 
+      def decrement_counters # :nodoc:
+        with_cache_name { |name| decrement_counter name }
+      end
+
+      def increment_counters # :nodoc:
+        with_cache_name { |name| increment_counter name }
+      end
+
       private
 
         def find_target?
@@ -51,23 +59,28 @@ module ActiveRecord
           end
         end
 
-        def decrement_counters
-          with_cache_name { |name| decrement_counter name }
-        end
-
-        def decrement_counter counter_cache_name
+        def decrement_counter(counter_cache_name)
           if foreign_key_present?
             klass.decrement_counter(counter_cache_name, target_id)
           end
         end
 
+        def increment_counter(counter_cache_name)
+          if foreign_key_present?
+            klass.increment_counter(counter_cache_name, target_id)
+            if target && !stale_target? && counter_cache_available_in_memory?(counter_cache_name)
+              target.increment(counter_cache_name)
+            end
+          end
+        end
+
         # Checks whether record is different to the current target, without loading it
         def different_target?(record)
-          record.id != owner[reflection.foreign_key]
+          record.id != owner._read_attribute(reflection.foreign_key)
         end
 
         def replace_keys(record)
-          owner[reflection.foreign_key] = record[reflection.association_primary_key(record.class)]
+          owner[reflection.foreign_key] = record._read_attribute(reflection.association_primary_key(record.class))
         end
 
         def remove_keys
@@ -75,26 +88,31 @@ module ActiveRecord
         end
 
         def foreign_key_present?
-          owner[reflection.foreign_key]
+          owner._read_attribute(reflection.foreign_key)
         end
 
         # NOTE - for now, we're only supporting inverse setting from belongs_to back onto
         # has_one associations.
         def invertible_for?(record)
           inverse = inverse_reflection_for(record)
-          inverse && inverse.macro == :has_one
+          inverse && inverse.has_one?
         end
 
         def target_id
           if options[:primary_key]
             owner.send(reflection.name).try(:id)
           else
-            owner[reflection.foreign_key]
+            owner._read_attribute(reflection.foreign_key)
           end
         end
 
         def stale_state
-          owner[reflection.foreign_key] && owner[reflection.foreign_key].to_s
+          result = owner._read_attribute(reflection.foreign_key)
+          result && result.to_s
+        end
+
+        def counter_cache_available_in_memory?(counter_cache_name)
+          target.respond_to?(counter_cache_name)
         end
     end
   end

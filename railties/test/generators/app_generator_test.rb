@@ -1,6 +1,7 @@
 require 'generators/generators_test_helper'
 require 'rails/generators/rails/app/app_generator'
 require 'generators/shared_generator_tests'
+require 'mocha/setup' # FIXME: stop using mocha
 
 DEFAULT_APP_FILES = %w(
   .gitignore
@@ -21,6 +22,7 @@ DEFAULT_APP_FILES = %w(
   bin/bundle
   bin/rails
   bin/rake
+  bin/setup
   config/environments
   config/initializers
   config/locales
@@ -119,7 +121,7 @@ class AppGeneratorTest < Rails::Generators::TestCase
     generator = Rails::Generators::AppGenerator.new ["rails"], { with_dispatchers: true },
                                                                destination_root: app_moved_root, shell: @shell
     generator.send(:app_const)
-    quietly { generator.send(:create_config_files) }
+    quietly { generator.send(:update_config_files) }
     assert_file "myapp_moved/config/environment.rb", /Rails\.application\.initialize!/
     assert_file "myapp_moved/config/initializers/session_store.rb", /_myapp_session/
   end
@@ -134,7 +136,7 @@ class AppGeneratorTest < Rails::Generators::TestCase
 
     generator = Rails::Generators::AppGenerator.new ["rails"], { with_dispatchers: true }, destination_root: app_root, shell: @shell
     generator.send(:app_const)
-    quietly { generator.send(:create_config_files) }
+    quietly { generator.send(:update_config_files) }
     assert_file "myapp/config/initializers/session_store.rb", /_myapp_session/
   end
 
@@ -192,20 +194,20 @@ class AppGeneratorTest < Rails::Generators::TestCase
   def test_config_database_is_added_by_default
     run_generator
     assert_file "config/database.yml", /sqlite3/
-    unless defined?(JRUBY_VERSION)
-      assert_gem "sqlite3"
-    else
+    if defined?(JRUBY_VERSION)
       assert_gem "activerecord-jdbcsqlite3-adapter"
+    else
+      assert_gem "sqlite3"
     end
   end
 
   def test_config_another_database
     run_generator([destination_root, "-d", "mysql"])
     assert_file "config/database.yml", /mysql/
-    unless defined?(JRUBY_VERSION)
-      assert_gem "mysql2"
-    else
+    if defined?(JRUBY_VERSION)
       assert_gem "activerecord-jdbcmysql-adapter"
+    else
+      assert_gem "mysql2"
     end
   end
 
@@ -217,10 +219,10 @@ class AppGeneratorTest < Rails::Generators::TestCase
   def test_config_postgresql_database
     run_generator([destination_root, "-d", "postgresql"])
     assert_file "config/database.yml", /postgresql/
-    unless defined?(JRUBY_VERSION)
-      assert_gem "pg"
-    else
+    if defined?(JRUBY_VERSION)
       assert_gem "activerecord-jdbcpostgresql-adapter"
+    else
+      assert_gem "pg"
     end
   end
 
@@ -249,9 +251,9 @@ class AppGeneratorTest < Rails::Generators::TestCase
     assert_gem "activerecord-jdbc-adapter"
   end
 
-  def test_config_jdbc_database_when_no_option_given
-    if defined?(JRUBY_VERSION)
-      run_generator([destination_root])
+  if defined?(JRUBY_VERSION)
+    def test_config_jdbc_database_when_no_option_given
+      run_generator
       assert_file "config/database.yml", /sqlite3/
       assert_gem "activerecord-jdbcsqlite3-adapter"
     end
@@ -264,11 +266,6 @@ class AppGeneratorTest < Rails::Generators::TestCase
     assert_file "test/test_helper.rb" do |helper_content|
       assert_no_match(/fixtures :all/, helper_content)
     end
-  end
-
-  def test_generator_if_skip_action_view_is_given
-    run_generator [destination_root, "--skip-action-view"]
-    assert_file "config/application.rb", /#\s+require\s+["']action_view\/railtie["']/
   end
 
   def test_generator_if_skip_sprockets_is_given
@@ -293,11 +290,11 @@ class AppGeneratorTest < Rails::Generators::TestCase
   end
 
   def test_inclusion_of_javascript_runtime
-    run_generator([destination_root])
+    run_generator
     if defined?(JRUBY_VERSION)
       assert_gem "therubyrhino"
     else
-      assert_file "Gemfile", /# gem\s+["']therubyracer["']+, \s+platforms: :ruby$/
+      assert_file "Gemfile", /# gem 'therubyracer', platforms: :ruby/
     end
   end
 
@@ -338,17 +335,20 @@ class AppGeneratorTest < Rails::Generators::TestCase
 
   def test_inclusion_of_jbuilder
     run_generator
-    assert_file "Gemfile", /gem 'jbuilder'/
+    assert_gem 'jbuilder'
   end
 
-  def test_inclusion_of_debugger
+  def test_inclusion_of_a_debugger
     run_generator
     if defined?(JRUBY_VERSION)
       assert_file "Gemfile" do |content|
+        assert_no_match(/byebug/, content)
         assert_no_match(/debugger/, content)
       end
+    elsif RUBY_VERSION < '2.0.0'
+      assert_gem 'debugger'
     else
-      assert_file "Gemfile", /# gem 'debugger'/
+      assert_gem 'byebug'
     end
   end
 
@@ -390,10 +390,11 @@ class AppGeneratorTest < Rails::Generators::TestCase
     run_generator [destination_root, "--skip-test-unit", "--skip-active-record"]
     assert_file "config/application.rb", /#\s+require\s+["']rails\/test_unit\/railtie["']/
     assert_file "config/application.rb", /#\s+require\s+["']active_record\/railtie["']/
+    assert_file "config/application.rb", /\s+require\s+["']active_job\/railtie["']/
   end
 
   def test_new_hash_style
-    run_generator [destination_root]
+    run_generator
     assert_file "config/initializers/session_store.rb" do |file|
       assert_match(/config.session_store :cookie_store, key: '_.+_session'/, file)
     end
@@ -405,7 +406,7 @@ class AppGeneratorTest < Rails::Generators::TestCase
   end
 
   def test_application_name_with_spaces
-    path = File.join(destination_root, "foo bar".shellescape)
+    path = File.join(destination_root, "foo bar")
 
     # This also applies to MySQL apps but not with SQLite
     run_generator [path, "-d", 'postgresql']
@@ -414,9 +415,14 @@ class AppGeneratorTest < Rails::Generators::TestCase
     assert_file "foo bar/config/initializers/session_store.rb", /key: '_foo_bar/
   end
 
+  def test_web_console
+    run_generator
+    assert_gem 'web-console'
+  end
+
   def test_spring
     run_generator
-    assert_file "Gemfile", /gem 'spring', \s+group: :development/
+    assert_gem 'spring'
   end
 
   def test_spring_binstubs
@@ -444,13 +450,79 @@ class AppGeneratorTest < Rails::Generators::TestCase
     end
   end
 
-protected
+  def test_generator_if_skip_turbolinks_is_given
+    run_generator [destination_root, "--skip-turbolinks"]
+
+    assert_file "Gemfile" do |content|
+      assert_no_match(/turbolinks/, content)
+    end
+    assert_file "app/views/layouts/application.html.erb" do |content|
+      assert_no_match(/data-turbolinks-track/, content)
+    end
+    assert_file "app/assets/javascripts/application.js" do |content|
+      assert_no_match(/turbolinks/, content)
+    end
+  end
+
+  def test_gitignore_when_sqlite3
+    run_generator
+
+    assert_file '.gitignore' do |content|
+      assert_match(/sqlite3/, content)
+    end
+  end
+
+  def test_gitignore_when_no_active_record
+    run_generator [destination_root, '--skip-active-record']
+
+    assert_file '.gitignore' do |content|
+      assert_no_match(/sqlite/i, content)
+    end
+  end
+
+  def test_gitignore_when_non_sqlite3_db
+    run_generator([destination_root, "-d", "mysql"])
+
+    assert_file '.gitignore' do |content|
+      assert_no_match(/sqlite/i, content)
+    end
+  end
+
+  def test_psych_gem
+    run_generator
+    gem_regex = /gem 'psych',\s+'~> 2.0',\s+platforms: :rbx/
+
+    assert_file "Gemfile" do |content|
+      if defined?(Rubinius)
+        assert_match(gem_regex, content)
+      else
+        assert_no_match(gem_regex, content)
+      end
+    end
+  end
+
+  def test_after_bundle_callback
+    path = 'http://example.org/rails_template'
+    template = %{ after_bundle { run 'echo ran after_bundle' } }
+    template.instance_eval "def read; self; end" # Make the string respond to read
+
+    generator([destination_root], template: path).expects(:open).with(path, 'Accept' => 'application/x-thor-template').returns(template)
+
+    bundler_first = sequence('bundle, binstubs, after_bundle')
+    generator.expects(:bundle_command).with('install').once.in_sequence(bundler_first)
+    generator.expects(:bundle_command).with('exec spring binstub --all').in_sequence(bundler_first)
+    generator.expects(:run).with('echo ran after_bundle').in_sequence(bundler_first)
+
+    quietly { generator.invoke_all }
+  end
+
+  protected
 
   def action(*args, &block)
-    silence(:stdout) { generator.send(*args, &block) }
+    capture(:stdout) { generator.send(*args, &block) }
   end
 
   def assert_gem(gem)
-    assert_file "Gemfile", /^gem\s+["']#{gem}["']$/
+    assert_file "Gemfile", /^\s*gem\s+["']#{gem}["']$*/
   end
 end

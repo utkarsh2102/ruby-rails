@@ -2,6 +2,7 @@ require "cases/helper"
 require "models/author"
 require "models/binary"
 require "models/cake_designer"
+require "models/category"
 require "models/chef"
 require "models/comment"
 require "models/edge"
@@ -27,6 +28,16 @@ module ActiveRecord
         assert_equal author, post.author
         assert_not_equal 1, post.id
       }
+    end
+
+    def test_where_copies_arel_bind_params
+      chef = Chef.create!
+      CakeDesigner.create!(chef: chef)
+
+      cake_designers = CakeDesigner.joins(:chef).where(chefs: { id: chef.id })
+      chefs = Chef.where(employable: cake_designers)
+
+      assert_equal [chef], chefs.to_a
     end
 
     def test_rewhere_on_root
@@ -94,6 +105,18 @@ module ActiveRecord
       actual   = PriceEstimate.where(estimate_of: [treasure, hidden])
 
       assert_equal expected.to_sql, actual.to_sql
+    end
+
+    def test_polymorphic_empty_array_where
+      treasure = Treasure.new
+      treasure.id = 1
+      hidden = HiddenTreasure.new
+      hidden.id = 2
+
+      expected = PriceEstimate.where("1=0")
+      actual   = PriceEstimate.where(estimate_of: [])
+
+      assert_equal expected.to_a, actual.to_a
     end
 
     def test_polymorphic_nested_relation_where
@@ -184,6 +207,12 @@ module ActiveRecord
       assert_equal 0, Post.where(:id => []).count
     end
 
+    def test_where_with_table_name_and_nested_empty_array
+      assert_deprecated do
+        assert_equal [], Post.where(:id => [[]]).to_a
+      end
+    end
+
     def test_where_with_empty_hash_and_no_foreign_key
       assert_equal 0, Edge.where(:sink => {}).count
     end
@@ -192,6 +221,36 @@ module ActiveRecord
       [[], {}, nil, ""].each do |blank|
         assert_equal 4, Edge.where(blank).order("sink_id").to_a.size
       end
+    end
+
+    def test_where_with_integer_for_string_column
+      count = Post.where(:title => 0).count
+      assert_equal 0, count
+    end
+
+    def test_where_with_float_for_string_column
+      count = Post.where(:title => 0.0).count
+      assert_equal 0, count
+    end
+
+    def test_where_with_boolean_for_string_column
+      count = Post.where(:title => false).count
+      assert_equal 0, count
+    end
+
+    def test_where_with_decimal_for_string_column
+      count = Post.where(:title => BigDecimal.new(0)).count
+      assert_equal 0, count
+    end
+
+    def test_where_with_duration_for_string_column
+      count = Post.where(:title => 0.seconds).count
+      assert_equal 0, count
+    end
+
+    def test_where_with_integer_for_binary_column
+      count = Binary.where(:data => 0).count
+      assert_equal 0, count
     end
 
     def test_where_on_association_with_custom_primary_key
@@ -225,6 +284,12 @@ module ActiveRecord
 
     def test_where_on_association_with_custom_primary_key_with_array_of_ids
       essay = Essay.where(writer: ["David"]).first
+
+      assert_equal essays(:david_modest_proposal), essay
+    end
+
+    def test_where_on_non_polymorphic_association_with_custom_primary_key
+      essay = Essay.where(category: [Category.new(name: "General")]).first
 
       assert_equal essays(:david_modest_proposal), essay
     end

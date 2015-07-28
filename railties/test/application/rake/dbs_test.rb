@@ -26,57 +26,48 @@ module ApplicationTests
         FileUtils.rm_rf("#{app_path}/config/database.yml")
       end
 
-      def expected
-        @expected ||= {}
-      end
-
-      def db_create_and_drop
+      def db_create_and_drop(expected_database)
         Dir.chdir(app_path) do
           output = `bundle exec rake db:create`
-          assert_equal output, ""
-          assert File.exist?(expected[:database])
-          assert_equal expected[:database],
-                        ActiveRecord::Base.connection_config[:database]
+          assert_empty output
+          assert File.exist?(expected_database)
+          assert_equal expected_database, ActiveRecord::Base.connection_config[:database]
           output = `bundle exec rake db:drop`
-          assert_equal output, ""
-          assert !File.exist?(expected[:database])
+          assert_empty output
+          assert !File.exist?(expected_database)
         end
       end
 
       test 'db:create and db:drop without database url' do
         require "#{app_path}/config/environment"
-        expected[:database] = ActiveRecord::Base.configurations[Rails.env]['database']
-        db_create_and_drop
-       end
+        db_create_and_drop ActiveRecord::Base.configurations[Rails.env]['database']
+      end
 
       test 'db:create and db:drop with database url' do
         require "#{app_path}/config/environment"
         set_database_url
-        expected[:database] = database_url_db_name
-        db_create_and_drop
+        db_create_and_drop database_url_db_name
       end
 
-      def db_migrate_and_status
+      def db_migrate_and_status(expected_database)
         Dir.chdir(app_path) do
           `rails generate model book title:string;
            bundle exec rake db:migrate`
           output = `bundle exec rake db:migrate:status`
-          assert_match(%r{database:\s+\S*#{Regexp.escape(expected[:database])}}, output)
+          assert_match(%r{database:\s+\S*#{Regexp.escape(expected_database)}}, output)
           assert_match(/up\s+\d{14}\s+Create books/, output)
         end
       end
 
       test 'db:migrate and db:migrate:status without database_url' do
         require "#{app_path}/config/environment"
-        expected[:database] = ActiveRecord::Base.configurations[Rails.env]['database']
-        db_migrate_and_status
+        db_migrate_and_status ActiveRecord::Base.configurations[Rails.env]['database']
       end
 
       test 'db:migrate and db:migrate:status with database_url' do
         require "#{app_path}/config/environment"
         set_database_url
-        expected[:database] = database_url_db_name
-        db_migrate_and_status
+        db_migrate_and_status database_url_db_name
       end
 
       def db_schema_dump
@@ -97,12 +88,11 @@ module ApplicationTests
         db_schema_dump
       end
 
-      def db_fixtures_load
+      def db_fixtures_load(expected_database)
         Dir.chdir(app_path) do
           `rails generate model book title:string;
            bundle exec rake db:migrate db:fixtures:load`
-          assert_match(/#{expected[:database]}/,
-                    ActiveRecord::Base.connection_config[:database])
+          assert_match expected_database, ActiveRecord::Base.connection_config[:database]
           require "#{app_path}/app/models/book"
           assert_equal 2, Book.count
         end
@@ -110,43 +100,48 @@ module ApplicationTests
 
       test 'db:fixtures:load without database_url' do
         require "#{app_path}/config/environment"
-        expected[:database] =  ActiveRecord::Base.configurations[Rails.env]['database']
-        db_fixtures_load
+        db_fixtures_load ActiveRecord::Base.configurations[Rails.env]['database']
       end
 
       test 'db:fixtures:load with database_url' do
         require "#{app_path}/config/environment"
         set_database_url
-        expected[:database] = database_url_db_name
-        db_fixtures_load
+        db_fixtures_load database_url_db_name
       end
 
-      def db_structure_dump_and_load
+      test 'db:fixtures:load with namespaced fixture' do
+        require "#{app_path}/config/environment"
+        Dir.chdir(app_path) do
+          `rails generate model admin::book title:string;
+           bundle exec rake db:migrate db:fixtures:load`
+          require "#{app_path}/app/models/admin/book"
+          assert_equal 2, Admin::Book.count
+        end
+      end
+
+      def db_structure_dump_and_load(expected_database)
         Dir.chdir(app_path) do
           `rails generate model book title:string;
            bundle exec rake db:migrate db:structure:dump`
           structure_dump = File.read("db/structure.sql")
           assert_match(/CREATE TABLE \"books\"/, structure_dump)
           `bundle exec rake environment db:drop db:structure:load`
-          assert_match(/#{expected[:database]}/,
-                        ActiveRecord::Base.connection_config[:database])
+          assert_match expected_database, ActiveRecord::Base.connection_config[:database]
           require "#{app_path}/app/models/book"
           #if structure is not loaded correctly, exception would be raised
-          assert Book.count, 0
+          assert_equal 0, Book.count
         end
       end
 
       test 'db:structure:dump and db:structure:load without database_url' do
         require "#{app_path}/config/environment"
-        expected[:database] =  ActiveRecord::Base.configurations[Rails.env]['database']
-        db_structure_dump_and_load
+        db_structure_dump_and_load ActiveRecord::Base.configurations[Rails.env]['database']
       end
 
       test 'db:structure:dump and db:structure:load with database_url' do
         require "#{app_path}/config/environment"
         set_database_url
-        expected[:database] = database_url_db_name
-        db_structure_dump_and_load
+        db_structure_dump_and_load database_url_db_name
       end
 
       test 'db:structure:dump does not dump schema information when no migrations are used' do
@@ -186,6 +181,34 @@ module ApplicationTests
         end
       end
 
+      test "db:schema:load with inflections" do
+        Dir.chdir(app_path) do
+          app_file 'config/initializers/inflection.rb', <<-RUBY
+            ActiveSupport::Inflector.inflections do |inflect|
+              inflect.irregular 'goose', 'geese'
+            end
+          RUBY
+          app_file 'config/initializers/primary_key_table_name.rb', <<-RUBY
+            ActiveRecord::Base.primary_key_prefix_type = :table_name
+          RUBY
+          app_file 'db/schema.rb', <<-RUBY
+            ActiveRecord::Schema.define(version: 20140423102712) do
+              create_table("goose".pluralize) do |t|
+                t.string :name
+              end
+            end
+          RUBY
+
+          `bin/rake db:schema:load`
+
+          tables = `bin/rails runner 'p ActiveRecord::Base.connection.tables'`.strip
+          assert_match(/"geese"/, tables)
+
+          columns = `bin/rails runner 'p ActiveRecord::Base.connection.columns("geese").map(&:name)'`.strip
+          assert_equal columns, '["gooseid", "name"]'
+        end
+      end
+
       def db_test_load_structure
         Dir.chdir(app_path) do
           `rails generate model book title:string;
@@ -194,9 +217,9 @@ module ApplicationTests
           ActiveRecord::Base.establish_connection :test
           require "#{app_path}/app/models/book"
           #if structure is not loaded correctly, exception would be raised
-          assert Book.count, 0
-          assert_match(/#{ActiveRecord::Base.configurations['test']['database']}/,
-                        ActiveRecord::Base.connection_config[:database])
+          assert_equal 0, Book.count
+          assert_match ActiveRecord::Base.configurations['test']['database'],
+            ActiveRecord::Base.connection_config[:database]
         end
       end
 

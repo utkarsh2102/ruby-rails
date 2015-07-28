@@ -6,6 +6,7 @@ class CodeStatistics #:nodoc:
                 'Helper tests',
                 'Model tests',
                 'Mailer tests',
+                'Job tests',
                 'Integration tests',
                 'Functional tests (old)',
                 'Unit tests (old)']
@@ -42,11 +43,9 @@ class CodeStatistics #:nodoc:
 
         if File.directory?(path) && (/^\./ !~ file_name)
           stats.add(calculate_directory_statistics(path, pattern))
+        elsif file_name =~ pattern
+          stats.add_by_file_path(path)
         end
-
-        next unless file_name =~ pattern
-
-        stats.add_by_file_path(path)
       end
 
       stats

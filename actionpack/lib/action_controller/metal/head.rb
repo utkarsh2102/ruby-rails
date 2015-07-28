@@ -14,6 +14,8 @@ module ActionController
     #   return head(:method_not_allowed) unless request.post?
     #   return head(:bad_request) unless valid_request?
     #   render
+    #
+    # See Rack::Utils::SYMBOL_TO_STATUS_CODE for a full list of valid +status+ symbols.
     def head(status, options = {})
       options, status = status, nil if status.is_a?(Hash)
       status ||= options.delete(:status) || :ok
@@ -27,15 +29,17 @@ module ActionController
       self.status = status
       self.location = url_for(location) if location
 
-      if include_content?(self._status_code)
+      self.response_body = ""
+
+      if include_content?(self.response_code)
         self.content_type = content_type || (Mime[formats.first] if formats)
         self.response.charset = false if self.response
-        self.response_body = " "
       else
         headers.delete('Content-Type')
         headers.delete('Content-Length')
-        self.response_body = ""
       end
+      
+      true
     end
 
     private

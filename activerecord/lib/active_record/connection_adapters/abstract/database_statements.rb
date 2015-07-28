@@ -9,12 +9,20 @@ module ActiveRecord
       # Converts an arel AST to SQL
       def to_sql(arel, binds = [])
         if arel.respond_to?(:ast)
-          binds = binds.dup
-          visitor.accept(arel.ast) do
-            quote(*binds.shift.reverse)
-          end
+          collected = visitor.accept(arel.ast, collector)
+          collected.compile(binds.dup, self)
         else
           arel
+        end
+      end
+
+      # This is used in the StatementCache object. It returns an object that
+      # can be used to query the database repeatedly.
+      def cacheable_query(arel) # :nodoc:
+        if prepared_statements
+          ActiveRecord::StatementCache.query visitor, arel.ast
+        else
+          ActiveRecord::StatementCache.partial_query visitor, arel.ast, collector
         end
       end
 
@@ -73,6 +81,11 @@ module ActiveRecord
       # the executed +sql+ statement.
       def exec_delete(sql, name, binds)
         exec_query(sql, name, binds)
+      end
+
+      # Executes the truncate statement.
+      def truncate(table_name, name = nil)
+        raise NotImplementedError
       end
 
       # Executes update +sql+ statement in the context of this connection using
@@ -185,7 +198,7 @@ module ActiveRecord
       # * You are creating a nested (savepoint) transaction
       #
       # The mysql, mysql2 and postgresql adapters support setting the transaction
-      # isolation level. However, support is disabled for mysql versions below 5,
+      # isolation level. However, support is disabled for MySQL versions below 5,
       # because they are affected by a bug[http://bugs.mysql.com/bug.php?id=39170]
       # which means the isolation level gets persisted outside the transaction.
       def transaction(options = {})
@@ -195,58 +208,34 @@ module ActiveRecord
           if options[:isolation]
             raise ActiveRecord::TransactionIsolationError, "cannot set isolation when joining a transaction"
           end
-
           yield
         else
-          within_new_transaction(options) { yield }
+          transaction_manager.within_new_transaction(options) { yield }
         end
       rescue ActiveRecord::Rollback
         # rollbacks are silently swallowed
       end
 
-      def within_new_transaction(options = {}) #:nodoc:
-        transaction = begin_transaction(options)
-        yield
-      rescue Exception => error
-        rollback_transaction if transaction
-        raise
-      ensure
-        begin
-          commit_transaction unless error
-        rescue Exception
-          rollback_transaction
-          raise
-        end
-      end
+      attr_reader :transaction_manager #:nodoc:
 
-      def current_transaction #:nodoc:
-        @transaction
-      end
+      delegate :within_new_transaction, :open_transactions, :current_transaction, :begin_transaction, :commit_transaction, :rollback_transaction, to: :transaction_manager
 
       def transaction_open?
-        @transaction.open?
-      end
-
-      def begin_transaction(options = {}) #:nodoc:
-        @transaction = @transaction.begin(options)
-      end
-
-      def commit_transaction #:nodoc:
-        @transaction = @transaction.commit
-      end
-
-      def rollback_transaction #:nodoc:
-        @transaction = @transaction.rollback
+        current_transaction.open?
       end
 
       def reset_transaction #:nodoc:
-        @transaction = ClosedTransaction.new(self)
+        @transaction_manager = TransactionManager.new(self)
       end
 
       # Register a record with the current transaction so that its after_commit and after_rollback callbacks
       # can be called.
       def add_transaction_record(record)
-        @transaction.add_record(record)
+        current_transaction.add_record(record)
+      end
+
+      def transaction_state
+        current_transaction.state
       end
 
       # Begins the transaction (and turns off auto-committing).
@@ -273,7 +262,18 @@ module ActiveRecord
 
       # Rolls back the transaction (and turns on auto-committing). Must be
       # done if the transaction block raises an exception or returns false.
-      def rollback_db_transaction() end
+      def rollback_db_transaction
+        exec_rollback_db_transaction
+      end
+
+      def exec_rollback_db_transaction() end #:nodoc:
+
+      def rollback_to_savepoint(name = nil)
+        exec_rollback_to_savepoint(name)
+      end
+
+      def exec_rollback_to_savepoint(name = nil) #:nodoc:
+      end
 
       def default_sequence_name(table, column)
         nil
@@ -302,10 +302,6 @@ module ActiveRecord
         "DEFAULT VALUES"
       end
 
-      def limited_update_conditions(where_sql, quoted_table_name, quoted_primary_key)
-        "WHERE #{quoted_primary_key} IN (SELECT #{quoted_primary_key} FROM #{quoted_table_name} #{where_sql})"
-      end
-
       # Sanitizes the given LIMIT parameter in order to prevent SQL injection.
       #
       # The +limit+ may be anything that can evaluate to a string via #to_s. It
@@ -326,8 +322,8 @@ module ActiveRecord
       end
 
       # The default strategy for an UPDATE with joins is to use a subquery. This doesn't work
-      # on mysql (even when aliasing the tables), but mysql allows using JOIN directly in
-      # an UPDATE statement, so in the mysql adapters we redefine this to do that.
+      # on MySQL (even when aliasing the tables), but MySQL allows using JOIN directly in
+      # an UPDATE statement, so in the MySQL adapters we redefine this to do that.
       def join_to_update(update, select) #:nodoc:
         key = update.key
         subselect = subquery_for(key, select)
@@ -352,8 +348,9 @@ module ActiveRecord
 
         # Returns an ActiveRecord::Result instance.
         def select(sql, name = nil, binds = [])
+          exec_query(sql, name, binds)
         end
-        undef_method :select
+
 
         # Returns the last auto-generated ID from the affected table.
         def insert_sql(sql, name = nil, pk = nil, id_value = nil, sequence_name = nil)
@@ -381,7 +378,7 @@ module ActiveRecord
         end
 
         def binds_from_relation(relation, binds)
-          if relation.is_a?(Relation) && binds.blank?
+          if relation.is_a?(Relation) && binds.empty?
             relation, binds = relation.arel, relation.bind_values
           end
           [relation, binds]

@@ -39,7 +39,7 @@ module ActiveRecord
 
   class PendingMigrationError < MigrationError#:nodoc:
     def initialize
-      if defined?(Rails)
+      if defined?(Rails.env)
         super("Migrations are pending. To resolve this issue, run:\n\n\tbin/rake db:migrate RAILS_ENV=#{::Rails.env}")
       else
         super("Migrations are pending. To resolve this issue, run:\n\n\tbin/rake db:migrate")
@@ -161,21 +161,14 @@ module ActiveRecord
   # in the <tt>db/migrate/</tt> directory where <tt>timestamp</tt> is the
   # UTC formatted date and time that the migration was generated.
   #
-  # You may then edit the <tt>up</tt> and <tt>down</tt> methods of
-  # MyNewMigration.
-  #
   # There is a special syntactic shortcut to generate migrations that add fields to a table.
   #
   #   rails generate migration add_fieldname_to_tablename fieldname:string
   #
   # This will generate the file <tt>timestamp_add_fieldname_to_tablename</tt>, which will look like this:
   #   class AddFieldnameToTablename < ActiveRecord::Migration
-  #     def up
-  #       add_column :tablenames, :fieldname, :string
-  #     end
-  #
-  #     def down
-  #       remove_column :tablenames, :fieldname
+  #     def change
+  #       add_column :tablenames, :field, :string
   #     end
   #   end
   #
@@ -188,14 +181,17 @@ module ActiveRecord
   #
   # To roll the database back to a previous migration version, use
   # <tt>rake db:migrate VERSION=X</tt> where <tt>X</tt> is the version to which
-  # you wish to downgrade. If any of the migrations throw an
-  # <tt>ActiveRecord::IrreversibleMigration</tt> exception, that step will fail and you'll
-  # have some manual work to do.
+  # you wish to downgrade. Alternatively, you can also use the STEP option if you
+  # wish to rollback last few migrations. <tt>rake db:migrate STEP=2</tt> will rollback
+  # the latest two migrations.
+  #
+  # If any of the migrations throw an <tt>ActiveRecord::IrreversibleMigration</tt> exception,
+  # that step will fail and you'll have some manual work to do.
   #
   # == Database support
   #
   # Migrations are currently supported in MySQL, PostgreSQL, SQLite,
-  # SQL Server, Sybase, and Oracle (all supported databases except DB2).
+  # SQL Server, and Oracle (all supported databases except DB2).
   #
   # == More examples
   #
@@ -311,9 +307,8 @@ module ActiveRecord
   #
   # == Reversible Migrations
   #
-  # Starting with Rails 3.1, you will be able to define reversible migrations.
   # Reversible migrations are migrations that know how to go +down+ for you.
-  # You simply supply the +up+ logic, and the Migration system will figure out
+  # You simply supply the +up+ logic, and the Migration system figures out
   # how to execute the down commands for you.
   #
   # To define a reversible migration, define the +change+ method in your
@@ -372,12 +367,20 @@ module ActiveRecord
       end
 
       def call(env)
-        mtime = ActiveRecord::Migrator.last_migration.mtime.to_i
-        if @last_check < mtime
-          ActiveRecord::Migration.check_pending!
-          @last_check = mtime
+        if connection.supports_migrations?
+          mtime = ActiveRecord::Migrator.last_migration.mtime.to_i
+          if @last_check < mtime
+            ActiveRecord::Migration.check_pending!(connection)
+            @last_check = mtime
+          end
         end
         @app.call(env)
+      end
+
+      private
+
+      def connection
+        ActiveRecord::Base.connection
       end
     end
 
@@ -390,7 +393,7 @@ module ActiveRecord
       end
 
       def load_schema_if_pending!
-        if ActiveRecord::Migrator.needs_migration?
+        if ActiveRecord::Migrator.needs_migration? || !ActiveRecord::Migrator.any_migrations?
           # Roundrip to Rake to allow plugins to hook into database initialization.
           FileUtils.cd Rails.root do
             current_config = Base.connection_config
@@ -649,7 +652,9 @@ module ActiveRecord
         unless @connection.respond_to? :revert
           unless arguments.empty? || [:execute, :enable_extension, :disable_extension].include?(method)
             arguments[0] = proper_table_name(arguments.first, table_name_options)
-            arguments[1] = proper_table_name(arguments.second, table_name_options) if method == :rename_table
+            if [:rename_table, :add_foreign_key].include?(method)
+              arguments[1] = proper_table_name(arguments.second, table_name_options)
+            end
           end
         end
         return super unless connection.respond_to?(method)
@@ -811,22 +816,22 @@ module ActiveRecord
         migrations = migrations(migrations_paths)
         migrations.select! { |m| yield m } if block_given?
 
-        self.new(:up, migrations, target_version).migrate
+        new(:up, migrations, target_version).migrate
       end
 
       def down(migrations_paths, target_version = nil, &block)
         migrations = migrations(migrations_paths)
         migrations.select! { |m| yield m } if block_given?
 
-        self.new(:down, migrations, target_version).migrate
+        new(:down, migrations, target_version).migrate
       end
 
       def run(direction, migrations_paths, target_version)
-        self.new(direction, migrations(migrations_paths), target_version).run
+        new(direction, migrations(migrations_paths), target_version).run
       end
 
       def open(migrations_paths)
-        self.new(:up, migrations(migrations_paths), nil)
+        new(:up, migrations(migrations_paths), nil)
       end
 
       def schema_migrations_table_name
@@ -849,25 +854,16 @@ module ActiveRecord
         (migrations(migrations_paths).collect(&:version) - get_all_versions(connection)).size > 0
       end
 
+      def any_migrations?
+        migrations(migrations_paths).any?
+      end
+
       def last_version
         last_migration.version
       end
 
       def last_migration #:nodoc:
         migrations(migrations_paths).last || NullMigration.new
-      end
-
-      def proper_table_name(name, options = {})
-        ActiveSupport::Deprecation.warn "ActiveRecord::Migrator.proper_table_name is deprecated and will be removed in Rails 4.2. Use the proper_table_name instance method on ActiveRecord::Migration instead"
-        options = {
-          table_name_prefix: ActiveRecord::Base.table_name_prefix,
-          table_name_suffix: ActiveRecord::Base.table_name_suffix
-        }.merge(options)
-        if name.respond_to? :table_name
-          name.table_name
-        else
-          "#{options[:table_name_prefix]}#{name}#{options[:table_name_suffix]}"
-        end
       end
 
       def migrations_paths
@@ -901,7 +897,7 @@ module ActiveRecord
       private
 
       def move(direction, migrations_paths, steps)
-        migrator = self.new(direction, migrations(migrations_paths))
+        migrator = new(direction, migrations(migrations_paths))
         start_index = migrator.migrations.index(migrator.current_migration)
 
         if start_index

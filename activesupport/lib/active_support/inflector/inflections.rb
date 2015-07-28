@@ -154,13 +154,13 @@ module ActiveSupport
         end
       end
 
-      # Add uncountable words that shouldn't be attempted inflected.
+      # Specifies words that are uncountable and should not be inflected.
       #
       #   uncountable 'money'
       #   uncountable 'money', 'information'
       #   uncountable %w( money information rice )
       def uncountable(*words)
-        (@uncountables << words).flatten!
+        @uncountables += words.flatten.map(&:downcase)
       end
 
       # Specifies a humanized form of a string by a regular expression rule or

@@ -34,6 +34,7 @@ module RailtiesTest
 
     test "serving sprocket's assets" do
       @plugin.write "app/assets/javascripts/engine.js.erb", "<%= :alert %>();"
+      add_to_env_config "development", "config.assets.digest = false"
 
       boot_rails
       require 'rack/test'
@@ -522,7 +523,7 @@ YAML
       end
     end
 
-    test "engine is a rack app and can have his own middleware stack" do
+    test "engine is a rack app and can have its own middleware stack" do
       add_to_config("config.action_dispatch.show_exceptions = false")
 
       @plugin.write "lib/bukkits.rb", <<-RUBY
@@ -660,10 +661,14 @@ YAML
       @plugin.write "app/models/bukkits/post.rb", <<-RUBY
         module Bukkits
           class Post
-            extend ActiveModel::Naming
+            include ActiveModel::Model
 
             def to_param
               "1"
+            end
+
+            def persisted?
+              true
             end
           end
         end
@@ -772,8 +777,7 @@ YAML
       @plugin.write "app/models/bukkits/post.rb", <<-RUBY
         module Bukkits
           class Post
-            extend ActiveModel::Naming
-            include ActiveModel::Conversion
+            include ActiveModel::Model
             attr_accessor :title
 
             def to_param
@@ -1145,6 +1149,7 @@ YAML
       RUBY
 
       add_to_config("config.railties_order = [:all, :main_app, Blog::Engine]")
+      add_to_env_config "development", "config.assets.digest = false"
 
       boot_rails
 
@@ -1155,10 +1160,10 @@ YAML
       assert_equal "App's bar partial", last_response.body.strip
 
       get("/assets/foo.js")
-      assert_equal "// Bukkit's foo js\n;", last_response.body.strip
+      assert_equal "// Bukkit's foo js", last_response.body.strip
 
       get("/assets/bar.js")
-      assert_equal "// App's bar js\n;", last_response.body.strip
+      assert_equal "// App's bar js", last_response.body.strip
 
       # ensure that railties are not added twice
       railties = Rails.application.send(:ordered_railties).map(&:class)
@@ -1205,7 +1210,7 @@ YAML
 
     test "engine can be properly mounted at root" do
       add_to_config("config.action_dispatch.show_exceptions = false")
-      add_to_config("config.serve_static_assets = false")
+      add_to_config("config.serve_static_files = false")
 
       @plugin.write "lib/bukkits.rb", <<-RUBY
         module Bukkits

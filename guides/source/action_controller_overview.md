@@ -34,7 +34,7 @@ The naming convention of controllers in Rails favors pluralization of the last w
 
 Following this convention will allow you to use the default route generators (e.g. `resources`, etc) without needing to qualify each `:path` or `:controller`, and keeps URL and path helpers' usage consistent throughout your application. See [Layouts & Rendering Guide](layouts_and_rendering.html) for more details.
 
-NOTE: The controller naming convention differs from the naming convention of models, which expected to be named in singular form.
+NOTE: The controller naming convention differs from the naming convention of models, which are expected to be named in singular form.
 
 
 Methods and Actions
@@ -260,7 +260,7 @@ used:
 params.require(:log_entry).permit!
 ```
 
-This will mark the `:log_entry` parameters hash and any subhash of it
+This will mark the `:log_entry` parameters hash and any sub-hash of it
 permitted. Extreme care should be taken when using `permit!` as it
 will allow all current and future model attributes to be
 mass-assigned.
@@ -381,16 +381,31 @@ You can also pass a `:domain` key and specify the domain name for the cookie:
 Rails.application.config.session_store :cookie_store, key: '_your_app_session', domain: ".example.com"
 ```
 
-Rails sets up (for the CookieStore) a secret key used for signing the session data. This can be changed in `config/initializers/secret_token.rb`
+Rails sets up (for the CookieStore) a secret key used for signing the session data. This can be changed in `config/secrets.yml`
 
 ```ruby
 # Be sure to restart your server when you modify this file.
 
-# Your secret key for verifying the integrity of signed cookies.
+# Your secret key is used for verifying the integrity of signed cookies.
 # If you change this key, all old signed cookies will become invalid!
+
 # Make sure the secret is at least 30 characters and all random,
 # no regular words or you'll be exposed to dictionary attacks.
-YourApp::Application.config.secret_key_base = '49d3f3de9ed86c74b94ad6bd0...'
+# You can use `rake secret` to generate a secure secret key.
+
+# Make sure the secrets in this file are kept private
+# if you're sharing your code publicly.
+
+development:
+  secret_key_base: a75d...
+
+test:
+  secret_key_base: 492f...
+
+# Do not keep production secrets in the repository,
+# instead read values from the environment.
+production:
+  secret_key_base: <%= ENV["SECRET_KEY_BASE"] %>
 ```
 
 NOTE: Changing the secret when using the `CookieStore` will invalidate all existing sessions.
@@ -720,7 +735,7 @@ You can choose not to yield and build the response yourself, in which case the a
 
 While the most common way to use filters is by creating private methods and using *_action to add them, there are two other ways to do the same thing.
 
-The first is to use a block directly with the *_action methods. The block receives the controller as an argument, and the `require_login` filter from above could be rewritten to use a block:
+The first is to use a block directly with the *\_action methods. The block receives the controller as an argument, and the `require_login` filter from above could be rewritten to use a block:
 
 ```ruby
 class ApplicationController < ActionController::Base
@@ -1063,7 +1078,7 @@ Rails keeps a log file for each environment in the `log` folder. These are extre
 
 ### Parameters Filtering
 
-You can filter certain request parameters from your log files by appending them to `config.filter_parameters` in the application configuration. These parameters will be marked [FILTERED] in the log.
+You can filter out sensitive request parameters from your log files by appending them to `config.filter_parameters` in the application configuration. These parameters will be marked [FILTERED] in the log.
 
 ```ruby
 config.filter_parameters << :password
@@ -1071,7 +1086,7 @@ config.filter_parameters << :password
 
 ### Redirects Filtering
 
-Sometimes it's desirable to filter out from log files some sensible locations your application is redirecting to.
+Sometimes it's desirable to filter out from log files some sensitive locations your application is redirecting to.
 You can do that by using the `config.filter_redirect` configuration option:
 
 ```ruby
@@ -1148,6 +1163,8 @@ class ClientsController < ApplicationController
     end
 end
 ```
+
+WARNING: You shouldn't do `rescue_from Exception` or `rescue_from StandardError` unless you have a particular reason as it will cause serious side-effects (e.g. you won't be able to see exception details and tracebacks during development).
 
 NOTE: Certain exceptions are only rescuable from the `ApplicationController` class, as they are raised before the controller gets initialized and the action gets executed. See Pratik Naik's [article](http://m.onkey.org/2008/7/20/rescue-from-dispatching) on the subject for more information.
 

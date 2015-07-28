@@ -1,5 +1,6 @@
 require 'erb'
 require 'active_support/core_ext/kernel/singleton_class'
+require 'active_support/deprecation'
 
 class ERB
   module Util
@@ -18,12 +19,7 @@ class ERB
     #   puts html_escape('is a > 0 & a < 10?')
     #   # => is a &gt; 0 &amp; a &lt; 10?
     def html_escape(s)
-      s = s.to_s
-      if s.html_safe?
-        s
-      else
-        s.gsub(HTML_ESCAPE_REGEXP, HTML_ESCAPE).html_safe
-      end
+      unwrapped_html_escape(s).html_safe
     end
 
     # Aliasing twice issues a warning "discarding old...". Remove first to avoid it.
@@ -34,6 +30,18 @@ class ERB
 
     singleton_class.send(:remove_method, :html_escape)
     module_function :html_escape
+
+    # HTML escapes strings but doesn't wrap them with an ActiveSupport::SafeBuffer.
+    # This method is not for public consumption! Seriously!
+    def unwrapped_html_escape(s) # :nodoc:
+      s = s.to_s
+      if s.html_safe?
+        s
+      else
+        s.gsub(HTML_ESCAPE_REGEXP, HTML_ESCAPE)
+      end
+    end
+    module_function :unwrapped_html_escape
 
     # A utility method for escaping HTML without affecting existing escaped entities.
     #
@@ -124,7 +132,7 @@ module ActiveSupport #:nodoc:
   class SafeBuffer < String
     UNSAFE_STRING_METHODS = %w(
       capitalize chomp chop delete downcase gsub lstrip next reverse rstrip
-      slice squeeze strip sub succ swapcase tr tr_s upcase prepend
+      slice squeeze strip sub succ swapcase tr tr_s upcase
     )
 
     alias_method :original_concat, :concat
@@ -144,7 +152,7 @@ module ActiveSupport #:nodoc:
           new_safe_buffer = super
 
           if new_safe_buffer
-            new_safe_buffer.instance_eval { @html_safe = true }
+            new_safe_buffer.instance_variable_set :@html_safe, true
           end
 
           new_safe_buffer
@@ -174,13 +182,18 @@ module ActiveSupport #:nodoc:
     end
 
     def concat(value)
-      if !html_safe? || value.html_safe?
-        super(value)
-      else
-        super(ERB::Util.h(value))
-      end
+      super(html_escape_interpolated_argument(value))
     end
     alias << concat
+
+    def prepend(value)
+      super(html_escape_interpolated_argument(value))
+    end
+
+    def prepend!(value)
+      ActiveSupport::Deprecation.deprecation_warning "ActiveSupport::SafeBuffer#prepend!", :prepend
+      prepend value
+    end
 
     def +(other)
       dup.concat(other)
@@ -231,12 +244,18 @@ module ActiveSupport #:nodoc:
     private
 
     def html_escape_interpolated_argument(arg)
-      (!html_safe? || arg.html_safe?) ? arg : ERB::Util.h(arg)
+      (!html_safe? || arg.html_safe?) ? arg :
+        arg.to_s.gsub(ERB::Util::HTML_ESCAPE_REGEXP, ERB::Util::HTML_ESCAPE)
     end
   end
 end
 
 class String
+  # Marks a string as trusted safe. It will be inserted into HTML with no
+  # additional escaping performed. It is your responsibilty to ensure that the
+  # string contains no malicious content. This method is equivalent to the
+  # `raw` helper in views. It is recommended that you use `sanitize` instead of
+  # this method. It should never be called on user input.
   def html_safe
     ActiveSupport::SafeBuffer.new(self)
   end
