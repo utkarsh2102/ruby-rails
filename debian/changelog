@@ -1,4 +1,4 @@
-rails (2:4.2.3-1) UNRELEASED; urgency=medium
+rails (2:4.2.3-1) experimental; urgency=medium
 
   * Team upload.
   * New upstream release; minor update.
