@@ -40,8 +40,8 @@ XB-Ruby-Versions: ${ruby:Versions}
 Depends: ruby | ruby-interpreter,
          ruby-activemodel (= ${source:Version}),
          ruby-activesupport (= ${source:Version}),
-         ruby-arel (<< 5.1.0),
-         ruby-arel (>= 5.0.0),
+         ruby-arel (<< 7.0),
+         ruby-arel (>= 6.0),
          ${misc:Depends}
 Description: object-relational mapper framework (part of Rails)
  Active Records is a framework to work with databases on Rails.  Build
