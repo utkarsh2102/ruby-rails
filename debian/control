@@ -64,6 +64,20 @@ Description: toolkit for building modeling frameworks (part of Rails)
  attributes, callbacks, validations, observers, serialization,
  internationalization, and testing.
 
+Package: ruby-activejob
+Architecture: all
+X-DhRuby-Root: activejob/
+XB-Ruby-Versions: ${ruby:Versions}
+Depends: ruby | ruby-interpreter,
+         ruby-activesupport (= ${source:Version}),
+         ruby-globalid
+         ${misc:Depends}
+Description: job framework with pluggable queues
+ Active Job is a framework for declaring jobs and making them run on a variety
+ of queueing backends. These jobs can be everything from regularly scheduled
+ clean-ups, to billing charges, to mailings. Anything that can be chopped up
+ into small units of work and run in parallel, really.
+
 Package: ruby-actionview
 Architecture: all
 X-DhRuby-Root: actionview/
