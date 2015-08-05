@@ -70,7 +70,7 @@ X-DhRuby-Root: activejob/
 XB-Ruby-Versions: ${ruby:Versions}
 Depends: ruby | ruby-interpreter,
          ruby-activesupport (= ${source:Version}),
-         ruby-globalid
+         ruby-globalid,
          ${misc:Depends}
 Description: job framework with pluggable queues
  Active Job is a framework for declaring jobs and making them run on a variety
