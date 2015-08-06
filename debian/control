@@ -170,7 +170,9 @@ Recommends: ruby-coffee-rails,
             ruby-spring,
             ruby-sqlite3,
             ruby-turbolinks,
-            ruby-uglifier
+            ruby-uglifier,
+            ruby-byebug,
+            ruby-web-console
 Description: MVC ruby based framework geared for web application development
  Rails is a full-stack, open-source web framework in Ruby for writing
  real-world applications.
