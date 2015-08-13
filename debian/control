@@ -120,6 +120,7 @@ XB-Ruby-Versions: ${ruby:Versions}
 Depends: ruby | ruby-interpreter,
          ruby-actionpack (= ${source:Version}),
          ruby-actionview (= ${source:Version}),
+         ruby-activejob (= ${source:Version}),
          ruby-mail (>= 2.5.4),
          ${misc:Depends},
          ${shlibs:Depends}
