@@ -170,7 +170,7 @@ Recommends: ruby-coffee-rails,
             ruby-sdoc,
             ruby-spring,
             ruby-sqlite3,
-            ruby-turbolinks,
+            ruby-turbolinks (>= 2.5.3),
             ruby-uglifier,
             ruby-byebug,
             ruby-web-console
