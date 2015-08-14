@@ -1,9 +1,9 @@
-rails (2:4.2.3-3) UNRELEASED; urgency=medium
+rails (2:4.2.3-3) experimental; urgency=medium
 
   * ruby-actionmailer: Depends: ruby-activejob
   * ruby-rails: requires ruby-turbolinks >= 2.5.3
 
- -- Antonio Terceiro <terceiro@debian.org>  Thu, 13 Aug 2015 14:52:40 -0300
+ -- Antonio Terceiro <terceiro@debian.org>  Fri, 14 Aug 2015 10:54:45 -0300
 
 rails (2:4.2.3-2) experimental; urgency=medium
 
