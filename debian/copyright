@@ -21,10 +21,7 @@ Files: guides/assets/javascripts/syntaxhighlighter/*.js
 Copyright: 2004-2010 Alex Gorbatchev
 License: GPL or Expat
 
-Files: actionpack/test/controller/selector_test.rb
-       actionpack/test/controller/assert_select_test.rb
-       actionview/lib/action_view/vendor/html-scanner/html/selector.rb
-       actionpack/lib/action_dispatch/testing/assertions/selector.rb
+Files: actionpack/lib/action_dispatch/testing/assertions/selector.rb
 Copyright: 2006 Assaf Arkin (http://labnotes.org)
 License: Expat or CC-BY-3.0
 
