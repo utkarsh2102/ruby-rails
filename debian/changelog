@@ -2,6 +2,7 @@ rails (2:4.2.3-4) UNRELEASED; urgency=medium
 
   * Team upload
   * ruby-activesupport: requires ruby-thread-safe >= 0.3.4, ruby-i18n >= 0.7
+  * ruby-actionview: requires ruby-html-sanitizer and ruby-dom-testing
   * Check dependencies mentioned in gemspec
 
  -- Pirate Praveen <praveen@debian.org>  Wed, 19 Aug 2015 17:32:50 +0530
