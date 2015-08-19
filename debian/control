@@ -17,7 +17,7 @@ X-DhRuby-Root: activesupport/
 XB-Ruby-Versions: ${ruby:Versions}
 Depends: ruby | ruby-interpreter,
          ruby-i18n (<< 1.0),
-         ruby-i18n (>= 0.6.9),
+         ruby-i18n (>= 0.7),
          ruby-json (<< 2.0),
          ruby-json (>= 1.7.7),
          ruby-minitest (<< 6.0),
