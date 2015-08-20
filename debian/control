@@ -91,7 +91,7 @@ Depends: ruby | ruby-interpreter,
  	 ruby-rails-html-sanitizer (<< 2.0),
  	 ruby-rails-html-sanitizer (>= 1.0.2),
  	 ruby-rails-dom-testing (<< 2.0),
- 	 ruby-rails-dom-testing (>= 1.0.5)
+ 	 ruby-rails-dom-testing (>= 1.0.5),
          ${misc:Depends}
 Description: framework for handling view template lookup and rendering (part of Rails)
  Action View is a framework for handling view template lookup and
