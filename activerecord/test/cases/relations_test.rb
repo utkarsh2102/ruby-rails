@@ -17,7 +17,7 @@ require 'models/tyre'
 require 'models/minivan'
 require 'models/aircraft'
 require "models/possession"
-
+require "models/reader"
 
 class RelationTest < ActiveRecord::TestCase
   fixtures :authors, :topics, :entrants, :developers, :companies, :developers_projects, :accounts, :categories, :categorizations, :posts, :comments,
@@ -621,6 +621,51 @@ class RelationTest < ActiveRecord::TestCase
 
     assert_equal ['comments_count AS ranking'], query.select_values
     assert_equal 1, query.to_a.size
+  end
+
+  def test_preloading_with_associations_and_merges
+    post = Post.create! title: 'Uhuu', body: 'body'
+    reader = Reader.create! post_id: post.id, person_id: 1
+    comment = Comment.create! post_id: post.id, body: 'body'
+
+    assert !comment.respond_to?(:readers)
+
+    post_rel = Post.preload(:readers).joins(:readers).where(title: 'Uhuu')
+    result_comment = Comment.joins(:post).merge(post_rel).to_a.first
+    assert_equal comment, result_comment
+
+    assert_no_queries do
+      assert_equal post, result_comment.post
+      assert_equal [reader], result_comment.post.readers.to_a
+    end
+
+    post_rel = Post.includes(:readers).where(title: 'Uhuu')
+    result_comment = Comment.joins(:post).merge(post_rel).first
+    assert_equal comment, result_comment
+
+    assert_no_queries do
+      assert_equal post, result_comment.post
+      assert_equal [reader], result_comment.post.readers.to_a
+    end
+  end
+
+  def test_preloading_with_associations_default_scopes_and_merges
+    post = Post.create! title: 'Uhuu', body: 'body'
+    reader = Reader.create! post_id: post.id, person_id: 1
+
+    post_rel = PostWithPreloadDefaultScope.preload(:readers).joins(:readers).where(title: 'Uhuu')
+    result_post = PostWithPreloadDefaultScope.all.merge(post_rel).to_a.first
+
+    assert_no_queries do
+      assert_equal [reader], result_post.readers.to_a
+    end
+
+    post_rel = PostWithIncludesDefaultScope.includes(:readers).where(title: 'Uhuu')
+    result_post = PostWithIncludesDefaultScope.all.merge(post_rel).to_a.first
+
+    assert_no_queries do
+      assert_equal [reader], result_post.readers.to_a
+    end
   end
 
   def test_loading_with_one_association

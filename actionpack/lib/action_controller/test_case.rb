@@ -327,6 +327,10 @@ module ActionController
       clear
     end
 
+    def fetch(*args, &block)
+      @data.fetch(*args, &block)
+    end
+
     private
 
       def load!
@@ -601,6 +605,7 @@ module ActionController
         parameters = paramify_values(parameters) if html_format?(parameters)
 
         @html_document = nil
+        @html_scanner_document = nil
 
         unless @controller.respond_to?(:recycle!)
           @controller.extend(Testing::Functional)

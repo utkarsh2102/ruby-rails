@@ -1166,4 +1166,39 @@ class HasManyThroughAssociationsTest < ActiveRecord::TestCase
     post_through = organization.posts.build
     assert_equal post_direct.author_id, post_through.author_id
   end
+
+  def test_has_many_through_with_scope_that_should_not_be_fully_merged
+    Club.has_many :distinct_memberships, -> { distinct }, class_name: "Membership"
+    Club.has_many :special_favourites, through: :distinct_memberships, source: :member
+
+    assert_nil Club.new.special_favourites.distinct_value
+  end
+
+  def test_has_many_through_do_not_cache_association_reader_if_the_though_method_has_default_scopes
+    member = Member.create!
+    club = Club.create!
+    TenantMembership.create!(
+      member: member,
+      club: club
+    )
+
+    TenantMembership.current_member = member
+
+    tenant_clubs = member.tenant_clubs
+    assert_equal [club], tenant_clubs
+
+    TenantMembership.current_member = nil
+
+    other_member = Member.create!
+    other_club = Club.create!
+    TenantMembership.create!(
+      member: other_member,
+      club: other_club
+    )
+
+    tenant_clubs = other_member.tenant_clubs
+    assert_equal [other_club], tenant_clubs
+  ensure
+    TenantMembership.current_member = nil
+  end
 end

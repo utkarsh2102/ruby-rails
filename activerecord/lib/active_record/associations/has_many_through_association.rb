@@ -162,7 +162,7 @@ module ActiveRecord
               count = scope.destroy_all.length
             else
               scope.each do |record|
-                record.run_callbacks :destroy
+                record._run_destroy_callbacks
               end
 
               arel = scope.arel
@@ -227,6 +227,10 @@ module ActiveRecord
         # NOTE - not sure that we can actually cope with inverses here
         def invertible_for?(record)
           false
+        end
+
+        def has_cached_counter?(reflection = reflection())
+          owner.attribute_present?(cached_counter_attribute_name(reflection))
         end
 
         def through_reflection_updates_counter_cache?
