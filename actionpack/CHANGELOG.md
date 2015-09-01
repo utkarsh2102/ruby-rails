@@ -1,3 +1,23 @@
+## Rails 4.2.4 (August 24, 2015) ##
+
+*   ActionController::TestSession now accepts a default value as well as
+    a block for generating a default value based off the key provided.
+
+    This fixes calls to session#fetch in ApplicationController instances that
+    take more two arguments or a block from raising `ArgumentError: wrong
+    number of arguments (2 for 1)` when performing controller tests.
+
+    *Matthew Gerrior*
+
+*   Fix to keep original header instance in `ActionDispatch::SSL`
+
+    `ActionDispatch::SSL` changes headers to `Hash`.
+    So some headers will be broken if there are some middlewares
+    on `ActionDispatch::SSL` and if it uses `Rack::Utils::HeaderHash`.
+
+    *Fumiaki Matsushima*
+
+
 ## Rails 4.2.3 (June 25, 2015) ##
 
 *   Fix rake routes not showing the right format when

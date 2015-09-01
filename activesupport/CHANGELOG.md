@@ -1,3 +1,22 @@
+## Rails 4.2.4 (August 24, 2015) ##
+
+*   Fix a `SystemStackError` when encoding an `Enumerable` with `json` gem and
+    with the Active Support JSON encoder loaded.
+
+    Fixes #20775.
+
+    *Sammy Larbi*, *Prathamesh Sonpatki*
+
+*   Fix not calling `#default` on `HashWithIndifferentAcess#to_hash` when only
+    `default_proc` is set, which could raise.
+
+    *Simon Eskildsen*
+
+*   Fix setting `default_proc` on `HashWithIndifferentAccess#dup`
+
+    *Simon Eskildsen*
+
+
 ## Rails 4.2.3 (June 25, 2015) ##
 
 *   Fix a range of values for parameters of the Time#change

@@ -1,3 +1,71 @@
+## Rails 4.2.4 (August 24, 2015) ##
+
+*   Skip statement cache on through association reader.
+
+    If the through class has default scopes we should skip the statement
+    cache.
+
+    Closes #20745.
+
+    *Rafael Mendonça França*
+
+*   Fixes #19420. When generating schema.rb using Postgres BigInt[] data type
+    the limit: 8 was not coming through. This caused it to become Int[] data type
+    after doing a rebuild off of schema.rb.
+
+    *Jake Waller*
+
+*   Fix state being carried over from previous transaction.
+
+    Considering the following example where `name` is a required attribute.
+    Before we had `new_record?` returning `true` for a persisted record:
+
+        author = Author.create! name: 'foo'
+        author.name = nil
+        author.save        # => false
+        author.new_record? # => true
+
+    Fixes #20824.
+
+    *Roque Pinel*
+
+*   Correctly ignore `mark_for_destruction` when `autosave` isn't set to `true`
+    when validating associations.
+
+    Fixes #20882.
+
+    *Sean Griffin*
+
+*   Fix through associations using scopes having the scope merged multiple
+    times.
+
+    Fixes #20721.
+    Fixes #20727.
+
+    *Sean Griffin*
+
+*   `ActiveRecord::Base.dump_schema_after_migration` applies migration tasks
+    other than `db:migrate`. (eg. `db:rollback`, `db:migrate:dup`, ...)
+
+    Fixes #20743.
+
+    *Yves Senn*
+
+*   Correctly raise `ActiveRecord::AssociationTypeMismatch` when assigning
+    a wrong type to a namespaced association.
+
+    Fixes #20545.
+
+    *Diego Carrion*
+
+*   Prevent error when using `force_reload: true` on an unassigned polymorphic
+    belongs_to association.
+
+    Fixes #20426.
+
+    *James Dabbs*
+
+
 ## Rails 4.2.3 (June 25, 2015) ##
 
 *   Let `WITH` queries (Common Table Expressions) be explainable.

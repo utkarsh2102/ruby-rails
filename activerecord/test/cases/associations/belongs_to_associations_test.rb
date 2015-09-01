@@ -19,6 +19,11 @@ require 'models/invoice'
 require 'models/line_item'
 require 'models/column'
 require 'models/record'
+require 'models/admin'
+require 'models/admin/user'
+require 'models/ship'
+require 'models/treasure'
+require 'models/parrot'
 
 class BelongsToAssociationsTest < ActiveRecord::TestCase
   fixtures :accounts, :companies, :developers, :projects, :topics,
@@ -95,6 +100,30 @@ class BelongsToAssociationsTest < ActiveRecord::TestCase
   def test_type_mismatch
     assert_raise(ActiveRecord::AssociationTypeMismatch) { Account.find(1).firm = 1 }
     assert_raise(ActiveRecord::AssociationTypeMismatch) { Account.find(1).firm = Project.find(1) }
+  end
+
+  def test_raises_type_mismatch_with_namespaced_class
+    assert_nil defined?(Region), "This test requires that there is no top-level Region class"
+
+    ActiveRecord::Base.connection.instance_eval do
+      create_table(:admin_regions) { |t| t.string :name }
+      add_column :admin_users, :region_id, :integer
+    end
+    Admin.const_set "RegionalUser", Class.new(Admin::User) { belongs_to(:region) }
+    Admin.const_set "Region", Class.new(ActiveRecord::Base)
+
+    e = assert_raise(ActiveRecord::AssociationTypeMismatch) {
+      Admin::RegionalUser.new(region: 'wrong value')
+    }
+    assert_match(/^Region\([^)]+\) expected, got String\([^)]+\)$/, e.message)
+  ensure
+    Admin.send :remove_const, "Region" if Admin.const_defined?("Region")
+    Admin.send :remove_const, "RegionalUser" if Admin.const_defined?("RegionalUser")
+
+    ActiveRecord::Base.connection.instance_eval do
+      remove_column :admin_users, :region_id if column_exists?(:admin_users, :region_id)
+      drop_table :admin_regions, if_exists: true
+    end
   end
 
   def test_natural_assignment
@@ -238,9 +267,11 @@ class BelongsToAssociationsTest < ActiveRecord::TestCase
   def test_polymorphic_association_class
     sponsor = Sponsor.new
     assert_nil sponsor.association(:sponsorable).send(:klass)
+    assert_nil sponsor.sponsorable(force_reload: true)
 
     sponsor.sponsorable_type = '' # the column doesn't have to be declared NOT NULL
     assert_nil sponsor.association(:sponsorable).send(:klass)
+    assert_nil sponsor.sponsorable(force_reload: true)
 
     sponsor.sponsorable = Member.new :name => "Bert"
     assert_equal Member, sponsor.association(:sponsorable).send(:klass)
@@ -259,6 +290,22 @@ class BelongsToAssociationsTest < ActiveRecord::TestCase
   def test_with_select
     assert_equal 1, Company.find(2).firm_with_select.attributes.size
     assert_equal 1, Company.all.merge!(:includes => :firm_with_select ).find(2).firm_with_select.attributes.size
+  end
+
+  def test_belongs_to_without_counter_cache_option
+    # Ship has a conventionally named `treasures_count` column, but the counter_cache
+    # option is not given on the association.
+    ship = Ship.create(name: 'Countless')
+
+    assert_no_difference lambda { ship.reload.treasures_count }, "treasures_count should not be changed unless counter_cache is given on the relation" do
+      treasure = Treasure.new(name: 'Gold', ship: ship)
+      treasure.save
+    end
+
+    assert_no_difference lambda { ship.reload.treasures_count }, "treasures_count should not be changed unless counter_cache is given on the relation" do
+      treasure = ship.treasures.first
+      treasure.destroy
+    end
   end
 
   def test_belongs_to_counter

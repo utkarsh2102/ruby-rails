@@ -1,3 +1,17 @@
+## Rails 4.2.4 (August 24, 2015) ##
+
+*   Fix STATS_DIRECTORIES already defined warning when running rake from within
+    the top level directory of an engine that has a test app.
+
+    Fixes #20510
+
+    *Ersin Akinci*
+
+*   Fix `NoMethodError` when generating a scaffold inside a full engine.
+
+    *Yuji Yaginuma*
+
+
 ## Rails 4.2.3 (June 25, 2015) ##
 
 *   `assert_file` understands paths with special characters
