@@ -167,7 +167,7 @@ Depends: bundler (<< 2.0),
          ruby-treetop,
          ${misc:Depends},
          ${shlibs:Depends}
-Recommends: ruby-coffee-rails,
+Recommends: ruby-coffee-rails (>= 4.1.0),
             ruby-jbuilder,
             ruby-jquery-rails,
             ruby-sass-rails,
