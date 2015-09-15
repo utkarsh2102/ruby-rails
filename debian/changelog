@@ -1,10 +1,10 @@
-rails (2:4.2.4-1) UNRELEASED; urgency=medium
+rails (2:4.2.4-1) experimental; urgency=medium
 
   * Team upload
   * New upstream patch release
   * Set minimum version for ruby-coffee-rails to 4.1.0
 
- -- Pirate Praveen <praveen@debian.org>  Tue, 01 Sep 2015 11:22:47 +0530
+ -- Pirate Praveen <praveen@debian.org>  Tue, 15 Sep 2015 18:25:16 +0530
 
 rails (2:4.2.3-4) experimental; urgency=medium
 
