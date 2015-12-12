@@ -1,3 +1,9 @@
+rails (2:4.2.4-2) unstable; urgency=medium
+
+  * Upload to unstable
+
+ -- Antonio Terceiro <terceiro@debian.org>  Sat, 12 Dec 2015 16:24:01 -0200
+
 rails (2:4.2.4-1) experimental; urgency=medium
 
   * Team upload
