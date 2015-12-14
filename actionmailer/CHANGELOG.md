@@ -1,3 +1,8 @@
+## Rails 4.2.5 (November 12, 2015) ##
+
+*   No changes.
+
+
 ## Rails 4.2.4 (August 24, 2015) ##
 
 * No Changes *

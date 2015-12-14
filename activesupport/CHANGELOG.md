@@ -1,3 +1,18 @@
+## Rails 4.2.5 (November 12, 2015) ##
+
+*   Fix `TimeWithZone#eql?` to properly handle `TimeWithZone` created from `DateTime`:
+        twz = DateTime.now.in_time_zone
+        twz.eql?(twz.dup) => true
+
+    Fixes #14178.
+
+    *Roque Pinel*
+
+*   Handle invalid UTF-8 characters in `MessageVerifier.verify`.
+
+    *Roque Pinel*, *Grey Baker*
+
+
 ## Rails 4.2.4 (August 24, 2015) ##
 
 *   Fix a `SystemStackError` when encoding an `Enumerable` with `json` gem and

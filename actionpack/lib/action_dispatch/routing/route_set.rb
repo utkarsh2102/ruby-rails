@@ -485,14 +485,6 @@ module ActionDispatch
       end
 
       def url_helpers(supports_path = true)
-        if supports_path
-          @url_helpers_with_paths ||= generate_url_helpers(supports_path)
-        else
-          @url_helpers_without_paths ||= generate_url_helpers(supports_path)
-        end
-      end
-
-      def generate_url_helpers(supports_path)
         routes = self
 
         Module.new do
@@ -763,14 +755,18 @@ module ActionDispatch
 
       RESERVED_OPTIONS = [:host, :protocol, :port, :subdomain, :domain, :tld_length,
                           :trailing_slash, :anchor, :params, :only_path, :script_name,
-                          :original_script_name]
+                          :original_script_name, :relative_url_root]
 
       def optimize_routes_generation?
         default_url_options.empty?
       end
 
       def find_script_name(options)
-        options.delete(:script_name) || relative_url_root || ''
+        options.delete(:script_name) || find_relative_url_root(options) || ''
+      end
+
+      def find_relative_url_root(options)
+        options.delete(:relative_url_root) || relative_url_root
       end
 
       def path_for(options, route_name = nil)

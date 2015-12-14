@@ -53,6 +53,7 @@ group :job do
   gem 'qu-redis', require: false
   gem 'delayed_job_active_record', require: false
   gem 'sequel', require: false
+  gem 'amq-protocol', '< 2.0.0', require: false
 end
 
 # Add your own local bundler stuff
@@ -90,7 +91,7 @@ platforms :ruby do
   group :db do
     gem 'pg', '>= 0.15.0'
     gem 'mysql', '>= 2.9.0'
-    gem 'mysql2', '>= 0.3.13'
+    gem 'mysql2', '>= 0.4.0'
   end
 end
 

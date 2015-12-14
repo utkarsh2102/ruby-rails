@@ -145,6 +145,10 @@ module ActiveRecord
           scope.joins! preload_values[:joins] || values[:joins]
           scope.order! preload_values[:order] || values[:order]
 
+          if preload_values[:reordering] || values[:reordering]
+            scope.reordering_value = true
+          end
+
           if preload_values[:readonly] || values[:readonly]
             scope.readonly!
           end
@@ -153,7 +157,7 @@ module ActiveRecord
             scope.where!(klass.table_name => { reflection.type => model.base_class.sti_name })
           end
 
-          scope.unscope_values = Array(values[:unscope])
+          scope.unscope_values = Array(values[:unscope]) + Array(preload_values[:unscope])
           klass.default_scoped.merge(scope)
         end
       end

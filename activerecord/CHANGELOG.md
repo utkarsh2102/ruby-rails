@@ -1,3 +1,106 @@
+## Rails 4.2.5 (November 12, 2015) ##
+
+*   No longer pass deprecated option `-i` to `pg_dump`.
+
+    *Paul Sadauskas*
+
+*   Set `scope.reordering_value` to `true` if :reordering values are specified.
+
+    Fixes #21886.
+
+    *Hiroaki Izu*
+
+*   Avoid disabling errors on the PostgreSQL connection when enabling the
+    standard_conforming_strings setting. Errors were previously disabled because
+    the setting wasn't writable in Postgres 8.1 and didn't exist in earlier
+    versions. Now Rails only supports Postgres 8.2+ we're fine to assume the
+    setting exists. Disabling errors caused problems when using a connection
+    pooling tool like PgBouncer because it's not guaranteed to have the same
+    connection between calls to `execute` and it could leave the connection
+    with errors disabled.
+
+    Fixes #22101.
+
+    *Harry Marr*
+
+*   Includes HABTM returns correct size now. It's caused by the join dependency
+    only instantiates one HABTM object because the join table hasn't a primary key.
+
+    Fixes #16032.
+
+    Examples:
+
+        before:
+
+        Project.first.salaried_developers.size # => 3
+        Project.includes(:salaried_developers).first.salaried_developers.size # => 1
+
+        after:
+
+        Project.first.salaried_developers.size # => 3
+        Project.includes(:salaried_developers).first.salaried_developers.size # => 3
+
+    *Bigxiang*
+
+*   Descriptive error message when fixtures contain a missing column.
+
+    Closes #21201.
+
+    *Yves Senn*
+
+*   `bin/rake db:migrate` uses
+    `ActiveRecord::Tasks::DatabaseTasks.migrations_paths` instead of
+    `Migrator.migrations_paths`.
+
+    *Tobias Bielohlawek*
+
+*   Fix `rewhere` in a `has_many` association.
+
+    Fixes #21955.
+
+    *Josh Branchaud*, *Kal*
+
+*   Added run_cmd class method to ActiveRecord::Tasks::DatabaseTasks for
+    drying up Kernel.system() calls within this namespace and to avoid
+    shell expansion by using a paramter list instead of string as arguments
+    for Kernel.system(). Thanks to Nate Berkopec for supply patch to get
+    test units passing.
+
+    *Bryan Paxton*
+
+*   Avoid leaking the first relation we call `first` on, per model.
+
+    Fixes #21921.
+
+    *Matthew Draper*, *Jean Boussier*
+
+*   Allow deserialization of Active Record models that were YAML encoded prior
+    to Rails 4.2
+
+    *Sean Griffin*
+
+*   Correctly apply `unscope` when preloading through associations.
+
+    *Jimmy Bourassa*
+
+*   Ensure `select` quotes aliased attributes, even when using `from`.
+
+    Fixes #21488
+
+    *Sean Griffin & @johanlunds*
+
+*   Correct query for PostgreSQL 8.2 compatibility.
+
+    *Ben Murphy*, *Matthew Draper*
+
+*   Uniqueness validator raises descriptive error when running on a persisted
+    record without primary key.
+
+    Closes #21304.
+
+    *Yves Senn*
+
+
 ## Rails 4.2.4 (August 24, 2015) ##
 
 *   Skip statement cache on through association reader.
