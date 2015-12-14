@@ -1,6 +1,10 @@
 rails (2:4.2.5-1) unstable; urgency=medium
 
   * New upstream release
+  * Skip dependency resolution check during the build, because too many of the
+    dependencies of the binary packages depend on rails to build, so let's
+    avoid loops. The checks are still performed as part of autopkgtest tests,
+    anyway.
 
  -- Antonio Terceiro <terceiro@debian.org>  Mon, 14 Dec 2015 11:04:15 -0200
 
