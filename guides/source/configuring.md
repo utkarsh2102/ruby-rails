@@ -1027,7 +1027,7 @@ NOTE. If you are running in a multi-threaded environment, there could be a chanc
 Custom configuration
 --------------------
 
-You can configure your own code through the Rails configuration object with custom configuration. It works like this:
+You can configure your own code through the Rails configuration object with custom configuration under the `config.x` property. It works like this:
 
   ```ruby
   config.x.payment_processing.schedule = :daily
@@ -1042,4 +1042,31 @@ These configuration points are then available through the configuration object:
   Rails.configuration.x.payment_processing.retries  # => 3
   Rails.configuration.x.super_debugger              # => true
   Rails.configuration.x.super_debugger.not_set      # => nil
+  ```
+
+You can also use Rails::Application.config_for to load whole configuration files:
+
+  ```ruby
+  # config/payment.yml:
+  production:
+    environment: production
+    merchant_id: production_merchant_id
+    public_key:  production_public_key
+    private_key: production_private_key
+  development:
+    environment: sandbox
+    merchant_id: development_merchant_id
+    public_key:  development_public_key
+    private_key: development_private_key
+
+  # config/application.rb
+  module MyApp
+    class Application < Rails::Application
+      config.x.payment = Rails.application.config_for(:payment)
+    end
+  end
+  ```
+
+  ```ruby
+  Rails.configuration.x.payment.merchant_id # => production_merchant_id or development_merchant_id
   ```

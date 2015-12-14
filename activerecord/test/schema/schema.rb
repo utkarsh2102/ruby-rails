@@ -262,6 +262,7 @@ ActiveRecord::Schema.define do
   create_table :developers, force: true do |t|
     t.string   :name
     t.integer  :salary, default: 70000
+    t.integer  :firm_id
     t.datetime :created_at
     t.datetime :updated_at
     t.datetime :created_on
@@ -631,6 +632,7 @@ ActiveRecord::Schema.define do
   create_table :projects, force: true do |t|
     t.string :name
     t.string :type
+    t.integer :firm_id
   end
 
   create_table :randomly_named_table, force: true do |t|
@@ -911,6 +913,10 @@ ActiveRecord::Schema.define do
     t.float :unoverloaded_float
     t.string :overloaded_string_with_limit, limit: 255
     t.string :string_with_default, default: 'the original default'
+  end
+
+  create_table :test_with_keyword_column_name, force: true do |t|
+    t.string :desc
   end
 end
 

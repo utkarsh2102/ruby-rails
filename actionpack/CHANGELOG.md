@@ -1,3 +1,32 @@
+## Rails 4.2.5 (November 12, 2015) ##
+
+*   `ActionController::TestCase` can teardown gracefully if an error is raised
+    early in the `setup` chain.
+
+    *Yves Senn*
+
+*   Parse RSS/ATOM responses as XML, not HTML.
+
+    *Alexander Kaupanin*
+
+*   Fix regression in mounted engine named routes generation for app deployed to
+    a subdirectory. `relative_url_root` was prepended to the path twice (e.g.
+    "/subdir/subdir/engine_path" instead of "/subdir/engine_path")
+
+    Fixes #20920. Fixes #21459.
+
+    *Matthew Erhard*
+
+*   `url_for` does not modify its arguments when generating polymorphic URLs.
+
+    *Bernerd Schaefer*
+
+*   Update `ActionController::TestSession#fetch` to behave more like
+    `ActionDispatch::Request::Session#fetch` when using non-string keys.
+
+    *Jeremy Friesen*
+
+
 ## Rails 4.2.4 (August 24, 2015) ##
 
 *   ActionController::TestSession now accepts a default value as well as

@@ -1,3 +1,14 @@
+## Rails 4.2.5 (November 12, 2015) ##
+
+*   Fix `mail_to` when called with `nil` as argument.
+
+    *Rafael Mendonça França*
+
+*   `url_for` does not modify its arguments when generating polymorphic URLs.
+
+    *Bernerd Schaefer*
+
+
 ## Rails 4.2.4 (August 24, 2015) ##
 
 * No Changes *
