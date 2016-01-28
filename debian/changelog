@@ -2,7 +2,9 @@ rails (2:4.1.8-1+deb8u1) jessie-security; urgency=high
 
   * Security updates:
     - [CVE-2015-3227] Possible Denial of Service attack in Active Support
+                      (Closes: #790487)
     - [CVE-2015-3226] XSS Vulnerability in ActiveSupport::JSON.encode
+                      (Closes: #790486)
     - [CVE-2015-7576] Timing attack vulnerability in basic authentication in
                       Action Controller.
     - [CVE-2016-0751] Possible Object Leak and Denial of Service attack in
