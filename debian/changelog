@@ -1,3 +1,19 @@
+rails (2:4.2.5.1-1) unstable; urgency=high
+
+  * New upstream release. Includes fixes for the following several security
+    issues:
+    - [CVE-2015-7576] Timing attack vulnerability in basic authentication in
+                      Action Controller.
+    - [CVE-2016-0751] Possible Object Leak and Denial of Service attack in
+                      Action Pack
+    - [CVE-2015-7577] Nested attributes rejection proc bypass in Active Record.
+    - [CVE-2016-0752] Possible Information Leak Vulnerability in Action View
+    - [CVE-2016-0753] Possible Input Validation Circumvention in Active Model
+    - [CVE-2015-7581] Object leak vulnerability for wildcard controller routes
+                      in Action Pack
+
+ -- Antonio Terceiro <terceiro@debian.org>  Thu, 28 Jan 2016 10:56:35 -0200
+
 rails (2:4.2.5-1) unstable; urgency=medium
 
   * New upstream release
