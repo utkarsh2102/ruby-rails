@@ -1,3 +1,10 @@
+rails (2:4.2.5.1-2) unstable; urgency=medium
+
+  * ruby-rails: change dependency from bundler to ruby-bundler, which will
+    not pull a development toolchain in Recommends:.
+
+ -- Antonio Terceiro <terceiro@debian.org>  Sun, 21 Feb 2016 13:58:35 -0300
+
 rails (2:4.2.5.1-1) unstable; urgency=high
 
   * New upstream release. Includes fixes for the following several security
