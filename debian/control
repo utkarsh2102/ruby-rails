@@ -5,8 +5,8 @@ Maintainer: Debian Ruby Extras Maintainers <pkg-ruby-extras-maintainers@lists.al
 Uploaders: Antonio Terceiro <terceiro@debian.org>,
 Build-Depends: debhelper (>= 9), gem2deb (>= 0.4.0~), racc
 Standards-Version: 3.9.6
-Vcs-Git: git://anonscm.debian.org/pkg-ruby-extras/rails.git
-Vcs-Browser: http://anonscm.debian.org/git/?p=pkg-ruby-extras/rails.git;a=summary
+Vcs-Git: https://anonscm.debian.org/git/pkg-ruby-extras/rails.git
+Vcs-Browser: https://anonscm.debian.org/cgit/pkg-ruby-extras/rails.git
 Homepage: http://www.rubyonrails.org
 XS-Ruby-Versions: all
 Testsuite: autopkgtest
