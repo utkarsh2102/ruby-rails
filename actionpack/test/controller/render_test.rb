@@ -62,6 +62,10 @@ class TestController < ActionController::Base
     render params[:id] # => String, AC:Params
   end
 
+  def dynamic_render_permit
+    render params[:id].permit(:file)
+  end
+
   def dynamic_render_with_file
     # This is extremely bad, but should be possible to do.
     file = params[:id] # => String, AC:Params
@@ -280,8 +284,23 @@ class MetalTestController < ActionController::Metal
   end
 end
 
+class MetalWithoutAVTestController < ActionController::Metal
+  include AbstractController::Rendering
+  include ActionController::Rendering
+  include ActionController::StrongParameters
+
+  def dynamic_params_render
+    render params
+  end
+end
+
 class ExpiresInRenderTest < ActionController::TestCase
   tests TestController
+
+  def setup
+    super
+    ActionController::Base.view_paths.paths.each(&:clear_cache)
+  end
 
   def test_dynamic_render_with_file
     # This is extremely bad, but should be possible to do.
@@ -291,6 +310,18 @@ class ExpiresInRenderTest < ActionController::TestCase
       response.body
   end
 
+  def test_dynamic_render_with_absolute_path
+    file = Tempfile.new('name')
+    file.write "secrets!"
+    file.flush
+    assert_raises ActionView::MissingTemplate do
+      response = get :dynamic_render, { id: file.path }
+    end
+  ensure
+    file.close
+    file.unlink
+  end
+
   def test_dynamic_render
     assert File.exist?(File.join(File.dirname(__FILE__), '../../test/abstract_unit.rb'))
     assert_raises ActionView::MissingTemplate do
@@ -298,10 +329,18 @@ class ExpiresInRenderTest < ActionController::TestCase
     end
   end
 
+  def test_permitted_dynamic_render_file_hash
+    assert File.exist?(File.join(File.dirname(__FILE__), '../../test/abstract_unit.rb'))
+    response = get :dynamic_render_permit, { id: { file: '../\\../test/abstract_unit.rb' } }
+    assert_equal File.read(File.join(File.dirname(__FILE__), '../../test/abstract_unit.rb')),
+      response.body
+  end
+
   def test_dynamic_render_file_hash
-    assert_raises ArgumentError do
+    e = assert_raises ArgumentError do
       get :dynamic_render, { id: { file: '../\\../test/abstract_unit.rb' } }
     end
+    assert_equal "render parameters are not permitted", e.message
   end
 
   def test_expires_in_header
@@ -497,6 +536,17 @@ class MetalRenderTest < ActionController::TestCase
   def test_access_to_logger_in_view
     get :accessing_logger_in_template
     assert_equal "NilClass", @response.body
+  end
+end
+
+class MetalRenderWithoutAVTest < ActionController::TestCase
+  tests MetalWithoutAVTestController
+
+  def test_dynamic_params_render
+    e = assert_raises ArgumentError do
+      get :dynamic_params_render, { inline: '<%= RUBY_VERSION %>' }
+    end
+    assert_equal "render parameters are not permitted", e.message
   end
 end
 
