@@ -1,8 +1,12 @@
-rails (2:4.2.5.2-1) UNRELEASED; urgency=medium
+rails (2:4.2.5.2-1) unstable; urgency=high
 
   * New upstream release
+  * Fixes 2 security issues:
+    - [CVE-2016-2098] Possible remote code execution vulnerability in Action
+      Pack
+    - [CVE-2016-2097] Possible Information Leak Vulnerability in Action View.
 
- -- Antonio Terceiro <terceiro@debian.org>  Wed, 02 Mar 2016 11:49:19 -0300
+ -- Antonio Terceiro <terceiro@debian.org>  Wed, 02 Mar 2016 11:50:02 -0300
 
 rails (2:4.2.5.1-2) unstable; urgency=medium
 
