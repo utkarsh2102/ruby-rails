@@ -1,3 +1,12 @@
+rails (2:4.1.8-1+deb8u2) jessie-security; urgency=high
+
+  * Security updates:
+    - [CVE-2016-2098] Possible remote code execution vulnerability in Action
+                      Pack
+    - [CVE-2016-2097] Possible Information Leak Vulnerability in Action View.
+
+ -- Antonio Terceiro <terceiro@debian.org>  Wed, 02 Mar 2016 12:03:46 -0300
+
 rails (2:4.1.8-1+deb8u1) jessie-security; urgency=high
 
   * Security updates:
