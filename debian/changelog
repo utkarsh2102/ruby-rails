@@ -5,6 +5,8 @@ rails (2:4.2.5.2-2) UNRELEASED; urgency=medium
   * Run tests during build
     - add all runtime dependencies as build dependencies as well
   * Run unit tests also under autopkgtest
+  * Add 0003-Make-AR-SpawnMethods-merge-to-check-an-arg-is-a-Proc.patch to fix
+    ActiveRecord relations with Ruby 2.3
 
  -- Antonio Terceiro <terceiro@debian.org>  Thu, 03 Mar 2016 16:31:21 -0300
 
