@@ -7,6 +7,8 @@ rails (2:4.2.5.2-2) UNRELEASED; urgency=medium
   * Run unit tests also under autopkgtest
   * Add 0003-Make-AR-SpawnMethods-merge-to-check-an-arg-is-a-Proc.patch to fix
     ActiveRecord relations with Ruby 2.3
+  * 0004-ActiveRecord-skip-a-few-tests-that-are-broken-on-Deb.patch skip some
+    tests that are broken on Debian.
 
  -- Antonio Terceiro <terceiro@debian.org>  Thu, 03 Mar 2016 16:31:21 -0300
 
