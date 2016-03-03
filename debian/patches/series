@@ -1,1 +1,2 @@
-be-carefull-with-that-bundler.patch
+0001-Be-careful-with-that-bundler.patch
+0002-load_paths.rb-don-t-load-bundler.patch

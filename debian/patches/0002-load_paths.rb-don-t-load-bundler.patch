@@ -1,0 +1,17 @@
+From: Antonio Terceiro <terceiro@debian.org>
+Date: Thu, 3 Mar 2016 16:30:46 -0300
+Subject: load_paths.rb: don't load bundler
+
+---
+ load_paths.rb | 4 +---
+ 1 file changed, 1 insertion(+), 3 deletions(-)
+
+diff --git a/load_paths.rb b/load_paths.rb
+index 0ad8fcf..556df42 100644
+--- a/load_paths.rb
++++ b/load_paths.rb
+@@ -1,3 +1 @@
+-# bust gem prelude
+-require 'bundler'
+-Bundler.setup
++# nothing
