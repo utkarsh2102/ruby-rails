@@ -19,7 +19,7 @@ results = {}
   'actionview'    => 'test',
   #'activejob'     => 'test', # FIXME MISSING DEPENDENCIES
   'activemodel'   => 'test',
-  #'activerecord'  => 'test:sqlite3', # FIXME BROKEN
+  'activerecord'  => 'sqlite3:test', # FIXME SEVERAL TESTS BEING SKIPPING
   #'activesupport' => 'test', # FIXME BROKEN
   #'railties'      => 'test', # FIXME BROKEN
 }.each do |component,tasks|
@@ -32,7 +32,7 @@ results = {}
       puts
 
       puts "cd #{component}"
-      results["#{component}:#{task}"] = run("#{ruby} -S rake #{task}")
+      results["#{component}:#{task}"] = run("TESTOPTS='--seed=0 --verbose' #{ruby} -S rake #{task}")
       puts 'cd -'
     end
   end
