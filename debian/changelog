@@ -2,6 +2,9 @@ rails (2:4.2.5.2-2) UNRELEASED; urgency=medium
 
   * 0002-load_paths.rb-don-t-load-bundler.patch: don't load bundler when
     running tests
+  * Run tests during build
+    - add all runtime dependencies as build dependencies as well
+  * Run unit tests also under autopkgtest
 
  -- Antonio Terceiro <terceiro@debian.org>  Thu, 03 Mar 2016 16:31:21 -0300
 
