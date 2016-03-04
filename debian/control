@@ -2,8 +2,10 @@ Source: rails
 Section: ruby
 Priority: optional
 Maintainer: Debian Ruby Extras Maintainers <pkg-ruby-extras-maintainers@lists.alioth.debian.org>
-Uploaders: Antonio Terceiro <terceiro@debian.org>,
-Build-Depends: debhelper (>= 9), gem2deb, racc
+Uploaders: Antonio Terceiro <terceiro@debian.org>
+Build-Depends: debhelper (>= 9),
+               gem2deb,
+               racc
 Standards-Version: 3.9.7
 Vcs-Git: https://anonscm.debian.org/git/pkg-ruby-extras/rails.git
 Vcs-Browser: https://anonscm.debian.org/cgit/pkg-ruby-extras/rails.git
@@ -88,10 +90,10 @@ Depends: ruby | ruby-interpreter,
          ruby-builder (>= 3.1),
          ruby-erubis (<< 2.8),
          ruby-erubis (>= 2.7.0),
- 	 ruby-rails-html-sanitizer (<< 2.0),
- 	 ruby-rails-html-sanitizer (>= 1.0.2),
- 	 ruby-rails-dom-testing (<< 2.0),
- 	 ruby-rails-dom-testing (>= 1.0.5),
+         ruby-rails-dom-testing (<< 2.0),
+         ruby-rails-dom-testing (>= 1.0.5),
+         ruby-rails-html-sanitizer (<< 2.0),
+         ruby-rails-html-sanitizer (>= 1.0.2),
          ${misc:Depends}
 Description: framework for handling view template lookup and rendering (part of Rails)
  Action View is a framework for handling view template lookup and
@@ -153,21 +155,22 @@ Package: ruby-rails
 Architecture: all
 X-DhRuby-Root: ./
 XB-Ruby-Versions: ${ruby:Versions}
-Depends: ruby-bundler (<< 2.0),
-         ruby-bundler (>= 1.3.0),
-         ruby-actionmailer (= ${source:Version}),
+Depends: ruby-actionmailer (= ${source:Version}),
          ruby-actionpack (= ${source:Version}),
          ruby-actionview (= ${source:Version}),
          ruby-activemodel (= ${source:Version}),
          ruby-activerecord (= ${source:Version}),
          ruby-activesupport (= ${source:Version}),
+         ruby-bundler (<< 2.0),
+         ruby-bundler (>= 1.3.0),
          ruby-railties (= ${source:Version}),
          ruby-sprockets-rails (<< 3.0),
          ruby-sprockets-rails (>= 2.1.3-1~),
          ruby-treetop,
          ${misc:Depends},
          ${shlibs:Depends}
-Recommends: ruby-coffee-rails (>= 4.1.0),
+Recommends: ruby-byebug,
+            ruby-coffee-rails (>= 4.1.0),
             ruby-jbuilder,
             ruby-jquery-rails,
             ruby-sass-rails,
@@ -176,7 +179,6 @@ Recommends: ruby-coffee-rails (>= 4.1.0),
             ruby-sqlite3,
             ruby-turbolinks (>= 2.5.3),
             ruby-uglifier,
-            ruby-byebug,
             ruby-web-console
 Description: MVC ruby based framework geared for web application development
  Rails is a full-stack, open-source web framework in Ruby for writing
@@ -189,7 +191,8 @@ Description: MVC ruby based framework geared for web application development
 
 Package: rails
 Architecture: all
-Depends: ruby-rails (= ${source:Version}), ${misc:Depends}
+Depends: ruby-rails (= ${source:Version}),
+         ${misc:Depends}
 Replaces: rails3
 Breaks: rails3
 Description: MVC ruby based framework geared for web application development (metapackage)
