@@ -1,0 +1,4 @@
+activerecord/debug.log
+activerecord/test/config.yml
+activerecord/test/fixtures/fixture_database.sqlite3
+activerecord/test/fixtures/fixture_database_2.sqlite3

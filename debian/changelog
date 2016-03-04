@@ -1,3 +1,9 @@
+rails (2:4.2.5.2-3) UNRELEASED; urgency=medium
+
+  * debian/clean: list files that are created when the tests run
+
+ -- Antonio Terceiro <terceiro@debian.org>  Fri, 04 Mar 2016 15:32:19 -0300
+
 rails (2:4.2.5.2-2) unstable; urgency=medium
 
   [ Cédric Boutillier ]
