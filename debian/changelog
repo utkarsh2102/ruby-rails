@@ -9,8 +9,9 @@ rails (2:4.2.5.2-2) unstable; urgency=medium
     ActiveRecord relations with Ruby 2.3
   * 0004-ActiveRecord-skip-a-few-tests-that-are-broken-on-Deb.patch skip some
     tests that are broken on Debian.
+  * Bump Standards-Version to 3.9.7, no changes needed
 
- -- Antonio Terceiro <terceiro@debian.org>  Thu, 03 Mar 2016 19:19:22 -0300
+ -- Antonio Terceiro <terceiro@debian.org>  Fri, 04 Mar 2016 14:49:00 -0300
 
 rails (2:4.2.5.2-1) unstable; urgency=high
 
