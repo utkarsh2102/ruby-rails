@@ -32,13 +32,13 @@ results = {}
       puts
 
       puts "cd #{component}"
-      results["#{component}:#{task}"] = run("TESTOPTS='--seed=0 --verbose' #{ruby} -S rake #{task}")
+      results["#{component}:#{task}"] = run("TESTOPTS='--seed=0' #{ruby} -S rake #{task}")
       puts 'cd -'
     end
   end
 end
 
-if results.values.include?(false)
-  puts "Failed tests: #{results.keys.join(': ')}"
-  exit 1
+failed_results = results.select { |key,value| !value }
+unless failed_results.empty?
+  puts "Failed tests: #{failed_results.keys.join(': ')}"
 end
