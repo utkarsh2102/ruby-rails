@@ -11,8 +11,7 @@ why the hell those tests are failing.
  activerecord/test/cases/core_test.rb                                | 1 +
  activerecord/test/cases/invalid_connection_test.rb                  | 2 +-
  activerecord/test/cases/relation_test.rb                            | 2 ++
- activerecord/test/cases/tasks/sqlite_rake_test.rb                   | 2 ++
- 6 files changed, 8 insertions(+), 1 deletion(-)
+ 5 files changed, 6 insertions(+), 1 deletion(-)
 
 diff --git a/activerecord/test/cases/associations/cascaded_eager_loading_test.rb b/activerecord/test/cases/associations/cascaded_eager_loading_test.rb
 index 51d8e05..2ab8db0 100644
@@ -83,23 +82,3 @@ index 44e07a2..827c83b 100644
        assert_raises ArgumentError do
          relation = Relation.new(FakeKlass, :b)
          relation.merge(true)
-diff --git a/activerecord/test/cases/tasks/sqlite_rake_test.rb b/activerecord/test/cases/tasks/sqlite_rake_test.rb
-index 750d5e4..1dad1de 100644
---- a/activerecord/test/cases/tasks/sqlite_rake_test.rb
-+++ b/activerecord/test/cases/tasks/sqlite_rake_test.rb
-@@ -156,6 +156,7 @@ module ActiveRecord
-     end
- 
-     def test_structure_dump
-+      skip('Pending on Debian build')
-       dbfile   = @database
-       filename = "awesome-file.sql"
- 
-@@ -178,6 +179,7 @@ module ActiveRecord
-     end
- 
-     def test_structure_load
-+      skip('Pending on Debian build')
-       dbfile   = @database
-       filename = "awesome-file.sql"
- 
