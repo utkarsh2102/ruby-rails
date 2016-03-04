@@ -1,5 +1,12 @@
 rails (2:4.2.5.2-2) unstable; urgency=medium
 
+  [ Cédric Boutillier ]
+  * Remove version in the gem2deb build-dependency
+  * Use https:// in Vcs-* fields
+  * Bump Standards-Version to 3.9.7 (no changes needed)
+  * Run wrap-and-sort on packaging files
+
+  [ Antonio Terceiro ]
   * 0002-load_paths.rb-don-t-load-bundler.patch: don't load bundler when
     running tests
   * Run tests during build
@@ -9,7 +16,6 @@ rails (2:4.2.5.2-2) unstable; urgency=medium
     ActiveRecord relations with Ruby 2.3
   * 0004-ActiveRecord-skip-a-few-tests-that-are-broken-on-Deb.patch skip some
     tests that are broken on Debian.
-  * Bump Standards-Version to 3.9.7, no changes needed
 
  -- Antonio Terceiro <terceiro@debian.org>  Fri, 04 Mar 2016 14:49:00 -0300
 
