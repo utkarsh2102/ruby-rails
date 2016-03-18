@@ -1,6 +1,8 @@
 rails (2:4.2.5.2-3) UNRELEASED; urgency=medium
 
   * debian/clean: list files that are created when the tests run
+  * Set minimum version of ruby-sprockets-rails (for sprockets version
+    incompatibility with ruby-sass-rails)
 
  -- Antonio Terceiro <terceiro@debian.org>  Fri, 04 Mar 2016 15:32:19 -0300
 
