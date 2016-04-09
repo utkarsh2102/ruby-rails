@@ -33,7 +33,7 @@ In general, the work of configuring Rails means configuring the components of Ra
 For example, the `config/application.rb` file includes this setting:
 
 ```ruby
-config.autoload_paths += %W(#{config.root}/extras)
+config.time_zone = 'Central Time (US & Canada)'
 ```
 
 This is a setting for Rails itself. If you want to pass settings to individual Rails components, you can do so via the same `config` object in `config/application.rb`:
@@ -1062,11 +1062,11 @@ You can also use Rails::Application.config_for to load whole configuration files
   # config/application.rb
   module MyApp
     class Application < Rails::Application
-      config.x.payment = Rails.application.config_for(:payment)
+      config.x.payment = config_for(:payment)
     end
   end
   ```
 
   ```ruby
-  Rails.configuration.x.payment.merchant_id # => production_merchant_id or development_merchant_id
+  Rails.configuration.x.payment['merchant_id'] # => production_merchant_id or development_merchant_id
   ```

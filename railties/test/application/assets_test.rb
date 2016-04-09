@@ -190,13 +190,14 @@ module ApplicationTests
       assert_file_exists("#{app_path}/public/assets/another-*.js")
     end
 
-    test "asset pipeline should use a Sprockets::Index when config.assets.digest is true" do
+    test "asset pipeline should use a Sprockets::CachedEnvironment when config.assets.digest is true and config.assets.compile is true" do
       add_to_config "config.action_controller.perform_caching = false"
+      add_to_env_config "production", "config.assets.compile = true"
 
       ENV["RAILS_ENV"] = "production"
       require "#{app_path}/config/environment"
 
-      assert_equal Sprockets::Index, Rails.application.assets.class
+      assert_equal Sprockets::CachedEnvironment, Rails.application.assets.class
     end
 
     test "precompile creates a manifest file with all the assets listed" do
@@ -463,17 +464,6 @@ module ApplicationTests
       precompile!
 
       assert_match "src='/sub/uri/assets/rails.png'", File.read(Dir["#{app_path}/public/assets/app-*.js"].first)
-    end
-
-    test "assets:cache:clean should clean cache" do
-      ENV["RAILS_ENV"] = "production"
-      precompile!
-
-      quietly do
-        Dir.chdir(app_path){ `bundle exec rake assets:clobber` }
-      end
-
-      assert !File.exist?("#{app_path}/tmp/cache/assets")
     end
 
     private
