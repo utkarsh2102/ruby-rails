@@ -1,10 +1,11 @@
-rails (2:4.2.5.2-3) UNRELEASED; urgency=medium
+rails (2:4.2.6-1) UNRELEASED; urgency=medium
 
+  * New upstream release
   * debian/clean: list files that are created when the tests run
   * Set minimum version of ruby-sprockets-rails (for sprockets version
     incompatibility with ruby-sass-rails)
 
- -- Antonio Terceiro <terceiro@debian.org>  Fri, 04 Mar 2016 15:32:19 -0300
+ -- Antonio Terceiro <terceiro@debian.org>  Sat, 09 Apr 2016 19:12:32 -0300
 
 rails (2:4.2.5.2-2) unstable; urgency=medium
 
