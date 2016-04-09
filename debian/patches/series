@@ -1,4 +1,3 @@
 0001-Be-careful-with-that-bundler.patch
 0002-load_paths.rb-don-t-load-bundler.patch
-0003-Make-AR-SpawnMethods-merge-to-check-an-arg-is-a-Proc.patch
 0004-ActiveRecord-adjust-test-suite-for-Debian-build.patch

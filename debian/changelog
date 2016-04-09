@@ -3,6 +3,8 @@ rails (2:4.2.6-1) UNRELEASED; urgency=medium
   [ Antonio Terceiro ]
   * New upstream release
   * debian/clean: list files that are created when the tests run
+  * Drop 0003-Make-AR-SpawnMethods-merge-to-check-an-arg-is-a-Proc.patch,
+    applied upstream
 
   [ Praveen Arimbrathodiyil ]
   * Set minimum version of ruby-sprockets-rails (for sprockets version
