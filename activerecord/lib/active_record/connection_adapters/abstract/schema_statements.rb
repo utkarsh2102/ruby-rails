@@ -19,6 +19,20 @@ module ActiveRecord
         table_name[0...table_alias_length].tr('.', '_')
       end
 
+      # Returns the relation names useable to back Active Record models.
+      # For most adapters this means all tables and views.
+      def data_sources
+        tables
+      end
+
+      # Checks to see if the data source +name+ exists on the database.
+      #
+      #   data_source_exists?(:ebooks)
+      #
+      def data_source_exists?(name)
+        data_sources.include?(name.to_s)
+      end
+
       # Checks to see if the table +table_name+ exists on the database.
       #
       #   table_exists?(:developers)
@@ -213,7 +227,7 @@ module ActiveRecord
           end
         end
 
-        td.foreign_keys.each_pair do |other_table_name, foreign_key_options|
+        td.foreign_keys.each do |other_table_name, foreign_key_options|
           add_foreign_key(table_name, other_table_name, foreign_key_options)
         end
 
@@ -876,11 +890,12 @@ module ActiveRecord
       end
 
       # Given a set of columns and an ORDER BY clause, returns the columns for a SELECT DISTINCT.
-      # Both PostgreSQL and Oracle overrides this for custom DISTINCT syntax - they
+      # PostgreSQL, MySQL, and Oracle overrides this for custom DISTINCT syntax - they
       # require the order columns appear in the SELECT.
       #
       #   columns_for_distinct("posts.id", ["posts.created_at desc"])
-      def columns_for_distinct(columns, orders) #:nodoc:
+      #
+      def columns_for_distinct(columns, orders) # :nodoc:
         columns
       end
 

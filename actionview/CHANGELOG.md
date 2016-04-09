@@ -1,3 +1,28 @@
+## Rails 4.2.6 (March 07, 2016) ##
+
+*   Fix stripping the digest from the automatically generated img tag alt
+    attribute when assets are handled by Sprockets >=3.0.
+
+    *Bart de Water*
+
+*   Create a new `ActiveSupport::SafeBuffer` instance when `content_for` is flushed.
+
+    Fixes #19890
+
+    *Yoong Kang Lim*
+
+*   Respect value of `:object` if `:object` is false when rendering.
+
+    Fixes #22260.
+
+    *Yuichiro Kaneko*
+
+*   Generate `week_field` input values using a 1-based index and not a 0-based index
+    as per the W3 spec: http://www.w3.org/TR/html-markup/datatypes.html#form.data.week
+
+    *Christoph Geschwind*
+
+
 ## Rails 4.2.5.2 (February 26, 2016) ##
 
 *   Do not allow render with unpermitted parameter.
