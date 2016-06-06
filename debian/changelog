@@ -1,3 +1,10 @@
+rails (2:4.2.6-2) UNRELEASED; urgency=medium
+
+  * Team upload
+  * ruby-rails: Add ruby-coffee-rails to recommends (Closes: #818470)
+
+ -- Pirate Praveen <praveen@debian.org>  Mon, 06 Jun 2016 11:17:04 +0530
+
 rails (2:4.2.6-1) unstable; urgency=medium
 
   [ Antonio Terceiro ]
