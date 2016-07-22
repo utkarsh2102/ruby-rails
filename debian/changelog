@@ -1,9 +1,10 @@
-rails (2:4.2.6-2) UNRELEASED; urgency=medium
+rails (2:4.2.6-2) unstable; urgency=medium
 
   * Team upload
   * ruby-rails: Add ruby-coffee-rails to recommends (Closes: #818470)
+  * Relax ruby-json (drop << 2.0 requirement)
 
- -- Pirate Praveen <praveen@debian.org>  Mon, 06 Jun 2016 11:17:04 +0530
+ -- Pirate Praveen <praveen@debian.org>  Fri, 22 Jul 2016 23:37:44 +0530
 
 rails (2:4.2.6-1) unstable; urgency=medium
 
