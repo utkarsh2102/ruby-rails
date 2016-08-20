@@ -1,3 +1,9 @@
+rails (2:4.2.6-3) UNRELEASED; urgency=medium
+
+  * debian/watch: restrict to the 4.x series for now
+
+ -- Antonio Terceiro <terceiro@debian.org>  Sat, 20 Aug 2016 10:54:17 -0300
+
 rails (2:4.2.6-2) unstable; urgency=medium
 
   * Team upload
