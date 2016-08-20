@@ -381,12 +381,25 @@ class CalculationsTest < ActiveRecord::TestCase
     [1,6,2,9].each { |firm_id| assert c.keys.include?(firm_id) }
   end
 
+  def test_should_count_field_of_root_table_with_conflicting_group_by_column
+    assert_equal({ 1 => 1 }, Firm.joins(:accounts).group(:firm_id).count)
+    assert_equal({ 1 => 1 }, Firm.joins(:accounts).group('accounts.firm_id').count)
+  end
+
   def test_count_with_no_parameters_isnt_deprecated
     assert_not_deprecated { Account.count }
   end
 
   def test_count_with_too_many_parameters_raises
     assert_raise(ArgumentError) { Account.count(1, 2, 3) }
+  end
+
+  def test_count_with_a_single_hash_parameter_raises
+    assert_raise(ActiveRecord::StatementInvalid) { Account.count({}) }
+  end
+
+  def test_count_with_finder_options_raises
+    assert_raise(ArgumentError) { Account.count(:firm_name, { conditions: {} }) }
   end
 
   def test_count_with_order
