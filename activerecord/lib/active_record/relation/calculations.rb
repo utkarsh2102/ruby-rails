@@ -36,9 +36,15 @@ module ActiveRecord
     # Note: not all valid +select+ expressions are valid +count+ expressions. The specifics differ
     # between databases. In invalid cases, an error from the database is thrown.
     def count(column_name = nil, options = {})
+      if options.present? && !ActiveRecord.const_defined?(:DeprecatedFinders)
+        raise ArgumentError, "Relation#count does not support finder options anymore. " \
+                             "Please build a scope and then call count on it or use the " \
+                             "activerecord-deprecated_finders gem to enable this functionality."
+
+      end
+
       # TODO: Remove options argument as soon we remove support to
       # activerecord-deprecated_finders.
-      column_name, options = nil, column_name if column_name.is_a?(Hash)
       calculate(:count, column_name, options)
     end
 
@@ -281,6 +287,7 @@ module ActiveRecord
       else
         group_fields = group_attrs
       end
+      group_fields = arel_columns(group_fields)
 
       group_aliases = group_fields.map { |field|
         column_alias_for(field)

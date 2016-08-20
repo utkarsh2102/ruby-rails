@@ -1,3 +1,33 @@
+## Rails 4.2.7 (July 12, 2016) ##
+
+*   Fixed `ActiveSupport::Logger.broadcast` so that calls to `#silence` now
+    properly delegate to all loggers. Silencing now properly suppresses logging
+    to both the log and the console.
+
+    *Kevin McPhillips*
+
+*   Backported `ActiveSupport::LoggerThreadSafeLevel`. Assigning the
+    `Rails.logger.level` is now thread safe.
+
+    *Kevin McPhillips*
+
+*   Fixed a problem with ActiveSupport::SafeBuffer.titleize calling capitalize
+    on nil.
+
+    *Brian McManus*
+
+*   Time zones: Ensure that the UTC offset reflects DST changes that occurred
+    since the app started. Removes UTC offset caching, reducing performance,
+    but this is still relatively quick and isn't in any hot paths.
+
+    *Alexey Shein*
+
+*   Prevent `Marshal.load` from looping infinitely when trying to autoload a constant
+    which resolves to a different name.
+
+    *Olek Janiszewski*
+
+
 ## Rails 4.2.6 (March 07, 2016) ##
 
 *   No changes.
