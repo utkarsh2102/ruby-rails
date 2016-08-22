@@ -1,11 +1,11 @@
-rails (2:4.2.7.1-1) UNRELEASED; urgency=medium
+rails (2:4.2.7.1-1) unstable; urgency=medium
 
   * New upstream release; includes fixes for the following issues:
     - CVE-2016-6317: unsafe query generation in Active Record (Closes: #834154)
     - CVE-2016-6316: Possible XSS Vulnerability in Action View (Closes: #834155)
   * debian/watch: restrict to the 4.x series for now
 
- -- Antonio Terceiro <terceiro@debian.org>  Sat, 20 Aug 2016 10:58:57 -0300
+ -- Antonio Terceiro <terceiro@debian.org>  Mon, 22 Aug 2016 14:33:48 -0300
 
 rails (2:4.2.6-2) unstable; urgency=medium
 
