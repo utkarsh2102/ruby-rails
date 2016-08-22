@@ -1,3 +1,11 @@
+rails (2:4.1.8-1+deb8u3) jessie-security; urgency=high
+
+  * Security update
+  * CVE-2016-6316: Possible XSS Vulnerability in Action View
+    (Closes: Bug#834155)
+
+ -- Antonio Terceiro <terceiro@debian.org>  Mon, 22 Aug 2016 13:35:11 -0300
+
 rails (2:4.1.8-1+deb8u2) jessie-security; urgency=high
 
   * Security updates:
