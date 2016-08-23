@@ -1,2 +1,2 @@
-Tests: newapp
+Tests: newapp CVE-2016-6316
 Restrictions: allow-stderr, needs-recommends

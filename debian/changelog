@@ -1,3 +1,10 @@
+rails (2:4.1.8-1+deb8u4) jessie-security; urgency=high
+
+  [ Salvatore Bonaccorso ]
+  * add test script for CVE-2016-6316
+
+ -- Antonio Terceiro <terceiro@debian.org>  Tue, 23 Aug 2016 16:59:26 -0300
+
 rails (2:4.1.8-1+deb8u3) jessie-security; urgency=high
 
   * Security update
