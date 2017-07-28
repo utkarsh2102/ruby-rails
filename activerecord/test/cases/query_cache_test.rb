@@ -181,13 +181,12 @@ class QueryCacheTest < ActiveRecord::TestCase
 
   def test_cache_does_not_wrap_string_results_in_arrays
     Task.cache do
-      # Oracle adapter returns count() as Fixnum or Float
+      # Oracle adapter returns count() as Integer or Float
       if current_adapter?(:OracleAdapter)
         assert_kind_of Numeric, Task.connection.select_value("SELECT count(*) AS count_all FROM tasks")
       elsif current_adapter?(:SQLite3Adapter, :Mysql2Adapter)
         # Future versions of the sqlite3 adapter will return numeric
-        assert_instance_of Fixnum,
-         Task.connection.select_value("SELECT count(*) AS count_all FROM tasks")
+        assert_instance_of 0.class, Task.connection.select_value("SELECT count(*) AS count_all FROM tasks")
       else
         assert_instance_of String, Task.connection.select_value("SELECT count(*) AS count_all FROM tasks")
       end
@@ -242,6 +241,26 @@ class QueryCacheTest < ActiveRecord::TestCase
 
     ActiveRecord::Base.connection.uncached do
       assert_equal 0, Post.where(title: 'rollback').to_a.count
+    end
+  end
+
+  def test_query_cached_even_when_types_are_reset
+    Task.cache do
+      # Warm the cache
+      Task.find(1)
+
+      Task.connection.type_map.clear
+
+      # Preload the type cache again (so we don't have those queries issued during our assertions)
+      Task.connection.send(:initialize_type_map, Task.connection.type_map)
+
+      # Clear places where type information is cached
+      Task.reset_column_information
+      Task.find_by_statement_cache.clear
+
+      assert_queries(0) do
+        Task.find(1)
+      end
     end
   end
 end

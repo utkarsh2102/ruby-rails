@@ -32,20 +32,25 @@ module ActiveSupport
       "binary" => "base64"
     } unless defined?(DEFAULT_ENCODINGS)
 
-    TYPE_NAMES = {
-      "Symbol"     => "symbol",
-      "Fixnum"     => "integer",
-      "Bignum"     => "integer",
-      "BigDecimal" => "decimal",
-      "Float"      => "float",
-      "TrueClass"  => "boolean",
-      "FalseClass" => "boolean",
-      "Date"       => "date",
-      "DateTime"   => "dateTime",
-      "Time"       => "dateTime",
-      "Array"      => "array",
-      "Hash"       => "hash"
-    } unless defined?(TYPE_NAMES)
+    unless defined?(TYPE_NAMES)
+      TYPE_NAMES = {
+        "Symbol"     => "symbol",
+        "Integer"    => "integer",
+        "BigDecimal" => "decimal",
+        "Float"      => "float",
+        "TrueClass"  => "boolean",
+        "FalseClass" => "boolean",
+        "Date"       => "date",
+        "DateTime"   => "dateTime",
+        "Time"       => "dateTime",
+        "Array"      => "array",
+        "Hash"       => "hash"
+      }
+
+      # No need to map these on Ruby 2.4+
+      TYPE_NAMES["Fixnum"] = "integer" unless 0.class == Integer
+      TYPE_NAMES["Bignum"] = "integer" unless 0.class == Integer
+    end
 
     FORMATTING = {
       "symbol"   => Proc.new { |symbol| symbol.to_s },
@@ -63,7 +68,17 @@ module ActiveSupport
         "datetime"     => Proc.new { |time|    Time.xmlschema(time).utc rescue ::DateTime.parse(time).utc },
         "integer"      => Proc.new { |integer| integer.to_i },
         "float"        => Proc.new { |float|   float.to_f },
-        "decimal"      => Proc.new { |number|  BigDecimal(number) },
+        "decimal"      => Proc.new do |number|
+          if String === number
+            begin
+              BigDecimal(number)
+            rescue ArgumentError
+              BigDecimal('0')
+            end
+          else
+            BigDecimal(number)
+          end
+        end,
         "boolean"      => Proc.new { |boolean| %w(1 true).include?(boolean.to_s.strip) },
         "string"       => Proc.new { |string|  string.to_s },
         "yaml"         => Proc.new { |yaml|    YAML::load(yaml) rescue yaml },

@@ -1,5 +1,6 @@
 require 'active_support/values/time_zone'
 require 'active_support/core_ext/object/acts_like'
+require 'active_support/core_ext/date_and_time/compatibility'
 
 module ActiveSupport
   # A Time-like class that can represent a time in any time zone. Necessary
@@ -40,20 +41,21 @@ module ActiveSupport
       'Time'
     end
 
-    include Comparable
+    include Comparable, DateAndTime::Compatibility
     attr_reader :time_zone
 
     def initialize(utc_time, time_zone, local_time = nil, period = nil)
-      @utc, @time_zone, @time = utc_time, time_zone, local_time
+      @utc = utc_time ? transfer_time_values_to_utc_constructor(utc_time) : nil
+      @time_zone, @time = time_zone, local_time
       @period = @utc ? period : get_period_and_ensure_valid_local_time(period)
     end
 
-    # Returns a Time or DateTime instance that represents the time in +time_zone+.
+    # Returns a <tt>Time</tt> instance that represents the time in +time_zone+.
     def time
       @time ||= period.to_local(@utc)
     end
 
-    # Returns a Time or DateTime instance that represents the time in UTC.
+    # Returns a <tt>Time</tt> instance of the simultaneous time in the UTC timezone.
     def utc
       @utc ||= period.to_utc(@time)
     end
@@ -73,10 +75,9 @@ module ActiveSupport
       utc.in_time_zone(new_zone)
     end
 
-    # Returns a <tt>Time.local()</tt> instance of the simultaneous time in your
-    # system's <tt>ENV['TZ']</tt> zone.
+    # Returns a <tt>Time</tt> instance of the simultaneous time in the system timezone.
     def localtime(utc_offset = nil)
-      utc.respond_to?(:getlocal) ? utc.getlocal(utc_offset) : utc.to_time.getlocal(utc_offset)
+      utc.getlocal(utc_offset)
     end
     alias_method :getlocal, :localtime
 
@@ -160,7 +161,11 @@ module ActiveSupport
       end
     end
 
-    def encode_with(coder)
+    def init_with(coder) #:nodoc:
+      initialize(coder['utc'], coder['zone'], coder['time'])
+    end
+
+    def encode_with(coder) #:nodoc:
       if coder.respond_to?(:represent_object)
         coder.represent_object(nil, utc)
       else
@@ -276,6 +281,7 @@ module ActiveSupport
         utc.since(other).in_time_zone(time_zone)
       end
     end
+    alias_method :in, :since
 
     def ago(other)
       since(-other)
@@ -316,13 +322,19 @@ module ActiveSupport
       utc.to_r
     end
 
-    # Return an instance of Time in the system timezone.
-    def to_time
-      utc.to_time
+    def to_datetime
+      @to_datetime ||= utc.to_datetime.new_offset(Rational(utc_offset, 86_400))
     end
 
-    def to_datetime
-      utc.to_datetime.new_offset(Rational(utc_offset, 86_400))
+    # Returns an instance of +Time+, either with the same UTC offset
+    # as +self+ or in the local system timezone depending on the setting
+    # of +ActiveSupport.to_time_preserves_timezone+.
+    def to_time
+      if preserve_timezone
+        @to_time_with_instance_offset ||= getlocal(utc_offset)
+      else
+        @to_time_with_system_offset ||= getlocal
+      end
     end
 
     # So that +self+ <tt>acts_like?(:time)</tt>.
@@ -337,7 +349,8 @@ module ActiveSupport
     alias_method :kind_of?, :is_a?
 
     def freeze
-      period; utc; time # preload instance variables before freezing
+      # preload instance variables before freezing
+      period; utc; time; to_datetime; to_time
       super
     end
 
@@ -360,7 +373,6 @@ module ActiveSupport
     # Ensure proxy class responds to all methods that underlying time instance
     # responds to.
     def respond_to_missing?(sym, include_priv)
-      # consistently respond false to acts_like?(:date), regardless of whether #time is a Time or DateTime
       return false if sym.to_sym == :acts_like_date?
       time.respond_to?(sym, include_priv)
     end
@@ -388,7 +400,7 @@ module ActiveSupport
       end
 
       def transfer_time_values_to_utc_constructor(time)
-        ::Time.utc(time.year, time.month, time.day, time.hour, time.min, time.sec, Rational(time.nsec, 1000))
+        ::Time.utc(time.year, time.month, time.day, time.hour, time.min, time.sec + time.subsec)
       end
 
       def duration_of_variable_length?(obj)

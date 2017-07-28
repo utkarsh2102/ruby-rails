@@ -63,6 +63,13 @@ class Time
     end_of_day.to_i - to_i
   end
 
+  # Returns the fraction of a second as a +Rational+
+  #
+  #   Time.new(2012, 8, 29, 0, 0, 0.5).sec_fraction # => (1/2)
+  def sec_fraction
+    subsec
+  end
+
   # Returns a new Time where one or more of the elements have been changed according
   # to the +options+ parameter. The time options (<tt>:hour</tt>, <tt>:min</tt>,
   # <tt>:sec</tt>, <tt>:usec</tt>, <tt>:nsec</tt>) reset cascadingly, so if only
@@ -250,7 +257,9 @@ class Time
   # can be chronologically compared with a Time
   def compare_with_coercion(other)
     # we're avoiding Time#to_datetime cause it's expensive
-    if other.is_a?(Time)
+    if other.class == Time
+      compare_without_coercion(other)
+    elsif other.is_a?(Time)
       compare_without_coercion(other.to_time)
     else
       to_datetime <=> other

@@ -1,5 +1,12 @@
 source 'https://rubygems.org'
 
+ruby "~> #{RUBY_VERSION}" if ENV["TRAVIS"]
+
+git_source(:github) do |repo_name|
+  repo_name = "#{repo_name}/#{repo_name}" unless repo_name.include?("/")
+  "https://github.com/#{repo_name}.git"
+end
+
 gemspec
 
 # We need a newish Rake since Active Job sets its test tasks' descriptions.
@@ -31,9 +38,9 @@ gem 'uglifier', '>= 1.3.0', require: false
 gem 'mime-types', '< 3', require: false
 
 group :doc do
-  gem 'sdoc', '~> 0.4.0'
+  gem 'sdoc', '>= 1.0.0.rc1', '< 1.1'
   gem 'redcarpet', '~> 3.1.2', platforms: :ruby
-  gem 'w3c_validators'
+  gem 'w3c_validators', RUBY_VERSION < '2.0' ? '1.2' : nil
   gem 'kindlerb', '0.1.1'
   gem 'mustache', '~> 0.99.8'
 end
@@ -45,11 +52,11 @@ gem 'dalli', '>= 2.2.1'
 group :job do
   gem 'resque', require: false
   gem 'resque-scheduler', require: false
-  gem 'sidekiq', require: false
+  gem 'sidekiq', RUBY_VERSION < '2.2' ? '< 5' : nil, require: false
   gem 'sucker_punch', '< 2.0', require: false
   gem 'delayed_job', require: false
   gem 'queue_classic', require: false, platforms: :ruby
-  gem 'sneakers', '0.1.1.pre', require: false
+  gem 'sneakers', '< 2.0.0', require: false
   gem 'que', require: false
   gem 'backburner', require: false
   gem 'qu-rails', github: "bkeepers/qu", branch: "master", require: false
@@ -83,7 +90,7 @@ group :test do
 end
 
 platforms :ruby do
-  gem 'nokogiri', '>= 1.4.5'
+  gem 'nokogiri', RUBY_VERSION < '2.1' ? '~> 1.6.0' : '>= 1.7'
 
   # Needed for compiling the ActionDispatch::Journey parser
   gem 'racc', '>=1.4.6', require: false
@@ -93,13 +100,17 @@ platforms :ruby do
 
   group :db do
     gem 'pg', '>= 0.15.0'
-    gem 'mysql', '>= 2.9.0'
     gem 'mysql2', '>= 0.4.0'
   end
 end
 
+platforms :mri_19, :mri_20, :mri_21, :mri_22, :mri_23 do
+  group :db do
+    gem 'mysql', '>= 2.9.0'
+  end
+end
+
 platforms :jruby do
-  gem 'json'
   if ENV['AR_JDBC']
     gem 'activerecord-jdbcsqlite3-adapter', github: 'jruby/activerecord-jdbc-adapter', branch: 'master'
     group :db do
