@@ -94,7 +94,7 @@ module ActiveRecord
     #
     # There are two basic forms of output:
     #
-    #   * Single aggregate value: The single value is type cast to Fixnum for COUNT, Float
+    #   * Single aggregate value: The single value is type cast to Integer for COUNT, Float
     #     for AVG, and the given column's type for everything else.
     #
     #   * Grouped values: This returns an ordered hash of the values and groups them. It
@@ -310,7 +310,7 @@ module ActiveRecord
           operation,
           distinct).as(aggregate_alias)
       ]
-      select_values += select_values unless having_values.empty?
+      select_values += self.select_values unless having_values.empty?
 
       select_values.concat group_fields.zip(group_aliases).map { |field,aliaz|
         if field.respond_to?(:as)

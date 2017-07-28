@@ -65,6 +65,42 @@ class MysqlConnectionTest < ActiveRecord::TestCase
     assert @connection.active?
   end
 
+  def test_execute_after_disconnect
+    @connection.disconnect!
+    error = assert_raise(ActiveRecord::StatementInvalid) do
+      @connection.execute("SELECT 1")
+    end
+    assert_equal Mysql2::Error, error.original_exception.class
+  end
+
+  def test_quote_after_disconnect
+    @connection.disconnect!
+    assert_raise(Mysql2::Error) do
+      @connection.quote("string")
+    end
+  end
+
+  def test_active_after_disconnect
+    @connection.disconnect!
+    assert_equal false, @connection.active?
+  end
+
+  def test_wait_timeout_as_string
+    run_without_connection do |orig_connection|
+      ActiveRecord::Base.establish_connection(orig_connection.merge(wait_timeout: "60"))
+      result = ActiveRecord::Base.connection.select_value("SELECT @@SESSION.wait_timeout")
+      assert_equal 60, result
+    end
+  end
+
+  def test_wait_timeout_as_url
+    run_without_connection do |orig_connection|
+      ActiveRecord::Base.establish_connection(orig_connection.merge("url" => "mysql2:///?wait_timeout=60"))
+      result = ActiveRecord::Base.connection.select_value("SELECT @@SESSION.wait_timeout")
+      assert_equal 60, result
+    end
+  end
+
   def test_mysql_connection_collation_is_configured
     assert_equal 'utf8_unicode_ci', @connection.show_variable('collation_connection')
     assert_equal 'utf8_general_ci', ARUnit2Model.connection.show_variable('collation_connection')

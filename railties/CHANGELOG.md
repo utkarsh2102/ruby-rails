@@ -1,3 +1,32 @@
+## Rails 4.2.9 (June 26, 2017) ##
+
+*   No changes.
+
+
+## Rails 4.2.8 (February 21, 2017) ##
+
+*   Add `config/initializers/to_time_preserves_timezone.rb`, which tells
+    Active Support to preserve the receiver's timezone when calling `to_time`.
+    This matches the new behavior that will be part of Ruby 2.4.
+
+    Fixes #24617.
+
+    *Andrew White*
+
+*   Reset a new session directly after its creation in ActionDispatch::IntegrationTest#open_session
+
+    Fixes Issue #22742
+
+    *Tawan Sierek*
+
+*   Run `before_configuration` callbacks as soon as application constant
+    inherits from `Rails::Application`.
+
+    Fixes #19880.
+
+    *Yuji Yaginuma*
+
+
 ## Rails 4.2.7 (July 12, 2016) ##
 
 *   Do not run `bundle install` when generating a new plugin.

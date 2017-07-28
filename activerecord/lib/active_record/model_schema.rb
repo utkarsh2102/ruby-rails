@@ -247,7 +247,7 @@ module ActiveRecord
       # Returns a hash where the keys are column names and the values are
       # default values when instantiating the AR object for this table.
       def column_defaults
-        _default_attributes.to_hash
+        _default_attributes.dup.to_hash
       end
 
       def _default_attributes # :nodoc:
@@ -304,6 +304,8 @@ module ActiveRecord
         @default_attributes = nil
         @inheritance_column = nil unless defined?(@explicit_inheritance_column) && @explicit_inheritance_column
         @relation           = nil
+
+        initialize_find_by_cache
       end
 
       private

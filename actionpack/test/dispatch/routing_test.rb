@@ -3490,6 +3490,24 @@ class TestRoutingMapper < ActionDispatch::IntegrationTest
     assert_equal 'HEAD', @response.body
   end
 
+  def test_nested_routes_under_format_resource
+    draw do
+      resources :formats do
+        resources :items
+      end
+    end
+
+    get "/formats/1/items.json"
+    assert_equal 200, @response.status
+    assert_equal "items#index", @response.body
+    assert_equal "/formats/1/items.json", format_items_path(1, :json)
+
+    get "/formats/1/items/2.json"
+    assert_equal 200, @response.status
+    assert_equal "items#show", @response.body
+    assert_equal "/formats/1/items/2.json", format_item_path(1, 2, :json)
+  end
+
 private
 
   def draw(&block)
@@ -4178,26 +4196,51 @@ class TestInvalidUrls < ActionDispatch::IntegrationTest
     end
   end
 
-  test "invalid UTF-8 encoding returns a 400 Bad Request" do
-    with_routing do |set|
-      set.draw do
-        get "/bar/:id", :to => redirect("/foo/show/%{id}")
-        get "/foo/show(/:id)", :to => "test_invalid_urls/foo#show"
-        get "/foo(/:action(/:id))", :controller => "test_invalid_urls/foo"
-        get "/:controller(/:action(/:id))"
+  if RUBY_VERSION < '2.0.0'
+    test "invalid UTF-8 encoding returns a 400 Bad Request" do
+      with_routing do |set|
+        set.draw do
+          get "/bar/:id", :to => redirect("/foo/show/%{id}")
+          get "/foo/show(/:id)", :to => "test_invalid_urls/foo#show"
+          get "/foo(/:action(/:id))", :controller => "test_invalid_urls/foo"
+          get "/:controller(/:action(/:id))"
+        end
+
+        get "/%E2%EF%BF%BD%A6"
+        assert_response :bad_request
+
+        get "/foo/%E2%EF%BF%BD%A6"
+        assert_response :bad_request
+
+        get "/foo/show/%E2%EF%BF%BD%A6"
+        assert_response :bad_request
+
+        get "/bar/%E2%EF%BF%BD%A6"
+        assert_response :bad_request
       end
+    end
+  else
+    test "invalid UTF-8 encoding is treated as ASCII 8BIT encode" do
+      with_routing do |set|
+        set.draw do
+          get "/bar/:id", :to => redirect("/foo/show/%{id}")
+          get "/foo/show(/:id)", :to => "test_invalid_urls/foo#show"
+          get "/foo(/:action(/:id))", :controller => "test_invalid_urls/foo"
+          get "/:controller(/:action(/:id))"
+        end
 
-      get "/%E2%EF%BF%BD%A6"
-      assert_response :bad_request
+        get "/%E2%EF%BF%BD%A6"
+        assert_response :not_found
 
-      get "/foo/%E2%EF%BF%BD%A6"
-      assert_response :bad_request
+        get "/foo/%E2%EF%BF%BD%A6"
+        assert_response :not_found
 
-      get "/foo/show/%E2%EF%BF%BD%A6"
-      assert_response :bad_request
+        get "/foo/show/%E2%EF%BF%BD%A6"
+        assert_response :ok
 
-      get "/bar/%E2%EF%BF%BD%A6"
-      assert_response :bad_request
+        get "/bar/%E2%EF%BF%BD%A6"
+        assert_response :redirect
+      end
     end
   end
 end

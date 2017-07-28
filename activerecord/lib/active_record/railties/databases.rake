@@ -63,6 +63,8 @@ db_namespace = namespace :db do
   namespace :migrate do
     # desc  'Rollbacks the database one migration and re migrate up (options: STEP=x, VERSION=x).'
     task :redo => [:environment, :load_config] do
+      raise "Empty VERSION provided" if ENV["VERSION"] && ENV["VERSION"].empty?
+
       if ENV['VERSION']
         db_namespace['migrate:down'].invoke
         db_namespace['migrate:up'].invoke
@@ -77,16 +79,17 @@ db_namespace = namespace :db do
 
     # desc 'Runs the "up" for a given migration VERSION.'
     task :up => [:environment, :load_config] do
+      raise "VERSION is required" if ENV["VERSION"] && ENV["VERSION"].empty?
+
       version = ENV['VERSION'] ? ENV['VERSION'].to_i : nil
-      raise 'VERSION is required' unless version
       ActiveRecord::Migrator.run(:up, ActiveRecord::Migrator.migrations_paths, version)
       db_namespace['_dump'].invoke
     end
 
     # desc 'Runs the "down" for a given migration VERSION.'
     task :down => [:environment, :load_config] do
+      raise "VERSION is required - To go down one migration, use db:rollback" if ENV["VERSION"] && ENV["VERSION"].empty?
       version = ENV['VERSION'] ? ENV['VERSION'].to_i : nil
-      raise 'VERSION is required - To go down one migration, run db:rollback' unless version
       ActiveRecord::Migrator.run(:down, ActiveRecord::Migrator.migrations_paths, version)
       db_namespace['_dump'].invoke
     end
@@ -96,26 +99,13 @@ db_namespace = namespace :db do
       unless ActiveRecord::SchemaMigration.table_exists?
         abort 'Schema migrations table does not exist yet.'
       end
-      db_list = ActiveRecord::SchemaMigration.normalized_versions
 
-      file_list =
-          ActiveRecord::Migrator.migrations_paths.flat_map do |path|
-            # match "20091231235959_some_name.rb" and "001_some_name.rb" pattern
-            Dir.foreach(path).grep(/^(\d{3,})_(.+)\.rb$/) do
-              version = ActiveRecord::SchemaMigration.normalize_migration_number($1)
-              status = db_list.delete(version) ? 'up' : 'down'
-              [status, version, $2.humanize]
-            end
-          end
-
-      db_list.map! do |version|
-        ['up', version, '********** NO FILE **********']
-      end
       # output
       puts "\ndatabase: #{ActiveRecord::Base.connection_config[:database]}\n\n"
       puts "#{'Status'.center(8)}  #{'Migration ID'.ljust(14)}  Migration Name"
       puts "-" * 50
-      (db_list + file_list).sort_by { |_, version, _| version }.each do |status, version, name|
+      paths = ActiveRecord::Tasks::DatabaseTasks.migrations_paths
+      ActiveRecord::Migrator.migrations_status(paths).each do |status, version, name|
         puts "#{status.center(8)}  #{version.ljust(14)}  #{name}"
       end
       puts

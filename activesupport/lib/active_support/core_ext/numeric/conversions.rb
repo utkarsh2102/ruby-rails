@@ -118,7 +118,15 @@ class Numeric
     end
   end
 
-  [Float, Fixnum, Bignum, BigDecimal].each do |klass|
+  klasses = [Float, BigDecimal]
+  # Ruby 2.4+ unifies Fixnum & Bignum into Integer.
+  if 0.class == Integer
+    klasses << Integer
+  else
+    klasses << Fixnum << Bignum
+  end
+
+  klasses.each do |klass|
     klass.send(:alias_method, :to_default_s, :to_s)
 
     klass.send(:define_method, :to_s) do |*args|

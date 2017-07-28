@@ -1,3 +1,133 @@
+## Rails 4.2.9 (June 26, 2017) ##
+
+*   Fixed bug in `DateAndTime::Compatibility#to_time` that caused it to
+    raise `RuntimeError: can't modify frozen Time` when called on any frozen `Time`.
+    Properly pass through the frozen `Time` or `ActiveSupport::TimeWithZone` object
+    when calling `#to_time`.
+
+    *Kevin McPhillips* & *Andrew White*
+
+*   Restore the return type of `DateTime#utc`
+
+    In Rails 5.0 the return type of `DateTime#utc` was changed to `Time` to be
+    consistent with the new `DateTime#localtime` method. When these changes were
+    backported in #27553 this inadvertently changed the return type in a patcn
+    release. Since `DateTime#localtime` was new in Rails 4.2.8 it's okay to
+    restore the return type of `DateTime#utc` but keep `DateTime#localtime` as
+    returning `Time` without breaking backwards compatibility.
+
+    *Andrew White*
+
+*   In Core Extensions, make `MarshalWithAutoloading#load` pass through the second, optional
+    argument for `Marshal#load( source [, proc] )`. This way we don't have to do
+    `Marshal.method(:load).super_method.call(sourse, proc)` just to be able to pass a proc.
+
+    *Jeff Latz*
+
+*   Cache `ActiveSupport::TimeWithZone#to_datetime` before freezing.
+
+    *Adam Rice*
+
+*   `AS::Testing::TimeHelpers#travel_to` now changes `DateTime.now` as well as
+    `Time.now` and `Date.today`.
+
+    *Yuki Nishijima*
+
+
+## Rails 4.2.8 (February 21, 2017) ##
+
+*   Make `getlocal` and `getutc` always return instances of `Time` for
+    `ActiveSupport::TimeWithZone` and `DateTime`. This eliminates a possible
+    stack level too deep error in `to_time` where `ActiveSupport::TimeWithZone`
+    was wrapping a `DateTime` instance. As a consequence of this the internal
+    time value in `ActiveSupport::TimeWithZone` is now always an instance of
+    `Time` in the UTC timezone, whether that's as the UTC time directly or
+    a representation of the local time in the timezone. There should be no
+    consequences of this internal change and if there are it's a bug due to
+    leaky abstractions.
+
+    *Andrew White*
+
+*   Add `DateTime#subsec` to return the fraction of a second as a `Rational`.
+
+    *Andrew White*
+
+*   Add additional aliases for `DateTime#utc` to mirror the ones on
+    `ActiveSupport::TimeWithZone` and `Time`.
+
+    *Andrew White*
+
+*   Add `DateTime#localtime` to return an instance of `Time` in the system's
+    local timezone. Also aliased to `getlocal`.
+
+    *Andrew White*, *Yuichiro Kaneko*
+
+*   Add `Time#sec_fraction` to return the fraction of a second as a `Rational`.
+
+    *Andrew White*
+
+*   Add `ActiveSupport.to_time_preserves_timezone` config option to control
+    how `to_time` handles timezones. In Ruby 2.4+ the behavior will change
+    from converting to the local system timezone, to preserving the timezone
+    of the receiver. This config option defaults to false so that apps made
+    with earlier versions of Rails are not affected when upgrading, e.g:
+
+        >> ENV['TZ'] = 'US/Eastern'
+
+        >> "2016-04-23T10:23:12.000Z".to_time
+        => "2016-04-23T06:23:12.000-04:00"
+
+        >> ActiveSupport.to_time_preserves_timezone = true
+
+        >> "2016-04-23T10:23:12.000Z".to_time
+        => "2016-04-23T10:23:12.000Z"
+
+    Fixes #24617.
+
+    *Andrew White*
+
+*   Add `init_with` to `ActiveSupport::TimeWithZone` and `ActiveSupport::TimeZone`
+
+    It is helpful to be able to run apps concurrently written in successive
+    versions of Rails to aid migration, e.g. run Rails 4.2 and 5.0 variants
+    of your application at the same time to carry out A/B testing.
+
+    To do this serialization formats need to be cross compatible and the
+    change in 3aa26cf didn't meet this criteria because the Psych loader
+    checks for the existence of `init_with` before setting the instance
+    variables and the wrapping behavior of `ActiveSupport::TimeWithZone`
+    tries to see if the `Time` instance responds to `init_with` before the
+    `@time` variable is set.
+
+    To fix this we backported just the `init_with` behavior from the change
+    in 3aa26cf. If the revived instance is then written out to YAML again
+    it will revert to the default Rails 4.2 behavior of converting it to
+    a UTC timestamp string.
+
+    Fixes #26296.
+
+    *Andrew White*
+
+*   Fix `ActiveSupport::TimeWithZone#in` across DST boundaries.
+
+    Previously calls to `in` were being sent to the non-DST aware
+    method `Time#since` via `method_missing`. It is now aliased to
+    the DST aware `ActiveSupport::TimeWithZone#since` which handles
+    transitions across DST boundaries, e.g:
+
+        Time.zone = "US/Eastern"
+
+        t = Time.zone.local(2016,11,6,1)
+        # => Sun, 06 Nov 2016 01:00:00 EDT -05:00
+
+        t.in(1.hour)
+        # => Sun, 06 Nov 2016 01:00:00 EST -05:00
+
+    Fixes #26580.
+
+    *Thomas Balthazar*
+
+
 ## Rails 4.2.7 (July 12, 2016) ##
 
 *   Fixed `ActiveSupport::Logger.broadcast` so that calls to `#silence` now

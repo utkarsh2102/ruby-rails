@@ -36,12 +36,12 @@ class HashExtTest < ActiveSupport::TestCase
   def setup
     @strings = { 'a' => 1, 'b' => 2 }
     @nested_strings = { 'a' => { 'b' => { 'c' => 3 } } }
-    @symbols = { :a  => 1, :b  => 2 }
+    @symbols = { :a => 1, :b => 2 }
     @nested_symbols = { :a => { :b => { :c => 3 } } }
-    @mixed   = { :a  => 1, 'b' => 2 }
-    @nested_mixed   = { 'a' => { :b => { 'c' => 3 } } }
-    @fixnums = {  0  => 1,  1  => 2 }
-    @nested_fixnums = {  0  => { 1  => { 2 => 3} } }
+    @mixed = { :a => 1, 'b' => 2 }
+    @nested_mixed = { 'a' => { :b => { 'c' => 3 } } }
+    @integers = { 0 => 1, 1 => 2 }
+    @nested_integers = { 0 => { 1 => { 2 => 3} } }
     @illegal_symbols = { [] => 3 }
     @nested_illegal_symbols = { [] => { [] => 3} }
     @upcase_strings = { 'A' => 1, 'B' => 2 }
@@ -196,14 +196,14 @@ class HashExtTest < ActiveSupport::TestCase
     assert_equal @nested_illegal_symbols, @nested_illegal_symbols.deep_dup.deep_symbolize_keys!
   end
 
-  def test_symbolize_keys_preserves_fixnum_keys
-    assert_equal @fixnums, @fixnums.symbolize_keys
-    assert_equal @fixnums, @fixnums.dup.symbolize_keys!
+  def test_symbolize_keys_preserves_integer_keys
+    assert_equal @integers, @integers.symbolize_keys
+    assert_equal @integers, @integers.dup.symbolize_keys!
   end
 
-  def test_deep_symbolize_keys_preserves_fixnum_keys
-    assert_equal @nested_fixnums, @nested_fixnums.deep_symbolize_keys
-    assert_equal @nested_fixnums, @nested_fixnums.deep_dup.deep_symbolize_keys!
+  def test_deep_symbolize_keys_preserves_integer_keys
+    assert_equal @nested_integers, @nested_integers.deep_symbolize_keys
+    assert_equal @nested_integers, @nested_integers.deep_dup.deep_symbolize_keys!
   end
 
   def test_stringify_keys
@@ -299,14 +299,14 @@ class HashExtTest < ActiveSupport::TestCase
     assert_raise(NoMethodError) { @nested_illegal_symbols.with_indifferent_access.deep_dup.deep_symbolize_keys! }
   end
 
-  def test_symbolize_keys_preserves_fixnum_keys_for_hash_with_indifferent_access
-    assert_equal @fixnums, @fixnums.with_indifferent_access.symbolize_keys
-    assert_raise(NoMethodError) { @fixnums.with_indifferent_access.dup.symbolize_keys! }
+  def test_symbolize_keys_preserves_integer_keys_for_hash_with_indifferent_access
+    assert_equal @integers, @integers.with_indifferent_access.symbolize_keys
+    assert_raise(NoMethodError) { @integers.with_indifferent_access.dup.symbolize_keys! }
   end
 
-  def test_deep_symbolize_keys_preserves_fixnum_keys_for_hash_with_indifferent_access
-    assert_equal @nested_fixnums, @nested_fixnums.with_indifferent_access.deep_symbolize_keys
-    assert_raise(NoMethodError) { @nested_fixnums.with_indifferent_access.deep_dup.deep_symbolize_keys! }
+  def test_deep_symbolize_keys_preserves_integer_keys_for_hash_with_indifferent_access
+    assert_equal @nested_integers, @nested_integers.with_indifferent_access.deep_symbolize_keys
+    assert_raise(NoMethodError) { @nested_integers.with_indifferent_access.deep_dup.deep_symbolize_keys! }
   end
 
   def test_stringify_keys_for_hash_with_indifferent_access
@@ -578,6 +578,26 @@ class HashExtTest < ActiveSupport::TestCase
 
     assert_equal({ 'a' => 1 }, indifferent_strings)
     assert_instance_of ActiveSupport::HashWithIndifferentAccess, indifferent_strings
+  end
+
+  def test_indifferent_compact
+    hash_contain_nil_value = @strings.merge("z" => nil)
+    hash = ActiveSupport::HashWithIndifferentAccess.new(hash_contain_nil_value)
+    compacted_hash = hash.compact
+
+    assert_equal(@strings, compacted_hash)
+    assert_equal(hash_contain_nil_value, hash)
+    assert_instance_of ActiveSupport::HashWithIndifferentAccess, compacted_hash
+
+    empty_hash = ActiveSupport::HashWithIndifferentAccess.new
+    compacted_hash = empty_hash.compact
+
+    assert_equal compacted_hash, empty_hash
+
+    non_empty_hash = ActiveSupport::HashWithIndifferentAccess.new(foo: :bar)
+    compacted_hash = non_empty_hash.compact
+
+    assert_equal compacted_hash, non_empty_hash
   end
 
   def test_indifferent_to_hash

@@ -1,3 +1,64 @@
+## Rails 4.2.9 (June 26, 2017) ##
+
+*   Fix regression caused by `collection_singular_ids=` ignoring different primary key on relationship.
+
+    *Nick Pezza*
+
+*   Fix `rake db:schema:load` with subdirectories.
+
+    *Ryuta Kamizono*
+
+*   Fix `rake db:migrate:status` with subdirectories.
+
+    *Ryuta Kamizono*
+
+*   Fix regression of #1969 with SELECT aliases in HAVING clause.
+
+    *Eugene Kenny*
+
+*   Fix `wait_timeout` to configurable for mysql2 adapter.
+
+    Fixes #26556.
+
+    *Ryuta Kamizono*
+
+*   Make `table_name=` reset current statement cache,
+    so queries are not run against the previous table name.
+
+    *namusyaka*
+
+
+## Rails 4.2.8 (February 21, 2017) ##
+
+*   Using a mysql2 connection after it fails to reconnect will now have an error message
+    saying the connection is closed rather than an undefined method error message.
+
+    *Dylan Thacker-Smith*
+
+*   Bust Model.attribute_names cache when resetting column information
+
+    *James Coleman*
+
+*   Fix query caching when type information is reset
+
+    Backports ancillary fix in 5.0.
+
+    *James Coleman*
+
+*   Allow `joins` to be unscoped.
+
+    Fixes #13775.
+
+    *Takashi Kokubun*
+
+*   Hashes can once again be passed to setters of `composed_of`, if all of the
+    mapping methods are methods implemented on `Hash`.
+
+    Fixes #25978.
+
+    *Sean Griffin*
+
+
 ## Rails 4.2.7 (July 12, 2016) ##
 
 *   Inspecting an object with an associated array of over 10 elements no longer
