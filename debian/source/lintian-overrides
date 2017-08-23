@@ -1,0 +1,6 @@
+# false positive
+rails source: source-is-missing debian/missing-sources/shCore.js line length is 1083 characters (>512)
+rails source: source-is-missing guides/assets/javascripts/syntaxhighlighter/shBrushAppleScript.js line length is 638 characters (>512)
+# test data
+rails source: source-is-missing actionpack/test/fixtures/public/gzip/application-a71b3024f80aea3181c09774ca17e712.js line length is 32768 characters (>512)
+rails source: source-is-missing actionpack/test/fixtures/??????/gzip/application-a71b3024f80aea3181c09774ca17e712.js line length is 32768 characters (>512)
