@@ -1,3 +1,10 @@
+rails (2:4.2.9-3) unstable; urgency=medium
+
+  * Relax dependency on ruby-rack-test
+  * Add myself to uploaders 
+
+ -- Pirate Praveen <praveen@debian.org>  Wed, 06 Sep 2017 12:14:19 +0530
+
 rails (2:4.2.9-2) unstable; urgency=medium
 
   * Team upload
