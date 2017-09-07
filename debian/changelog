@@ -1,9 +1,9 @@
-rails (2:4.2.9-4) UNRELEASED; urgency=medium
+rails (2:4.2.9-4) unstable; urgency=medium
 
   * Team upload.
   * Patch gem specs to really relax rack-test dependency.
 
- -- Marc Dequènes (Duck) <Duck@DuckCorp.org>  Thu, 07 Sep 2017 19:22:42 +0900
+ -- Marc Dequènes (Duck) <Duck@DuckCorp.org>  Thu, 07 Sep 2017 19:46:41 +0900
 
 rails (2:4.2.9-3) unstable; urgency=medium
 
