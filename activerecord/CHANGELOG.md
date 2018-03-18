@@ -1,3 +1,12 @@
+## Rails 4.2.10 (September 27, 2017) ##
+
+*   `Relation#joins` is no longer affected by the target model's
+    `current_scope`, with the exception of `unscoped`.
+
+    Fixes #29338.
+
+    *Sean Griffin*
+
 ## Rails 4.2.9 (June 26, 2017) ##
 
 *   Fix regression caused by `collection_singular_ids=` ignoring different primary key on relationship.
