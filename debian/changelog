@@ -1,3 +1,9 @@
+rails (2:4.2.10-1~bpo9+1) stretch-backports; urgency=medium
+
+  * Rebuild for stretch-backports.
+
+ -- Pirate Praveen <praveen@debian.org>  Mon, 30 Apr 2018 16:41:43 +0530
+
 rails (2:4.2.10-1) unstable; urgency=medium
 
   * New upstream version 4.2.10
