@@ -1,668 +1,522 @@
-## Rails 4.2.10 (September 27, 2017) ##
+## Rails 5.2.0 (April 09, 2018) ##
 
-*   No changes.
+*   Caching: MemCache and Redis `read_multi` and `fetch_multi` speedup.
+    Read from the local in-memory cache before consulting the backend.
 
+    *Gabriel Sobrinho*
 
-## Rails 4.2.9 (June 26, 2017) ##
+*   Return all mappings for a timezone identifier in `country_zones`.
 
-*   Fixed bug in `DateAndTime::Compatibility#to_time` that caused it to
-    raise `RuntimeError: can't modify frozen Time` when called on any frozen `Time`.
-    Properly pass through the frozen `Time` or `ActiveSupport::TimeWithZone` object
-    when calling `#to_time`.
+    Some timezones like `Europe/London` have multiple mappings in
+    `ActiveSupport::TimeZone::MAPPING` so return all of them instead
+    of the first one found by using `Hash#value`. e.g:
 
-    *Kevin McPhillips* & *Andrew White*
+        # Before
+        ActiveSupport::TimeZone.country_zones("GB") # => ["Edinburgh"]
 
-*   Restore the return type of `DateTime#utc`
+        # After
+        ActiveSupport::TimeZone.country_zones("GB") # => ["Edinburgh", "London"]
 
-    In Rails 5.0 the return type of `DateTime#utc` was changed to `Time` to be
-    consistent with the new `DateTime#localtime` method. When these changes were
-    backported in #27553 this inadvertently changed the return type in a patcn
-    release. Since `DateTime#localtime` was new in Rails 4.2.8 it's okay to
-    restore the return type of `DateTime#utc` but keep `DateTime#localtime` as
-    returning `Time` without breaking backwards compatibility.
+    Fixes #31668.
 
     *Andrew White*
 
-*   In Core Extensions, make `MarshalWithAutoloading#load` pass through the second, optional
-    argument for `Marshal#load( source [, proc] )`. This way we don't have to do
-    `Marshal.method(:load).super_method.call(sourse, proc)` just to be able to pass a proc.
+*   Add support for connection pooling on RedisCacheStore.
 
-    *Jeff Latz*
+    *fatkodima*
 
-*   Cache `ActiveSupport::TimeWithZone#to_datetime` before freezing.
+*   Support hash as first argument in `assert_difference`. This allows to specify multiple
+    numeric differences in the same assertion.
 
-    *Adam Rice*
+        assert_difference ->{ Article.count } => 1, ->{ Post.count } => 2
 
-*   `AS::Testing::TimeHelpers#travel_to` now changes `DateTime.now` as well as
-    `Time.now` and `Date.today`.
+    *Julien Meichelbeck*
 
-    *Yuki Nishijima*
+*   Add missing instrumentation for `read_multi` in `ActiveSupport::Cache::Store`.
 
+    *Ignatius Reza Lesmana*
 
-## Rails 4.2.8 (February 21, 2017) ##
+*   `assert_changes` will always assert that the expression changes,
+    regardless of `from:` and `to:` argument combinations.
 
-*   Make `getlocal` and `getutc` always return instances of `Time` for
-    `ActiveSupport::TimeWithZone` and `DateTime`. This eliminates a possible
-    stack level too deep error in `to_time` where `ActiveSupport::TimeWithZone`
-    was wrapping a `DateTime` instance. As a consequence of this the internal
-    time value in `ActiveSupport::TimeWithZone` is now always an instance of
-    `Time` in the UTC timezone, whether that's as the UTC time directly or
-    a representation of the local time in the timezone. There should be no
-    consequences of this internal change and if there are it's a bug due to
-    leaky abstractions.
+    *Daniel Ma*
 
-    *Andrew White*
+*   Use SHA-1 to generate non-sensitive digests, such as the ETag header.
 
-*   Add `DateTime#subsec` to return the fraction of a second as a `Rational`.
+    Enabled by default for new apps; upgrading apps can opt in by setting
+    `config.active_support.use_sha1_digests = true`.
 
-    *Andrew White*
+    *Dmitri Dolguikh*, *Eugene Kenny*
 
-*   Add additional aliases for `DateTime#utc` to mirror the ones on
-    `ActiveSupport::TimeWithZone` and `Time`.
+*   Changed default behaviour of `ActiveSupport::SecurityUtils.secure_compare`,
+    to make it not leak length information even for variable length string.
 
-    *Andrew White*
+    Renamed old `ActiveSupport::SecurityUtils.secure_compare` to `fixed_length_secure_compare`,
+    and started raising `ArgumentError` in case of length mismatch of passed strings.
 
-*   Add `DateTime#localtime` to return an instance of `Time` in the system's
-    local timezone. Also aliased to `getlocal`.
+    *Vipul A M*
 
-    *Andrew White*, *Yuichiro Kaneko*
+*   Make `ActiveSupport::TimeZone.all` return only time zones that are in
+    `ActiveSupport::TimeZone::MAPPING`.
 
-*   Add `Time#sec_fraction` to return the fraction of a second as a `Rational`.
+    Fixes #7245.
 
-    *Andrew White*
+    *Chris LaRose*
 
-*   Add `ActiveSupport.to_time_preserves_timezone` config option to control
-    how `to_time` handles timezones. In Ruby 2.4+ the behavior will change
-    from converting to the local system timezone, to preserving the timezone
-    of the receiver. This config option defaults to false so that apps made
-    with earlier versions of Rails are not affected when upgrading, e.g:
+*   MemCacheStore: Support expiring counters.
 
-        >> ENV['TZ'] = 'US/Eastern'
+    Pass `expires_in: [seconds]` to `#increment` and `#decrement` options
+    to set the Memcached TTL (time-to-live) if the counter doesn't exist.
+    If the counter exists, Memcached doesn't extend its expiry when it's
+    incremented or decremented.
 
-        >> "2016-04-23T10:23:12.000Z".to_time
-        => "2016-04-23T06:23:12.000-04:00"
+    ```
+    Rails.cache.increment("my_counter", 1, expires_in: 2.minutes)
+    ```
 
-        >> ActiveSupport.to_time_preserves_timezone = true
+    *Takumasa Ochi*
 
-        >> "2016-04-23T10:23:12.000Z".to_time
-        => "2016-04-23T10:23:12.000Z"
+*   Handle `TZInfo::AmbiguousTime` errors.
 
-    Fixes #24617.
+    Make `ActiveSupport::TimeWithZone` match Ruby's handling of ambiguous
+    times by choosing the later period, e.g.
 
-    *Andrew White*
+    Ruby:
+    ```
+    ENV["TZ"] = "Europe/Moscow"
+    Time.local(2014, 10, 26, 1, 0, 0)   # => 2014-10-26 01:00:00 +0300
+    ```
 
-*   Add `init_with` to `ActiveSupport::TimeWithZone` and `ActiveSupport::TimeZone`
+    Before:
+    ```
+    >> "2014-10-26 01:00:00".in_time_zone("Moscow")
+    TZInfo::AmbiguousTime: 26/10/2014 01:00 is an ambiguous local time.
+    ```
 
-    It is helpful to be able to run apps concurrently written in successive
-    versions of Rails to aid migration, e.g. run Rails 4.2 and 5.0 variants
-    of your application at the same time to carry out A/B testing.
+    After:
+    ```
+    >> "2014-10-26 01:00:00".in_time_zone("Moscow")
+    => Sun, 26 Oct 2014 01:00:00 MSK +03:00
+    ```
 
-    To do this serialization formats need to be cross compatible and the
-    change in 3aa26cf didn't meet this criteria because the Psych loader
-    checks for the existence of `init_with` before setting the instance
-    variables and the wrapping behavior of `ActiveSupport::TimeWithZone`
-    tries to see if the `Time` instance responds to `init_with` before the
-    `@time` variable is set.
-
-    To fix this we backported just the `init_with` behavior from the change
-    in 3aa26cf. If the revived instance is then written out to YAML again
-    it will revert to the default Rails 4.2 behavior of converting it to
-    a UTC timestamp string.
-
-    Fixes #26296.
+    Fixes #17395.
 
     *Andrew White*
 
-*   Fix `ActiveSupport::TimeWithZone#in` across DST boundaries.
+*   Redis cache store.
 
-    Previously calls to `in` were being sent to the non-DST aware
-    method `Time#since` via `method_missing`. It is now aliased to
-    the DST aware `ActiveSupport::TimeWithZone#since` which handles
-    transitions across DST boundaries, e.g:
+    ```
+    # Defaults to `redis://localhost:6379/0`. Only use for dev/test.
+    config.cache_store = :redis_cache_store
 
-        Time.zone = "US/Eastern"
+    # Supports all common cache store options (:namespace, :compress,
+    # :compress_threshold, :expires_in, :race_condition_ttl) and all
+    # Redis options.
+    cache_password = Rails.application.secrets.redis_cache_password
+    config.cache_store = :redis_cache_store, driver: :hiredis,
+      namespace: 'myapp-cache', compress: true, timeout: 1,
+      url: "redis://:#{cache_password}@myapp-cache-1:6379/0"
 
-        t = Time.zone.local(2016,11,6,1)
-        # => Sun, 06 Nov 2016 01:00:00 EDT -05:00
+    # Supports Redis::Distributed with multiple hosts
+    config.cache_store = :redis_cache_store, driver: :hiredis
+      namespace: 'myapp-cache', compress: true,
+      url: %w[
+        redis://myapp-cache-1:6379/0
+        redis://myapp-cache-1:6380/0
+        redis://myapp-cache-2:6379/0
+        redis://myapp-cache-2:6380/0
+        redis://myapp-cache-3:6379/0
+        redis://myapp-cache-3:6380/0
+      ]
 
-        t.in(1.hour)
-        # => Sun, 06 Nov 2016 01:00:00 EST -05:00
+    # Or pass a builder block
+    config.cache_store = :redis_cache_store,
+      namespace: 'myapp-cache', compress: true,
+      redis: -> { Redis.new … }
+    ```
 
-    Fixes #26580.
+    Deployment note: Take care to use a *dedicated Redis cache* rather
+    than pointing this at your existing Redis server. It won't cope well
+    with mixed usage patterns and it won't expire cache entries by default.
 
-    *Thomas Balthazar*
+    Redis cache server setup guide: https://redis.io/topics/lru-cache
 
+    *Jeremy Daer*
 
-## Rails 4.2.7 (July 12, 2016) ##
+*   Cache: Enable compression by default for values > 1kB.
 
-*   Fixed `ActiveSupport::Logger.broadcast` so that calls to `#silence` now
-    properly delegate to all loggers. Silencing now properly suppresses logging
-    to both the log and the console.
+    Compression has long been available, but opt-in and at a 16kB threshold.
+    It wasn't enabled by default due to CPU cost. Today it's cheap and typical
+    cache data is eminently compressible, such as HTML or JSON fragments.
+    Compression dramatically reduces Memcached/Redis mem usage, which means
+    the same cache servers can store more data, which means higher hit rates.
 
-    *Kevin McPhillips*
+    To disable compression, pass `compress: false` to the initializer.
 
-*   Backported `ActiveSupport::LoggerThreadSafeLevel`. Assigning the
-    `Rails.logger.level` is now thread safe.
+    *Jeremy Daer*
 
-    *Kevin McPhillips*
+*   Allow `Range#include?` on TWZ ranges.
 
-*   Fixed a problem with ActiveSupport::SafeBuffer.titleize calling capitalize
-    on nil.
+    In #11474 we prevented TWZ ranges being iterated over which matched
+    Ruby's handling of Time ranges and as a consequence `include?`
+    stopped working with both Time ranges and TWZ ranges. However in
+    ruby/ruby@b061634 support was added for `include?` to use `cover?`
+    for 'linear' objects. Since we have no way of making Ruby consider
+    TWZ instances as 'linear' we have to override `Range#include?`.
 
-    *Brian McManus*
+    Fixes #30799.
 
-*   Time zones: Ensure that the UTC offset reflects DST changes that occurred
-    since the app started. Removes UTC offset caching, reducing performance,
-    but this is still relatively quick and isn't in any hot paths.
+    *Andrew White*
 
-    *Alexey Shein*
+*   Fix acronym support in `humanize`.
 
-*   Prevent `Marshal.load` from looping infinitely when trying to autoload a constant
-    which resolves to a different name.
+    Acronym inflections are stored with lowercase keys in the hash but
+    the match wasn't being lowercased before being looked up in the hash.
+    This shouldn't have any performance impact because before it would
+    fail to find the acronym and perform the `downcase` operation anyway.
 
-    *Olek Janiszewski*
+    Fixes #31052.
 
+    *Andrew White*
 
-## Rails 4.2.6 (March 07, 2016) ##
+*   Add same method signature for `Time#prev_year` and `Time#next_year`
+    in accordance with `Date#prev_year`, `Date#next_year`.
 
-*   No changes.
+    Allows pass argument for `Time#prev_year` and `Time#next_year`.
 
+    Before:
+    ```
+    Time.new(2017, 9, 16, 17, 0).prev_year    # => 2016-09-16 17:00:00 +0300
+    Time.new(2017, 9, 16, 17, 0).prev_year(1)
+    # => ArgumentError: wrong number of arguments (given 1, expected 0)
 
-## Rails 4.2.5.2 (February 26, 2016) ##
+    Time.new(2017, 9, 16, 17, 0).next_year    # => 2018-09-16 17:00:00 +0300
+    Time.new(2017, 9, 16, 17, 0).next_year(1)
+    # => ArgumentError: wrong number of arguments (given 1, expected 0)
+    ```
 
-*   No changes.
+    After:
+    ```
+    Time.new(2017, 9, 16, 17, 0).prev_year    # => 2016-09-16 17:00:00 +0300
+    Time.new(2017, 9, 16, 17, 0).prev_year(1) # => 2016-09-16 17:00:00 +0300
 
+    Time.new(2017, 9, 16, 17, 0).next_year    # => 2018-09-16 17:00:00 +0300
+    Time.new(2017, 9, 16, 17, 0).next_year(1) # => 2018-09-16 17:00:00 +0300
+    ```
 
-## Rails 4.2.5.1 (January 25, 2015) ##
+    *bogdanvlviv*
 
-*   No changes.
+*   Add same method signature for `Time#prev_month` and `Time#next_month`
+    in accordance with `Date#prev_month`, `Date#next_month`.
 
+    Allows pass argument for `Time#prev_month` and `Time#next_month`.
 
-## Rails 4.2.5 (November 12, 2015) ##
+    Before:
+    ```
+    Time.new(2017, 9, 16, 17, 0).prev_month    # => 2017-08-16 17:00:00 +0300
+    Time.new(2017, 9, 16, 17, 0).prev_month(1)
+    # => ArgumentError: wrong number of arguments (given 1, expected 0)
 
-*   Fix `TimeWithZone#eql?` to properly handle `TimeWithZone` created from `DateTime`:
-        twz = DateTime.now.in_time_zone
-        twz.eql?(twz.dup) => true
+    Time.new(2017, 9, 16, 17, 0).next_month    # => 2017-10-16 17:00:00 +0300
+    Time.new(2017, 9, 16, 17, 0).next_month(1)
+    # => ArgumentError: wrong number of arguments (given 1, expected 0)
+    ```
 
-    Fixes #14178.
+    After:
+    ```
+    Time.new(2017, 9, 16, 17, 0).prev_month    # => 2017-08-16 17:00:00 +0300
+    Time.new(2017, 9, 16, 17, 0).prev_month(1) # => 2017-08-16 17:00:00 +0300
 
-    *Roque Pinel*
+    Time.new(2017, 9, 16, 17, 0).next_month    # => 2017-10-16 17:00:00 +0300
+    Time.new(2017, 9, 16, 17, 0).next_month(1) # => 2017-10-16 17:00:00 +0300
+    ```
 
-*   Handle invalid UTF-8 characters in `MessageVerifier.verify`.
+    *bogdanvlviv*
 
-    *Roque Pinel*, *Grey Baker*
+*   Add same method signature for `Time#prev_day` and `Time#next_day`
+    in accordance with `Date#prev_day`, `Date#next_day`.
 
+    Allows pass argument for `Time#prev_day` and `Time#next_day`.
 
-## Rails 4.2.4 (August 24, 2015) ##
+    Before:
+    ```
+    Time.new(2017, 9, 16, 17, 0).prev_day    # => 2017-09-15 17:00:00 +0300
+    Time.new(2017, 9, 16, 17, 0).prev_day(1)
+    # => ArgumentError: wrong number of arguments (given 1, expected 0)
 
-*   Fix a `SystemStackError` when encoding an `Enumerable` with `json` gem and
-    with the Active Support JSON encoder loaded.
+    Time.new(2017, 9, 16, 17, 0).next_day    # => 2017-09-17 17:00:00 +0300
+    Time.new(2017, 9, 16, 17, 0).next_day(1)
+    # => ArgumentError: wrong number of arguments (given 1, expected 0)
+    ```
 
-    Fixes #20775.
+    After:
+    ```
+    Time.new(2017, 9, 16, 17, 0).prev_day    # => 2017-09-15 17:00:00 +0300
+    Time.new(2017, 9, 16, 17, 0).prev_day(1) # => 2017-09-15 17:00:00 +0300
 
-    *Sammy Larbi*, *Prathamesh Sonpatki*
+    Time.new(2017, 9, 16, 17, 0).next_day    # => 2017-09-17 17:00:00 +0300
+    Time.new(2017, 9, 16, 17, 0).next_day(1) # => 2017-09-17 17:00:00 +0300
+    ```
 
-*   Fix not calling `#default` on `HashWithIndifferentAcess#to_hash` when only
-    `default_proc` is set, which could raise.
+    *bogdanvlviv*
 
-    *Simon Eskildsen*
+*   `IO#to_json` now returns the `to_s` representation, rather than
+    attempting to convert to an array. This fixes a bug where `IO#to_json`
+    would raise an `IOError` when called on an unreadable object.
 
-*   Fix setting `default_proc` on `HashWithIndifferentAccess#dup`
+    Fixes #26132.
 
-    *Simon Eskildsen*
+    *Paul Kuruvilla*
 
+*   Remove deprecated `halt_callback_chains_on_return_false` option.
 
-## Rails 4.2.3 (June 25, 2015) ##
+    *Rafael Mendonça França*
 
-*   Fix a range of values for parameters of the Time#change
+*   Remove deprecated `:if` and `:unless` string filter for callbacks.
 
-    *Nikolay Kondratyev*
+    *Rafael Mendonça França*
 
-*   Add some missing `require 'active_support/deprecation'`
+*   `Hash#slice` now falls back to Ruby 2.5+'s built-in definition if defined.
 
     *Akira Matsuda*
 
+*   Deprecate `secrets.secret_token`.
 
-## Rails 4.2.2 (June 16, 2015) ##
+    The architecture for secrets had a big upgrade between Rails 3 and Rails 4,
+    when the default changed from using `secret_token` to `secret_key_base`.
 
-*   Fix XSS vulnerability in `ActiveSupport::JSON.encode` method.
+    `secret_token` has been soft deprecated in documentation for four years
+    but is still in place to support apps created before Rails 4.
+    Deprecation warnings have been added to help developers upgrade their
+    applications to `secret_key_base`.
 
-    CVE-2015-3226.
+    *claudiob*, *Kasper Timm Hansen*
 
-    *Rafael Mendonça França*
+*   Return an instance of `HashWithIndifferentAccess` from `HashWithIndifferentAccess#transform_keys`.
 
-*   Fix denial of service vulnerability in the XML processing.
+    *Yuji Yaginuma*
 
-    CVE-2015-3227.
+*   Add key rotation support to `MessageEncryptor` and `MessageVerifier`.
 
-    *Aaron Patterson*
+    This change introduces a `rotate` method to both the `MessageEncryptor` and
+    `MessageVerifier` classes. This method accepts the same arguments and
+    options as the given classes' constructor. The `encrypt_and_verify` method
+    for `MessageEncryptor` and the `verified` method for `MessageVerifier` also
+    accept an optional keyword argument `:on_rotation` block which is called
+    when a rotated instance is used to decrypt or verify the message.
 
+    *Michael J Coyne*
 
-## Rails 4.2.1 (March 19, 2015) ##
+*   Deprecate `Module#reachable?` method.
 
-*   Fixed a problem where String#truncate_words would get stuck with a complex
-    string.
+    *bogdanvlviv*
 
-    *Henrik Nygren*
+*   Add `config/credentials.yml.enc` to store production app secrets.
 
-*   Fixed a roundtrip problem with AS::SafeBuffer where primitive-like strings
-    will be dumped as primitives:
+    Allows saving any authentication credentials for third party services
+    directly in repo encrypted with `config/master.key` or `ENV["RAILS_MASTER_KEY"]`.
+
+    This will eventually replace `Rails.application.secrets` and the encrypted
+    secrets introduced in Rails 5.1.
+
+    *DHH*, *Kasper Timm Hansen*
+
+*   Add `ActiveSupport::EncryptedFile` and `ActiveSupport::EncryptedConfiguration`.
+
+    Allows for stashing encrypted files or configuration directly in repo by
+    encrypting it with a key.
+
+    Backs the new credentials setup above, but can also be used independently.
+
+    *DHH*, *Kasper Timm Hansen*
+
+*   `Module#delegate_missing_to` now raises `DelegationError` if target is nil,
+    similar to `Module#delegate`.
+
+    *Anton Khamets*
+
+*   Update `String#camelize` to provide feedback when wrong option is passed.
+
+    `String#camelize` was returning nil without any feedback when an
+    invalid option was passed as a parameter.
+
+    Previously:
+
+        'one_two'.camelize(true)
+        # => nil
+
+    Now:
+
+        'one_two'.camelize(true)
+        # => ArgumentError: Invalid option, use either :upper or :lower.
+
+    *Ricardo Díaz*
+
+*   Fix modulo operations involving durations.
+
+    Rails 5.1 introduced `ActiveSupport::Duration::Scalar` as a wrapper
+    around numeric values as a way of ensuring a duration was the outcome of
+    an expression. However, the implementation was missing support for modulo
+    operations. This support has now been added and should result in a duration
+    being returned from expressions involving modulo operations.
+
+    Prior to Rails 5.1:
+
+        5.minutes % 2.minutes
+        # => 60
+
+    Now:
+
+        5.minutes % 2.minutes
+        # => 1 minute
+
+    Fixes #29603 and #29743.
+
+    *Sayan Chakraborty*, *Andrew White*
+
+*   Fix division where a duration is the denominator.
+
+    PR #29163 introduced a change in behavior when a duration was the denominator
+    in a calculation - this was incorrect as dividing by a duration should always
+    return a `Numeric`. The behavior of previous versions of Rails has been restored.
+
+    Fixes #29592.
+
+    *Andrew White*
+
+*   Add purpose and expiry support to `ActiveSupport::MessageVerifier` and
+   `ActiveSupport::MessageEncryptor`.
+
+    For instance, to ensure a message is only usable for one intended purpose:
+
+        token = @verifier.generate("x", purpose: :shipping)
+
+        @verifier.verified(token, purpose: :shipping) # => "x"
+        @verifier.verified(token)                     # => nil
+
+    Or make it expire after a set time:
+
+        @verifier.generate("x", expires_in: 1.month)
+        @verifier.generate("y", expires_at: Time.now.end_of_year)
+
+    Showcased with `ActiveSupport::MessageVerifier`, but works the same for
+    `ActiveSupport::MessageEncryptor`'s `encrypt_and_sign` and `decrypt_and_verify`.
+
+    Pull requests: #29599, #29854
+
+    *Assain Jaleel*
+
+*   Make the order of `Hash#reverse_merge!` consistent with `HashWithIndifferentAccess`.
+
+    *Erol Fornoles*
+
+*   Add `freeze_time` helper which freezes time to `Time.now` in tests.
+
+    *Prathamesh Sonpatki*
+
+*   Default `ActiveSupport::MessageEncryptor` to use AES 256 GCM encryption.
+
+    On for new Rails 5.2 apps. Upgrading apps can find the config as a new
+    framework default.
+
+    *Assain Jaleel*
+
+*   Cache: `write_multi`.
+
+        Rails.cache.write_multi foo: 'bar', baz: 'qux'
+
+    Plus faster fetch_multi with stores that implement `write_multi_entries`.
+    Keys that aren't found may be written to the cache store in one shot
+    instead of separate writes.
+
+    The default implementation simply calls `write_entry` for each entry.
+    Stores may override if they're capable of one-shot bulk writes, like
+    Redis `MSET`.
+
+    *Jeremy Daer*
+
+*   Add default option to module and class attribute accessors.
+
+        mattr_accessor :settings, default: {}
+
+    Works for `mattr_reader`, `mattr_writer`, `cattr_accessor`, `cattr_reader`,
+    and `cattr_writer` as well.
+
+    *Genadi Samokovarov*
+
+*   Add `Date#prev_occurring` and `Date#next_occurring` to return specified next/previous occurring day of week.
+
+    *Shota Iguchi*
+
+*   Add default option to `class_attribute`.
 
     Before:
 
-        YAML.load ActiveSupport::SafeBuffer.new("Hello").to_yaml  # => "Hello"
-        YAML.load ActiveSupport::SafeBuffer.new("true").to_yaml   # => true
-        YAML.load ActiveSupport::SafeBuffer.new("false").to_yaml  # => false
-        YAML.load ActiveSupport::SafeBuffer.new("1").to_yaml      # => 1
-        YAML.load ActiveSupport::SafeBuffer.new("1.1").to_yaml    # => 1.1
+        class_attribute :settings
+        self.settings = {}
 
-     After:
+    Now:
 
-        YAML.load ActiveSupport::SafeBuffer.new("Hello").to_yaml  # => "Hello"
-        YAML.load ActiveSupport::SafeBuffer.new("true").to_yaml   # => "true"
-        YAML.load ActiveSupport::SafeBuffer.new("false").to_yaml  # => "false"
-        YAML.load ActiveSupport::SafeBuffer.new("1").to_yaml      # => "1"
-        YAML.load ActiveSupport::SafeBuffer.new("1.1").to_yaml    # => "1.1"
-
-    *Godfrey Chan*
-
-*   Replace fixed `:en` with `I18n.default_locale` in `Duration#inspect`.
-
-    *Dominik Masur*
-
-*   Add missing time zone definitions for Russian Federation and sync them
-    with `zone.tab` file from tzdata version 2014j (latest).
-
-    *Andrey Novikov*
-
-
-## Rails 4.2.0 (December 20, 2014) ##
-
-*   The decorated `load` and `require` methods are now kept private.
-
-    Fixes #17553.
-
-    *Xavier Noria*
-
-*   `String#remove` and `String#remove!` accept multiple arguments.
-
-    *Pavel Pravosud*
-
-*   `TimeWithZone#strftime` now delegates every directive to `Time#strftime` except for '%Z',
-    it also now correctly handles escaped '%' characters placed just before time zone related directives.
-
-    *Pablo Herrero*
-
-*   Corrected `Inflector#underscore` handling of multiple successive acroynms.
-
-    *James Le Cuirot*
-
-*   Delegation now works with ruby reserved words passed to `:to` option.
-
-    Fixes #16956.
-
-    *Agis Anastasopoulos*
-
-*   Added method `#eql?` to `ActiveSupport::Duration`, in addition to `#==`.
-
-    Currently, the following returns `false`, contrary to expectation:
-
-        1.minute.eql?(1.minute)
-
-    Adding method `#eql?` will make this behave like expected. Method `#eql?` is
-    just a bit stricter than `#==`, as it checks whether the argument is also a duration. Their
-    parts may be different though.
-
-        1.minute.eql?(60.seconds)  # => true
-        1.minute.eql?(60)          # => false
-
-    *Joost Lubach*
-
-*   `Time#change` can now change nanoseconds (`:nsec`) as a higher-precision
-    alternative to microseconds (`:usec`).
-
-    *Agis Anastasooulos*
-
-*   `MessageVerifier.new` raises an appropriate exception if the secret is `nil`.
-    This prevents `MessageVerifier#generate` from raising a cryptic error later on.
-
-    *Kostiantyn Kahanskyi*
-
-*   Introduced new configuration option `active_support.test_order` for
-    specifying the order in which test cases are executed. This option currently defaults
-    to `:sorted` but will be changed to `:random` in Rails 5.0.
-
-    *Akira Matsuda*, *Godfrey Chan*
-
-*   Fixed a bug in `Inflector#underscore` where acroynms in nested constant names
-    are incorrectly parsed as camelCase.
-
-    Fixes #8015.
-
-    *Fred Wu*, *Matthew Draper*
-
-*   Make `Time#change` throw an exception if the `:usec` option is out of range and
-    the time has an offset other than UTC or local.
-
-    *Agis Anastasopoulos*
-
-*   `Method` objects now report themselves as not `duplicable?`. This allows
-    hashes and arrays containing `Method` objects to be `deep_dup`ed.
-
-    *Peter Jaros*
-
-*   `determine_constant_from_test_name` does no longer shadow `NameError`s
-    which happens during constant autoloading.
-
-    Fixes #9933.
-
-    *Guo Xiang Tan*
-
-*   Added instance_eval version to Object#try and Object#try!, so you can do this:
-
-        person.try { name.first }
-
-    instead of:
-
-        person.try { |person| person.name.first }
-
-    *DHH*, *Ari Pollak*
-
-*   Fix the `ActiveSupport::Duration#instance_of?` method to return the right
-    value with the class itself since it was previously delegated to the
-    internal value.
-
-    *Robin Dupret*
-
-*   Fix rounding errors with `#travel_to` by resetting the usec on any passed time to zero, so we only travel
-    with per-second precision, not anything deeper than that.
+        class_attribute :settings, default: {}
 
     *DHH*
 
-*   Fix DateTime comparison with `DateTime::Infinity` object.
+*   `#singularize` and `#pluralize` now respect uncountables for the specified locale.
 
-    *Rafael Mendonça França*
+    *Eilis Hamilton*
 
-*   Added Object#itself which returns the object itself. Useful when dealing with a chaining scenario, like Active Record scopes:
-
-        Event.public_send(state.presence_in([ :trashed, :drafted ]) || :itself).order(:created_at)
+*   Add `ActiveSupport::CurrentAttributes` to provide a thread-isolated attributes singleton.
+    Primary use case is keeping all the per-request attributes easily available to the whole system.
 
     *DHH*
 
-*   `Object#with_options` executes block in merging option context when
-    explicit receiver in not passed.
+*   Fix implicit coercion calculations with scalars and durations.
 
-    *Pavel Pravosud*
+    Previously, calculations where the scalar is first would be converted to a duration
+    of seconds, but this causes issues with dates being converted to times, e.g:
 
-*   Fixed a compatibility issue with the `Oj` gem when cherry-picking the file
-    `active_support/core_ext/object/json` without requiring `active_support/json`.
+        Time.zone = "Beijing"           # => Asia/Shanghai
+        date = Date.civil(2017, 5, 20)  # => Mon, 20 May 2017
+        2 * 1.day                       # => 172800 seconds
+        date + 2 * 1.day                # => Mon, 22 May 2017 00:00:00 CST +08:00
 
-    Fixes #16131.
+    Now, the `ActiveSupport::Duration::Scalar` calculation methods will try to maintain
+    the part structure of the duration where possible, e.g:
 
-    *Godfrey Chan*
+        Time.zone = "Beijing"           # => Asia/Shanghai
+        date = Date.civil(2017, 5, 20)  # => Mon, 20 May 2017
+        2 * 1.day                       # => 2 days
+        date + 2 * 1.day                # => Mon, 22 May 2017
 
-*   Make `Hash#with_indifferent_access` copy the default proc too.
+    Fixes #29160, #28970.
 
-    *arthurnn*, *Xanders*
+    *Andrew White*
 
-*   Add `String#truncate_words` to truncate a string by a number of words.
+*   Add support for versioned cache entries. This enables the cache stores to recycle cache keys, greatly saving
+    on storage in cases with frequent churn. Works together with the separation of `#cache_key` and `#cache_version`
+    in Active Record and its use in Action Pack's fragment caching.
 
-    *Mohamed Osama*
+    *DHH*
 
-*   Deprecate `capture` and `quietly`.
+*   Pass gem name and deprecation horizon to deprecation notifications.
 
-    These methods are not thread safe and may cause issues when used in threaded environments.
-    To avoid problems we are deprecating them.
+    *Willem van Bergen*
 
-    *Tom Meier*
+*   Add support for `:offset` and `:zone` to `ActiveSupport::TimeWithZone#change`.
 
-*   `DateTime#to_f` now preserves the fractional seconds instead of always
-    rounding to `.0`.
+    *Andrew White*
 
-    Fixes #15994.
+*   Add support for `:offset` to `Time#change`.
 
-    *John Paul Ashenfelter*
+    Fixes #28723.
 
-*   Add `Hash#transform_values` to simplify a common pattern where the values of a
-    hash must change, but the keys are left the same.
+    *Andrew White*
 
-    *Sean Griffin*
+*   Add `fetch_values` for `HashWithIndifferentAccess`.
 
-*   Always instrument `ActiveSupport::Cache`.
+    The method was originally added to `Hash` in Ruby 2.3.0.
 
-    Since `ActiveSupport::Notifications` only instruments items when there
-    are attached subscribers, we don't need to disable instrumentation.
+    *Josh Pencheon*
 
-    *Peter Wagenet*
 
-*   Make the `apply_inflections` method case-insensitive when checking
-    whether a word is uncountable or not.
-
-    *Robin Dupret*
-
-*   Make Dependencies pass a name to NameError error.
-
-    *arthurnn*
-
-*   Fixed `ActiveSupport::Cache::FileStore` exploding with long paths.
-
-    *Adam Panzer*, *Michael Grosser*
-
-*   Fixed `ActiveSupport::TimeWithZone#-` so precision is not unnecessarily lost
-    when working with objects with a nanosecond component.
-
-    `ActiveSupport::TimeWithZone#-` should return the same result as if we were
-    using `Time#-`:
-
-        Time.now.end_of_day - Time.now.beginning_of_day # => 86399.999999999
-
-    Before:
-
-        Time.zone.now.end_of_day.nsec # => 999999999
-        Time.zone.now.end_of_day - Time.zone.now.beginning_of_day # => 86400.0
-
-    After:
-
-        Time.zone.now.end_of_day - Time.zone.now.beginning_of_day
-        # => 86399.999999999
-
-    *Gordon Chan*
-
-*   Fixed precision error in NumberHelper when using Rationals.
-
-    Before:
-
-        ActiveSupport::NumberHelper.number_to_rounded Rational(1000, 3), precision: 2
-        # => "330.00"
-
-    After:
-
-        ActiveSupport::NumberHelper.number_to_rounded Rational(1000, 3), precision: 2
-        # => "333.33"
-
-    See #15379.
-
-    *Juanjo Bazán*
-
-*   Removed deprecated `Numeric#ago` and friends
-
-    Replacements:
-
-        5.ago   => 5.seconds.ago
-        5.until => 5.seconds.until
-        5.since => 5.seconds.since
-        5.from_now => 5.seconds.from_now
-
-    See #12389 for the history and rationale behind this.
-
-    *Godfrey Chan*
-
-*   DateTime `advance` now supports partial days.
-
-    Before:
-
-        DateTime.now.advance(days: 1, hours: 12)
-
-    After:
-
-        DateTime.now.advance(days: 1.5)
-
-    Fixes #12005.
-
-    *Shay Davidson*
-
-*   `Hash#deep_transform_keys` and `Hash#deep_transform_keys!` now transform hashes
-    in nested arrays.  This change also applies to `Hash#deep_stringify_keys`,
-    `Hash#deep_stringify_keys!`, `Hash#deep_symbolize_keys` and
-    `Hash#deep_symbolize_keys!`.
-
-    *OZAWA Sakuro*
-
-*   Fixed confusing `DelegationError` in `Module#delegate`.
-
-    See #15186.
-
-    *Vladimir Yarotsky*
-
-*   Fixed `ActiveSupport::Subscriber` so that no duplicate subscriber is created
-    when a subscriber method is redefined.
-
-    *Dennis Schön*
-
-*   Remove deprecated string based terminators for `ActiveSupport::Callbacks`.
-
-    *Eileen M. Uchitelle*
-
-*   Fixed an issue when using
-    `ActiveSupport::NumberHelper::NumberToDelimitedConverter` to
-    convert a value that is an `ActiveSupport::SafeBuffer` introduced
-    in 2da9d67.
-
-    See #15064.
-
-    *Mark J. Titorenko*
-
-*   `TimeZone#parse` defaults the day of the month to '1' if any other date
-    components are specified. This is more consistent with the behavior of
-    `Time#parse`.
-
-    *Ulysse Carion*
-
-*   `humanize` strips leading underscores, if any.
-
-    Before:
-
-        '_id'.humanize # => ""
-
-    After:
-
-        '_id'.humanize # => "Id"
-
-    *Xavier Noria*
-
-*   Fixed backward compatibility issues introduced in 326e652.
-
-    Empty Hash or Array should not be present in serialization result.
-
-        {a: []}.to_query # => ""
-        {a: {}}.to_query # => ""
-
-    For more info see #14948.
-
-    *Bogdan Gusiev*
-
-*   Add `Digest::UUID::uuid_v3` and `Digest::UUID::uuid_v5` to support stable
-    UUID fixtures on PostgreSQL.
-
-    *Roderick van Domburg*
-
-*   Fixed `ActiveSupport::Duration#eql?` so that `1.second.eql?(1.second)` is
-    true.
-
-    This fixes the current situation of:
-
-        1.second.eql?(1.second) # => false
-
-    `eql?` also requires that the other object is an `ActiveSupport::Duration`.
-    This requirement makes `ActiveSupport::Duration`'s behavior consistent with
-    the behavior of Ruby's numeric types:
-
-        1.eql?(1.0) # => false
-        1.0.eql?(1) # => false
-
-        1.second.eql?(1) # => false (was true)
-        1.eql?(1.second) # => false
-
-        { 1 => "foo", 1.0 => "bar" }
-        # => { 1 => "foo", 1.0 => "bar" }
-
-        { 1 => "foo", 1.second => "bar" }
-        # now => { 1 => "foo", 1.second => "bar" }
-        # was => { 1 => "bar" }
-
-    And though the behavior of these hasn't changed, for reference:
-
-        1 == 1.0 # => true
-        1.0 == 1 # => true
-
-        1 == 1.second # => true
-        1.second == 1 # => true
-
-    *Emily Dobervich*
-
-*   `ActiveSupport::SafeBuffer#prepend` acts like `String#prepend` and modifies
-    instance in-place, returning self. `ActiveSupport::SafeBuffer#prepend!` is
-    deprecated.
-
-    *Pavel Pravosud*
-
-*   `HashWithIndifferentAccess` better respects `#to_hash` on objects it
-    receives. In particular, `.new`, `#update`, `#merge`, and `#replace` accept
-    objects which respond to `#to_hash`, even if those objects are not hashes
-    directly.
-
-    *Peter Jaros*
-
-*   Deprecate `Class#superclass_delegating_accessor`, use `Class#class_attribute` instead.
-
-    *Akshay Vishnoi*
-
-*   Ensure classes which `include Enumerable` get `#to_json` in addition to
-    `#as_json`.
-
-    *Sammy Larbi*
-
-*   Change the signature of `fetch_multi` to return a hash rather than an
-    array. This makes it consistent with the output of `read_multi`.
-
-    *Parker Selbert*
-
-*   Introduce `Concern#class_methods` as a sleek alternative to clunky
-    `module ClassMethods`. Add `Kernel#concern` to define at the toplevel
-    without chunky `module Foo; extend ActiveSupport::Concern` boilerplate.
-
-        # app/models/concerns/authentication.rb
-        concern :Authentication do
-          included do
-            after_create :generate_private_key
-          end
-
-          class_methods do
-            def authenticate(credentials)
-              # ...
-            end
-          end
-
-          def generate_private_key
-            # ...
-          end
-        end
-
-        # app/models/user.rb
-        class User < ActiveRecord::Base
-          include Authentication
-        end
-
-    *Jeremy Kemper*
-
-Please check [4-1-stable](https://github.com/rails/rails/blob/4-1-stable/activesupport/CHANGELOG.md) for previous changes.
+Please check [5-1-stable](https://github.com/rails/rails/blob/5-1-stable/activesupport/CHANGELOG.md) for previous changes.

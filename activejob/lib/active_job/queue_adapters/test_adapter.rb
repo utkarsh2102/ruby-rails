@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module ActiveJob
   module QueueAdapters
     # == Test adapter for Active Job
@@ -10,14 +12,8 @@ module ActiveJob
     #
     #   Rails.application.config.active_job.queue_adapter = :test
     class TestAdapter
-      delegate :name, to: :class
-      attr_accessor(:perform_enqueued_jobs, :perform_enqueued_at_jobs)
+      attr_accessor(:perform_enqueued_jobs, :perform_enqueued_at_jobs, :filter, :reject)
       attr_writer(:enqueued_jobs, :performed_jobs)
-
-      def initialize
-        self.perform_enqueued_jobs = false
-        self.perform_enqueued_at_jobs = false
-      end
 
       # Provides a store of all the enqueued jobs with the TestAdapter so you can check them.
       def enqueued_jobs
@@ -30,22 +26,42 @@ module ActiveJob
       end
 
       def enqueue(job) #:nodoc:
-        if perform_enqueued_jobs
-          performed_jobs << {job: job.class, args: job.serialize['arguments'], queue: job.queue_name}
-          Base.execute job.serialize
-        else
-          enqueued_jobs << {job: job.class, args: job.serialize['arguments'], queue: job.queue_name}
-        end
+        return if filtered?(job)
+
+        job_data = job_to_hash(job)
+        enqueue_or_perform(perform_enqueued_jobs, job, job_data)
       end
 
       def enqueue_at(job, timestamp) #:nodoc:
-        if perform_enqueued_at_jobs
-          performed_jobs << {job: job.class, args: job.serialize['arguments'], queue: job.queue_name, at: timestamp}
-          Base.execute job.serialize
-        else
-          enqueued_jobs << {job: job.class, args: job.serialize['arguments'], queue: job.queue_name, at: timestamp}
-        end
+        return if filtered?(job)
+
+        job_data = job_to_hash(job, at: timestamp)
+        enqueue_or_perform(perform_enqueued_at_jobs, job, job_data)
       end
+
+      private
+        def job_to_hash(job, extras = {})
+          { job: job.class, args: job.serialize.fetch("arguments"), queue: job.queue_name }.merge!(extras)
+        end
+
+        def enqueue_or_perform(perform, job, job_data)
+          if perform
+            performed_jobs << job_data
+            Base.execute job.serialize
+          else
+            enqueued_jobs << job_data
+          end
+        end
+
+        def filtered?(job)
+          if filter
+            !Array(filter).include?(job.class)
+          elsif reject
+            Array(reject).include?(job.class)
+          else
+            false
+          end
+        end
     end
   end
 end

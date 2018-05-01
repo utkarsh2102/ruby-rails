@@ -1,9 +1,11 @@
-require 'active_support/core_ext/module/attribute_accessors'
-require 'active_support/core_ext/enumerable'
+# frozen_string_literal: true
+
+require "active_support/core_ext/module/attribute_accessors"
+require "active_support/core_ext/enumerable"
 
 module ActionView
   # = Active Model Helpers
-  module Helpers
+  module Helpers #:nodoc:
     module ActiveModelHelper
     end
 
@@ -15,8 +17,8 @@ module ActionView
         end
       end
 
-      def content_tag(*)
-        error_wrapping(super)
+      def content_tag(type, options, *)
+        select_markup_helper?(type) ? super : error_wrapping(super)
       end
 
       def tag(type, options, *)
@@ -37,13 +39,17 @@ module ActionView
 
       private
 
-      def object_has_errors?
-        object.respond_to?(:errors) && object.errors.respond_to?(:[]) && error_message.present?
-      end
+        def object_has_errors?
+          object.respond_to?(:errors) && object.errors.respond_to?(:[]) && error_message.present?
+        end
 
-      def tag_generate_errors?(options)
-        options['type'] != 'hidden'
-      end
+        def select_markup_helper?(type)
+          ["optgroup", "option"].include?(type)
+        end
+
+        def tag_generate_errors?(options)
+          options["type"] != "hidden"
+        end
     end
   end
 end

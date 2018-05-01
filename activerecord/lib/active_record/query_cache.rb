@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module ActiveRecord
   # = Active Record Query Cache
   class QueryCache
@@ -5,7 +7,7 @@ module ActiveRecord
       # Enable the query cache within the block if Active Record is configured.
       # If it's not, it will execute the given block.
       def cache(&block)
-        if ActiveRecord::Base.connected?
+        if connected? || !configurations.empty?
           connection.cache(&block)
         else
           yield
@@ -15,7 +17,7 @@ module ActiveRecord
       # Disable the query cache within the block if Active Record is configured.
       # If it's not, it will execute the given block.
       def uncached(&block)
-        if ActiveRecord::Base.connected?
+        if connected? || !configurations.empty?
           connection.uncached(&block)
         else
           yield
@@ -23,34 +25,28 @@ module ActiveRecord
       end
     end
 
-    def initialize(app)
-      @app = app
+    def self.run
+      ActiveRecord::Base.connection_handler.connection_pool_list.map do |pool|
+        caching_was_enabled = pool.query_cache_enabled
+
+        pool.enable_query_cache!
+
+        [pool, caching_was_enabled]
+      end
     end
 
-    def call(env)
-      connection    = ActiveRecord::Base.connection
-      enabled       = connection.query_cache_enabled
-      connection_id = ActiveRecord::Base.connection_id
-      connection.enable_query_cache!
-
-      response = @app.call(env)
-      response[2] = Rack::BodyProxy.new(response[2]) do
-        restore_query_cache_settings(connection_id, enabled)
+    def self.complete(caching_pools)
+      caching_pools.each do |pool, caching_was_enabled|
+        pool.disable_query_cache! unless caching_was_enabled
       end
 
-      response
-    rescue Exception => e
-      restore_query_cache_settings(connection_id, enabled)
-      raise e
+      ActiveRecord::Base.connection_handler.connection_pool_list.each do |pool|
+        pool.release_connection if pool.active_connection? && !pool.connection.transaction_open?
+      end
     end
 
-    private
-
-    def restore_query_cache_settings(connection_id, enabled)
-      ActiveRecord::Base.connection_id = connection_id
-      ActiveRecord::Base.connection.clear_query_cache
-      ActiveRecord::Base.connection.disable_query_cache! unless enabled
+    def self.install_executor_hooks(executor = ActiveSupport::Executor)
+      executor.register_hook(self)
     end
-
   end
 end

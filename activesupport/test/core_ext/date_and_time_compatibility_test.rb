@@ -1,6 +1,8 @@
-require 'abstract_unit'
-require 'active_support/time'
-require 'time_zone_test_helpers'
+# frozen_string_literal: true
+
+require "abstract_unit"
+require "active_support/time"
+require "time_zone_test_helpers"
 
 class DateAndTimeCompatibilityTest < ActiveSupport::TestCase
   include TimeZoneTestHelpers
@@ -10,7 +12,7 @@ class DateAndTimeCompatibilityTest < ActiveSupport::TestCase
     @date_time = DateTime.new(2016, 4, 23, 14, 11, 12, 0)
     @utc_offset = 3600
     @system_offset = -14400
-    @zone = ActiveSupport::TimeZone['London']
+    @zone = ActiveSupport::TimeZone["London"]
   end
 
   def test_time_to_time_preserves_timezone

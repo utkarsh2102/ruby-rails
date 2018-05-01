@@ -1,6 +1,8 @@
+# frozen_string_literal: true
+
 module ActiveRecord
-  # = Active Record Belongs To Has One Association
   module Associations
+    # = Active Record Has One Association
     class HasOneAssociation < SingularAssociation #:nodoc:
       include ForeignAssociation
 
@@ -11,9 +13,9 @@ module ActiveRecord
 
         when :restrict_with_error
           if load_target
-            record = klass.human_attribute_name(reflection.name).downcase
-            owner.errors.add(:base, :"restrict_dependent_destroy.one", record: record)
-            false
+            record = owner.class.human_attribute_name(reflection.name).downcase
+            owner.errors.add(:base, :'restrict_dependent_destroy.has_one', record: record)
+            throw(:abort)
           end
 
         else
@@ -25,10 +27,10 @@ module ActiveRecord
         raise_on_type_mismatch!(record) if record
         load_target
 
-        return self.target if !(target || record)
+        return target unless target || record
 
         assigning_another_record = target != record
-        if assigning_another_record || record.changed?
+        if assigning_another_record || record.has_changes_to_save?
           save &&= owner.persisted?
 
           transaction_if(save) do
@@ -53,12 +55,14 @@ module ActiveRecord
       def delete(method = options[:dependent])
         if load_target
           case method
-            when :delete
-              target.delete
-            when :destroy
-              target.destroy
-            when :nullify
-              target.update_columns(reflection.foreign_key => nil)
+          when :delete
+            target.delete
+          when :destroy
+            target.destroyed_by_association = reflection
+            target.destroy
+            throw(:abort) unless target.destroyed?
+          when :nullify
+            target.update_columns(reflection.foreign_key => nil) if target.persisted?
           end
         end
       end
@@ -75,18 +79,20 @@ module ActiveRecord
 
         def remove_target!(method)
           case method
-            when :delete
-              target.delete
-            when :destroy
-              target.destroy
-            else
-              nullify_owner_attributes(target)
+          when :delete
+            target.delete
+          when :destroy
+            target.destroyed_by_association = reflection
+            target.destroy
+          else
+            nullify_owner_attributes(target)
+            remove_inverse_instance(target)
 
-              if target.persisted? && owner.persisted? && !target.save
-                set_owner_attributes(target)
-                raise RecordNotSaved, "Failed to remove the existing associated #{reflection.name}. " +
-                                      "The record failed to save after its foreign key was set to nil."
-              end
+            if target.persisted? && owner.persisted? && !target.save
+              set_owner_attributes(target)
+              raise RecordNotSaved, "Failed to remove the existing associated #{reflection.name}. " \
+                                    "The record failed to save after its foreign key was set to nil."
+            end
           end
         end
 

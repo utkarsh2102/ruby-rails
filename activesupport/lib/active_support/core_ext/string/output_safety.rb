@@ -1,20 +1,19 @@
-require 'erb'
-require 'active_support/core_ext/kernel/singleton_class'
-require 'active_support/deprecation'
+# frozen_string_literal: true
+
+require "erb"
+require "active_support/core_ext/kernel/singleton_class"
+require "active_support/core_ext/module/redefine_method"
+require "active_support/multibyte/unicode"
 
 class ERB
   module Util
-    HTML_ESCAPE = { '&' => '&amp;',  '>' => '&gt;',   '<' => '&lt;', '"' => '&quot;', "'" => '&#39;' }
-    JSON_ESCAPE = { '&' => '\u0026', '>' => '\u003e', '<' => '\u003c', "\u2028" => '\u2028', "\u2029" => '\u2029' }
-    HTML_ESCAPE_REGEXP = /[&"'><]/
+    HTML_ESCAPE = { "&" => "&amp;",  ">" => "&gt;",   "<" => "&lt;", '"' => "&quot;", "'" => "&#39;" }
+    JSON_ESCAPE = { "&" => '\u0026', ">" => '\u003e', "<" => '\u003c', "\u2028" => '\u2028', "\u2029" => '\u2029' }
     HTML_ESCAPE_ONCE_REGEXP = /["><']|&(?!([a-zA-Z]+|(#\d+)|(#[xX][\dA-Fa-f]+));)/
     JSON_ESCAPE_REGEXP = /[\u2028\u2029&><]/u
 
     # A utility method for escaping HTML tag characters.
     # This method is also aliased as <tt>h</tt>.
-    #
-    # In your ERB templates, use this method to escape any unsafe content. For example:
-    #   <%=h @person.name %>
     #
     #   puts html_escape('is a > 0 & a < 10?')
     #   # => is a &gt; 0 &amp; a &lt; 10?
@@ -22,13 +21,12 @@ class ERB
       unwrapped_html_escape(s).html_safe
     end
 
-    # Aliasing twice issues a warning "discarding old...". Remove first to avoid it.
-    remove_method(:h)
+    silence_redefinition_of_method :h
     alias h html_escape
 
     module_function :h
 
-    singleton_class.send(:remove_method, :html_escape)
+    singleton_class.silence_redefinition_of_method :html_escape
     module_function :html_escape
 
     # HTML escapes strings but doesn't wrap them with an ActiveSupport::SafeBuffer.
@@ -38,7 +36,7 @@ class ERB
       if s.html_safe?
         s
       else
-        s.gsub(HTML_ESCAPE_REGEXP, HTML_ESCAPE)
+        CGI.escapeHTML(ActiveSupport::Multibyte::Unicode.tidy_bytes(s))
       end
     end
     module_function :unwrapped_html_escape
@@ -51,7 +49,7 @@ class ERB
     #   html_escape_once('&lt;&lt; Accept & Checkout')
     #   # => "&lt;&lt; Accept &amp; Checkout"
     def html_escape_once(s)
-      result = s.to_s.gsub(HTML_ESCAPE_ONCE_REGEXP, HTML_ESCAPE)
+      result = ActiveSupport::Multibyte::Unicode.tidy_bytes(s.to_s).gsub(HTML_ESCAPE_ONCE_REGEXP, HTML_ESCAPE)
       s.html_safe? ? result.html_safe : result
     end
 
@@ -85,6 +83,11 @@ class ERB
     # don't get converted to <tt>&quot;</tt> entities. +json_escape+ doesn't
     # automatically flag the result as HTML safe, since the raw value is unsafe to
     # use inside HTML attributes.
+    #
+    # If your JSON is being used downstream for insertion into the DOM, be aware of
+    # whether or not it is being inserted via +html()+. Most jQuery plugins do this.
+    # If that is the case, be sure to +html_escape+ or +sanitize+ any user-generated
+    # content returned by your JSON.
     #
     # If you need to output JSON elsewhere in your HTML, you can just do something
     # like this, as any unsafe characters (including quotation marks) will be
@@ -138,27 +141,26 @@ module ActiveSupport #:nodoc:
     alias_method :original_concat, :concat
     private :original_concat
 
+    # Raised when <tt>ActiveSupport::SafeBuffer#safe_concat</tt> is called on unsafe buffers.
     class SafeConcatError < StandardError
       def initialize
-        super 'Could not concatenate to the buffer because it is not html safe.'
+        super "Could not concatenate to the buffer because it is not html safe."
       end
     end
 
     def [](*args)
       if args.size < 2
         super
-      else
-        if html_safe?
-          new_safe_buffer = super
+      elsif html_safe?
+        new_safe_buffer = super
 
-          if new_safe_buffer
-            new_safe_buffer.instance_variable_set :@html_safe, true
-          end
-
-          new_safe_buffer
-        else
-          to_str[*args]
+        if new_safe_buffer
+          new_safe_buffer.instance_variable_set :@html_safe, true
         end
+
+        new_safe_buffer
+      else
+        to_str[*args]
       end
     end
 
@@ -167,7 +169,7 @@ module ActiveSupport #:nodoc:
       original_concat(value)
     end
 
-    def initialize(*)
+    def initialize(str = "")
       @html_safe = true
       super
     end
@@ -190,11 +192,6 @@ module ActiveSupport #:nodoc:
       super(html_escape_interpolated_argument(value))
     end
 
-    def prepend!(value)
-      ActiveSupport::Deprecation.deprecation_warning "ActiveSupport::SafeBuffer#prepend!", :prepend
-      prepend value
-    end
-
     def +(other)
       dup.concat(other)
     end
@@ -202,7 +199,7 @@ module ActiveSupport #:nodoc:
     def %(args)
       case args
       when Hash
-        escaped_args = Hash[args.map { |k,arg| [k, html_escape_interpolated_argument(arg)] }]
+        escaped_args = Hash[args.map { |k, arg| [k, html_escape_interpolated_argument(arg)] }]
       else
         escaped_args = Array(args).map { |arg| html_escape_interpolated_argument(arg) }
       end
@@ -243,18 +240,17 @@ module ActiveSupport #:nodoc:
 
     private
 
-    def html_escape_interpolated_argument(arg)
-      (!html_safe? || arg.html_safe?) ? arg :
-        arg.to_s.gsub(ERB::Util::HTML_ESCAPE_REGEXP, ERB::Util::HTML_ESCAPE)
-    end
+      def html_escape_interpolated_argument(arg)
+        (!html_safe? || arg.html_safe?) ? arg : CGI.escapeHTML(arg.to_s)
+      end
   end
 end
 
 class String
   # Marks a string as trusted safe. It will be inserted into HTML with no
-  # additional escaping performed. It is your responsibilty to ensure that the
+  # additional escaping performed. It is your responsibility to ensure that the
   # string contains no malicious content. This method is equivalent to the
-  # `raw` helper in views. It is recommended that you use `sanitize` instead of
+  # +raw+ helper in views. It is recommended that you use +sanitize+ instead of
   # this method. It should never be called on user input.
   def html_safe
     ActiveSupport::SafeBuffer.new(self)

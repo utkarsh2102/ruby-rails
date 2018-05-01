@@ -1,7 +1,8 @@
-require 'active_support/core_ext/module/attribute_accessors'
-require 'active_support/logger_silence'
-require 'active_support/logger_thread_safe_level'
-require 'logger'
+# frozen_string_literal: true
+
+require "active_support/logger_silence"
+require "active_support/logger_thread_safe_level"
+require "logger"
 
 module ActiveSupport
   class Logger < ::Logger
@@ -58,16 +59,16 @@ module ActiveSupport
         end
 
         define_method(:silence) do |level = Logger::ERROR, &block|
-          if logger.respond_to?(:silence) && logger.method(:silence).owner != ::Kernel
+          if logger.respond_to?(:silence)
             logger.silence(level) do
-              if respond_to?(:silence) && method(:silence).owner != ::Kernel
+              if defined?(super)
                 super(level, &block)
               else
                 block.call(self)
               end
             end
           else
-            if respond_to?(:silence) && method(:silence).owner != ::Kernel
+            if defined?(super)
               super(level, &block)
             else
               block.call(self)

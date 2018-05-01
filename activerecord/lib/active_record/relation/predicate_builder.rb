@@ -1,91 +1,24 @@
+# frozen_string_literal: true
+
 module ActiveRecord
   class PredicateBuilder # :nodoc:
-    @handlers = []
+    delegate :resolve_column_aliases, to: :table
 
-    autoload :RelationHandler, 'active_record/relation/predicate_builder/relation_handler'
-    autoload :ArrayHandler, 'active_record/relation/predicate_builder/array_handler'
+    def initialize(table)
+      @table = table
+      @handlers = []
 
-    def self.resolve_column_aliases(klass, hash)
-      # This method is a hot spot, so for now, use Hash[] to dup the hash.
-      #   https://bugs.ruby-lang.org/issues/7166
-      hash = Hash[hash]
-      hash.keys.grep(Symbol) do |key|
-        if klass.attribute_alias? key
-          hash[klass.attribute_alias(key)] = hash.delete key
-        end
-      end
-      hash
+      register_handler(BasicObject, BasicObjectHandler.new(self))
+      register_handler(Base, BaseHandler.new(self))
+      register_handler(Range, RangeHandler.new(self))
+      register_handler(Relation, RelationHandler.new)
+      register_handler(Array, ArrayHandler.new(self))
+      register_handler(Set, ArrayHandler.new(self))
     end
 
-    def self.build_from_hash(klass, attributes, default_table)
-      queries = []
-
-      attributes.each do |column, value|
-        table = default_table
-
-        if value.is_a?(Hash)
-          if value.empty?
-            queries << '1=0'
-          else
-            table       = Arel::Table.new(column, default_table.engine)
-            association = klass._reflect_on_association(column)
-
-            value.each do |k, v|
-              queries.concat expand(association && association.klass, table, k, v)
-            end
-          end
-        else
-          column = column.to_s
-
-          if column.include?('.')
-            table_name, column = column.split('.', 2)
-            table = Arel::Table.new(table_name, default_table.engine)
-          end
-
-          queries.concat expand(klass, table, column, value)
-        end
-      end
-
-      queries
-    end
-
-    def self.expand(klass, table, column, value)
-      queries = []
-
-      # Find the foreign key when using queries such as:
-      # Post.where(author: author)
-      #
-      # For polymorphic relationships, find the foreign key and type:
-      # PriceEstimate.where(estimate_of: treasure)
-      if klass && reflection = klass._reflect_on_association(column)
-        base_class = polymorphic_base_class_from_value(value)
-
-        if reflection.polymorphic? && base_class
-          queries << build(table[reflection.foreign_type], base_class)
-        end
-
-        column = reflection.foreign_key
-
-        if base_class
-          primary_key = reflection.association_primary_key(base_class)
-          value = convert_value_to_association_ids(value, primary_key)
-        end
-      end
-
-      queries << build(table[column], value)
-      queries
-    end
-
-    def self.polymorphic_base_class_from_value(value)
-      case value
-      when Relation
-        value.klass.base_class
-      when Array
-        val = value.compact.first
-        val.class.base_class if val.is_a?(Base)
-      when Base
-        value.class.base_class
-      end
+    def build_from_hash(attributes)
+      attributes = convert_dot_notation_to_hash(attributes)
+      expand_from_hash(attributes)
     end
 
     def self.references(attributes)
@@ -94,7 +27,7 @@ module ActiveRecord
           key
         else
           key = key.to_s
-          key.split('.').first if key.include?('.')
+          key.split(".".freeze).first if key.include?(".".freeze)
         end
       end.compact
     end
@@ -109,47 +42,105 @@ module ActiveRecord
     #         Arel::Nodes::And.new([range.start, range.end])
     #       )
     #     end
-    #     ActiveRecord::PredicateBuilder.register_handler(MyCustomDateRange, handler)
-    def self.register_handler(klass, handler)
+    #     ActiveRecord::PredicateBuilder.new("users").register_handler(MyCustomDateRange, handler)
+    def register_handler(klass, handler)
       @handlers.unshift([klass, handler])
     end
 
-    BASIC_OBJECT_HANDLER = ->(attribute, value) { attribute.eq(value) } # :nodoc:
-    register_handler(BasicObject, BASIC_OBJECT_HANDLER)
-    # FIXME: I think we need to deprecate this behavior
-    register_handler(Class, ->(attribute, value) { attribute.eq(value.name) })
-    register_handler(Base, ->(attribute, value) { attribute.eq(value.id) })
-    register_handler(Range, ->(attribute, value) { attribute.between(value) })
-    register_handler(Relation, RelationHandler.new)
-    register_handler(Array, ArrayHandler.new)
-
-    def self.build(attribute, value)
+    def build(attribute, value)
       handler_for(value).call(attribute, value)
     end
-    private_class_method :build
 
-    def self.handler_for(object)
-      @handlers.detect { |klass, _| klass === object }.last
+    def build_bind_attribute(column_name, value)
+      attr = Relation::QueryAttribute.new(column_name.to_s, value, table.type(column_name))
+      Arel::Nodes::BindParam.new(attr)
     end
-    private_class_method :handler_for
 
-    def self.convert_value_to_association_ids(value, primary_key)
-      case value
-      when Relation
-        value.select(primary_key)
-      when Array
-        value.map { |v| convert_value_to_association_ids(v, primary_key) }
-      when Base
-        value._read_attribute(primary_key)
-      else
-        value
+    protected
+
+      attr_reader :table
+
+      def expand_from_hash(attributes)
+        return ["1=0"] if attributes.empty?
+
+        attributes.flat_map do |key, value|
+          if value.is_a?(Hash) && !table.has_column?(key)
+            associated_predicate_builder(key).expand_from_hash(value)
+          elsif table.associated_with?(key)
+            # Find the foreign key when using queries such as:
+            # Post.where(author: author)
+            #
+            # For polymorphic relationships, find the foreign key and type:
+            # PriceEstimate.where(estimate_of: treasure)
+            associated_table = table.associated_table(key)
+            if associated_table.polymorphic_association?
+              case value.is_a?(Array) ? value.first : value
+              when Base, Relation
+                value = [value] unless value.is_a?(Array)
+                klass = PolymorphicArrayValue
+              end
+            end
+
+            klass ||= AssociationQueryValue
+            queries = klass.new(associated_table, value).queries.map do |query|
+              expand_from_hash(query).reduce(&:and)
+            end
+            queries.reduce(&:or)
+          elsif table.aggregated_with?(key)
+            mapping = table.reflect_on_aggregation(key).mapping
+            queries = Array.wrap(value).map do |object|
+              mapping.map do |field_attr, aggregate_attr|
+                if mapping.size == 1 && !object.respond_to?(aggregate_attr)
+                  build(table.arel_attribute(field_attr), object)
+                else
+                  build(table.arel_attribute(field_attr), object.send(aggregate_attr))
+                end
+              end.reduce(&:and)
+            end
+            queries.reduce(&:or)
+          # FIXME: Deprecate this and provide a public API to force equality
+          elsif (value.is_a?(Range) || value.is_a?(Array)) &&
+            table.type(key.to_s).respond_to?(:subtype)
+            BasicObjectHandler.new(self).call(table.arel_attribute(key), value)
+          else
+            build(table.arel_attribute(key), value)
+          end
+        end
       end
-    end
 
-    def self.can_be_bound?(value) # :nodoc:
-      !value.nil? &&
-        !value.is_a?(Hash) &&
-        handler_for(value) == BASIC_OBJECT_HANDLER
-    end
+    private
+
+      def associated_predicate_builder(association_name)
+        self.class.new(table.associated_table(association_name))
+      end
+
+      def convert_dot_notation_to_hash(attributes)
+        dot_notation = attributes.select do |k, v|
+          k.include?(".".freeze) && !v.is_a?(Hash)
+        end
+
+        dot_notation.each_key do |key|
+          table_name, column_name = key.split(".".freeze)
+          value = attributes.delete(key)
+          attributes[table_name] ||= {}
+
+          attributes[table_name] = attributes[table_name].merge(column_name => value)
+        end
+
+        attributes
+      end
+
+      def handler_for(object)
+        @handlers.detect { |klass, _| klass === object }.last
+      end
   end
 end
+
+require "active_record/relation/predicate_builder/array_handler"
+require "active_record/relation/predicate_builder/base_handler"
+require "active_record/relation/predicate_builder/basic_object_handler"
+require "active_record/relation/predicate_builder/range_handler"
+require "active_record/relation/predicate_builder/relation_handler"
+
+require "active_record/relation/predicate_builder/association_query_value"
+require "active_record/relation/predicate_builder/polymorphic_array_value"

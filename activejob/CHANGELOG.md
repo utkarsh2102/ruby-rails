@@ -1,76 +1,23 @@
-## Rails 4.2.10 (September 27, 2017) ##
+## Rails 5.2.0 (April 09, 2018) ##
 
-*   No changes.
+*   Allow block to be passed to `ActiveJob::Base.discard_on` to allow custom handling of discard jobs.
 
+    Example:
 
-## Rails 4.2.9 (June 26, 2017) ##
+        class RemoteServiceJob < ActiveJob::Base
+          discard_on(CustomAppException) do |job, exception|
+            ExceptionNotifier.caught(exception)
+          end
 
-*   No changes.
+          def perform(*args)
+            # Might raise CustomAppException for something domain specific
+          end
+        end
 
+    *Aidan Haran*
 
-## Rails 4.2.8 (February 21, 2017) ##
+*   Support redis-rb 4.0.
 
-*   No changes.
+    *Jeremy Daer*
 
-
-## Rails 4.2.7 (July 12, 2016) ##
-
-*   No changes.
-
-
-## Rails 4.2.6 (March 07, 2016) ##
-
-*   No changes.
-
-
-## Rails 4.2.5.2 (February 26, 2016) ##
-
-*   No changes.
-
-
-## Rails 4.2.5.1 (January 25, 2015) ##
-
-*   No changes.
-
-
-## Rails 4.2.5 (November 12, 2015) ##
-
-*   No changes.
-
-
-## Rails 4.2.4 (August 24, 2015) ##
-
-*   Include I18n.locale into job serialization/deserialization and use it around
-    `perform`.
-
-    Fixes #20799.
-
-    *Johannes Opper*
-
-
-## Rails 4.2.3 (June 25, 2015) ##
-
-*   `assert_enqueued_jobs` and `assert_performed_jobs` in block form use the
-    given number as expected value. This makes the error message much easier to
-    understand.
-
-    *y-yagi*
-
-
-## Rails 4.2.2 (June 16, 2015) ##
-
-* No Changes *
-
-
-## Rails 4.2.1 (March 19, 2015) ##
-
-*   Allow keyword arguments to be used with Active Job.
-
-    Fixes #18741.
-
-    *Sean Griffin*
-
-
-## Rails 4.2.0 (December 20, 2014) ##
-
-*  Started project.
+Please check [5-1-stable](https://github.com/rails/rails/blob/5-1-stable/activejob/CHANGELOG.md) for previous changes.

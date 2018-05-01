@@ -17,13 +17,13 @@ The latest version of Railties can be installed with RubyGems:
 
 Source code can be downloaded as part of the Rails project on GitHub
 
-* https://github.com/rails/rails/tree/4-2-stable/railties
+* https://github.com/rails/rails/tree/5-2-stable/railties
 
 == License
 
 Railties is released under the MIT license:
 
-* http://www.opensource.org/licenses/MIT
+* https://opensource.org/licenses/MIT
 
 == Support
 
@@ -38,4 +38,3 @@ Bug reports can be filed for the Ruby on Rails project here:
 Feature requests should be discussed on the rails-core mailing list here:
 
 * https://groups.google.com/forum/?fromgroups#!forum/rubyonrails-core
-

@@ -1,48 +1,48 @@
-require 'active_support/core_ext/string/filters'
+# frozen_string_literal: true
 
 module ActiveRecord
   class PredicateBuilder
     class ArrayHandler # :nodoc:
+      def initialize(predicate_builder)
+        @predicate_builder = predicate_builder
+      end
+
       def call(attribute, value)
+        return attribute.in([]) if value.empty?
+
         values = value.map { |x| x.is_a?(Base) ? x.id : x }
         nils, values = values.partition(&:nil?)
-
-        if values.any? { |val| val.is_a?(Array) }
-          ActiveSupport::Deprecation.warn(<<-MSG.squish)
-            Passing a nested array to Active Record finder methods is
-            deprecated and will be removed. Flatten your array before using
-            it for 'IN' conditions.
-          MSG
-
-          flat_values = values.flatten
-          values = flat_values unless flat_values.include?(nil)
-        end
-
-        return attribute.in([]) if values.empty? && nils.empty?
-
         ranges, values = values.partition { |v| v.is_a?(Range) }
 
         values_predicate =
           case values.length
           when 0 then NullPredicate
-          when 1 then attribute.eq(values.first)
-          else attribute.in(values)
+          when 1 then predicate_builder.build(attribute, values.first)
+          else
+            bind_values = values.map do |v|
+              predicate_builder.build_bind_attribute(attribute.name, v)
+            end
+            attribute.in(bind_values)
           end
 
         unless nils.empty?
-          values_predicate = values_predicate.or(attribute.eq(nil))
+          values_predicate = values_predicate.or(predicate_builder.build(attribute, nil))
         end
 
-        array_predicates = ranges.map { |range| attribute.between(range) }
+        array_predicates = ranges.map { |range| predicate_builder.build(attribute, range) }
         array_predicates.unshift(values_predicate)
-        array_predicates.inject { |composite, predicate| composite.or(predicate) }
+        array_predicates.inject(&:or)
       end
 
-      module NullPredicate # :nodoc:
-        def self.or(other)
-          other
+      protected
+
+        attr_reader :predicate_builder
+
+        module NullPredicate # :nodoc:
+          def self.or(other)
+            other
+          end
         end
-      end
     end
   end
 end

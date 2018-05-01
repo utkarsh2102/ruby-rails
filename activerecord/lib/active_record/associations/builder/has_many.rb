@@ -1,11 +1,13 @@
-module ActiveRecord::Associations::Builder
+# frozen_string_literal: true
+
+module ActiveRecord::Associations::Builder # :nodoc:
   class HasMany < CollectionAssociation #:nodoc:
-    def macro
+    def self.macro
       :has_many
     end
 
-    def valid_options
-      super + [:primary_key, :dependent, :as, :through, :source, :source_type, :inverse_of, :counter_cache, :join_table, :foreign_type]
+    def self.valid_options(options)
+      super + [:primary_key, :dependent, :as, :through, :source, :source_type, :inverse_of, :counter_cache, :join_table, :foreign_type, :index_errors]
     end
 
     def self.valid_dependent_options

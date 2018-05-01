@@ -1,11 +1,11 @@
-require 'active_support/core_ext/module/aliasing'
+# frozen_string_literal: true
 
-module Marshal
-  class << self
-    def load_with_autoloading(source, proc = nil)
-      load_without_autoloading(source, proc)
+module ActiveSupport
+  module MarshalWithAutoloading # :nodoc:
+    def load(source, proc = nil)
+      super(source, proc)
     rescue ArgumentError, NameError => exc
-      if exc.message.match(%r|undefined class/module (.+?)(::)?\z|)
+      if exc.message.match(%r|undefined class/module (.+?)(?:::)?\z|)
         # try loading the class/module
         loaded = $1.constantize
 
@@ -18,7 +18,7 @@ module Marshal
         raise exc
       end
     end
-
-    alias_method_chain :load, :autoloading
   end
 end
+
+Marshal.singleton_class.prepend(ActiveSupport::MarshalWithAutoloading)

@@ -1,4 +1,6 @@
-require 'abstract_unit'
+# frozen_string_literal: true
+
+require "abstract_unit"
 
 module Render
   class BlankRenderController < ActionController::Base
@@ -18,11 +20,11 @@ module Render
     end
 
     def access_request
-      render :action => "access_request"
+      render action: "access_request"
     end
 
     def render_action_name
-      render :action => "access_action_name"
+      render action: "access_action_name"
     end
 
     def overridden_with_own_view_paths_appended
@@ -36,15 +38,15 @@ module Render
 
     private
 
-    def secretz
-      render :text => "FAIL WHALE!"
-    end
+      def secretz
+        render plain: "FAIL WHALE!"
+      end
   end
 
   class DoubleRenderController < ActionController::Base
     def index
-      render :text => "hello"
-      render :text => "world"
+      render plain: "hello"
+      render plain: "world"
     end
   end
 
@@ -57,7 +59,9 @@ module Render
     test "render with blank" do
       with_routing do |set|
         set.draw do
-          get ":controller", :action => 'index'
+          ActiveSupport::Deprecation.silence do
+            get ":controller", action: "index"
+          end
         end
 
         get "/render/blank_render"
@@ -70,11 +74,13 @@ module Render
     test "rendering more than once raises an exception" do
       with_routing do |set|
         set.draw do
-          get ":controller", :action => 'index'
+          ActiveSupport::Deprecation.silence do
+            get ":controller", action: "index"
+          end
         end
 
         assert_raises(AbstractController::DoubleRenderError) do
-          get "/render/double_render", {}, "action_dispatch.show_exceptions" => false
+          get "/render/double_render", headers: { "action_dispatch.show_exceptions" => false }
         end
       end
     end
@@ -84,13 +90,13 @@ module Render
     # Only public methods on actual controllers are callable actions
     test "raises an exception when a method of Object is called" do
       assert_raises(AbstractController::ActionNotFound) do
-        get "/render/blank_render/clone", {}, "action_dispatch.show_exceptions" => false
+        get "/render/blank_render/clone", headers: { "action_dispatch.show_exceptions" => false }
       end
     end
 
     test "raises an exception when a private method is called" do
       assert_raises(AbstractController::ActionNotFound) do
-        get "/render/blank_render/secretz", {}, "action_dispatch.show_exceptions" => false
+        get "/render/blank_render/secretz", headers: { "action_dispatch.show_exceptions" => false }
       end
     end
   end

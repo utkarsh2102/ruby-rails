@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module TimeZoneTestHelpers
   def with_tz_default(tz = nil)
     old_tz = Time.zone
@@ -7,11 +9,11 @@ module TimeZoneTestHelpers
     Time.zone = old_tz
   end
 
-  def with_env_tz(new_tz = 'US/Eastern')
-    old_tz, ENV['TZ'] = ENV['TZ'], new_tz
+  def with_env_tz(new_tz = "US/Eastern")
+    old_tz, ENV["TZ"] = ENV["TZ"], new_tz
     yield
   ensure
-    old_tz ? ENV['TZ'] = old_tz : ENV.delete('TZ')
+    old_tz ? ENV["TZ"] = old_tz : ENV.delete("TZ")
   end
 
   def with_preserve_timezone(value)

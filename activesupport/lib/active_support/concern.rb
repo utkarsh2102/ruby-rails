@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module ActiveSupport
   # A typical module looks like this:
   #
@@ -111,10 +113,10 @@ module ActiveSupport
     def append_features(base)
       if base.instance_variable_defined?(:@_dependencies)
         base.instance_variable_get(:@_dependencies) << self
-        return false
+        false
       else
         return false if base < self
-        @_dependencies.each { |dep| base.send(:include, dep) }
+        @_dependencies.each { |dep| base.include(dep) }
         super
         base.extend const_get(:ClassMethods) if const_defined?(:ClassMethods)
         base.class_eval(&@_included_block) if instance_variable_defined?(:@_included_block)

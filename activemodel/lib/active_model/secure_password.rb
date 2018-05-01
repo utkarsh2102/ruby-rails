@@ -1,9 +1,11 @@
+# frozen_string_literal: true
+
 module ActiveModel
   module SecurePassword
     extend ActiveSupport::Concern
 
-    # BCrypt hash function can handle maximum 72 characters, and if we pass
-    # password of length more than 72 characters it ignores extra characters.
+    # BCrypt hash function can handle maximum 72 bytes, and if we pass
+    # password of length more than 72 bytes it ignores extra characters.
     # Hence need to put a restriction on password length.
     MAX_PASSWORD_LENGTH_ALLOWED = 72
 
@@ -18,7 +20,7 @@ module ActiveModel
       #
       # The following validations are added automatically:
       # * Password must be present on creation
-      # * Password length should be less than or equal to 72 characters
+      # * Password length should be less than or equal to 72 bytes
       # * Confirmation of password (using a +password_confirmation+ attribute)
       #
       # If password confirmation validation is not needed, simply leave out the
@@ -26,7 +28,7 @@ module ActiveModel
       # it). When this attribute has a +nil+ value, the validation will not be
       # triggered.
       #
-      # For further customizability, it is possible to supress the default
+      # For further customizability, it is possible to suppress the default
       # validations by passing <tt>validations: false</tt> as an argument.
       #
       # Add bcrypt (~> 3.1.7) to Gemfile to use #has_secure_password:
@@ -55,7 +57,7 @@ module ActiveModel
         # This is to avoid ActiveModel (and by extension the entire framework)
         # being dependent on a binary library.
         begin
-          require 'bcrypt'
+          require "bcrypt"
         rescue LoadError
           $stderr.puts "You don't have bcrypt installed in your application. Please add it to your Gemfile and run bundle install"
           raise
@@ -77,13 +79,6 @@ module ActiveModel
           validates_length_of :password, maximum: ActiveModel::SecurePassword::MAX_PASSWORD_LENGTH_ALLOWED
           validates_confirmation_of :password, allow_blank: true
         end
-
-        # This code is necessary as long as the protected_attributes gem is supported.
-        if respond_to?(:attributes_protected_by_default)
-          def self.attributes_protected_by_default #:nodoc:
-            super + ['password_digest']
-          end
-        end
       end
     end
 
@@ -99,7 +94,7 @@ module ActiveModel
       #   user.authenticate('notright')      # => false
       #   user.authenticate('mUc3m00RsqyRe') # => user
       def authenticate(unencrypted_password)
-        BCrypt::Password.new(password_digest) == unencrypted_password && self
+        BCrypt::Password.new(password_digest).is_password?(unencrypted_password) && self
       end
 
       attr_reader :password

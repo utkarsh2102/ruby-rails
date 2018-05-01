@@ -1,12 +1,14 @@
-require 'active_support/concern'
-require 'thread_safe'
+# frozen_string_literal: true
+
+require "active_support/concern"
+require "active_support/core_ext/module/attribute_accessors"
+require "concurrent"
 
 module LoggerSilence
   extend ActiveSupport::Concern
 
   included do
-    cattr_accessor :silencer
-    self.silencer = true
+    cattr_accessor :silencer, default: true
   end
 
   # Silences the logger for the duration of the block.

@@ -1,3 +1,0 @@
-walmart:
-  name: walmart
-  uuid: <%= SecureRandom.uuid %>

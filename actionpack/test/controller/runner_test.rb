@@ -1,5 +1,7 @@
-require 'abstract_unit'
-require 'action_dispatch/testing/integration'
+# frozen_string_literal: true
+
+require "abstract_unit"
+require "action_dispatch/testing/integration"
 
 module ActionDispatch
   class RunnerTest < ActiveSupport::TestCase
@@ -15,8 +17,8 @@ module ActionDispatch
 
     def test_respond_to?
       runner = MyRunner.new(Class.new { def x; end }.new)
-      assert runner.respond_to?(:hi)
-      assert runner.respond_to?(:x)
+      assert_respond_to runner, :hi
+      assert_respond_to runner, :x
     end
   end
 end
