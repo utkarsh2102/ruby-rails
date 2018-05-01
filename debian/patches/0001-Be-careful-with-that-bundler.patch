@@ -8,25 +8,25 @@ Subject: Be careful with that bundler
 
 --- a/railties/lib/rails/generators/app_base.rb
 +++ b/railties/lib/rails/generators/app_base.rb
-@@ -332,11 +332,9 @@
+@@ -411,11 +411,10 @@
          # We unset temporary bundler variables to load proper bundler and Gemfile.
          #
          # Thanks to James Tucker for the Gem tricks involved in this call.
--        _bundle_command = Gem.bin_path('bundler', 'bundle')
--
-         require 'bundler'
+-        _bundle_command = Gem.bin_path("bundler", "bundle")
+ 
+         require "bundler"
          Bundler.with_clean_env do
--          output = `"#{Gem.ruby}" "#{_bundle_command}" #{command}`
-+          output = `"#{Gem.ruby}" "/usr/bin/bundle" #{command}`
-           print output unless options[:quiet]
-         end
-       end
-@@ -350,7 +348,7 @@
+-          full_command = %Q["#{Gem.ruby}" "#{_bundle_command}" #{command}]
++          full_command = %Q["#{Gem.ruby}" "/usr/bin/bundle" #{command}]
+           if options[:quiet]
+             system(full_command, out: File::NULL)
+           else
+@@ -449,7 +448,7 @@
        end
  
        def run_bundle
--        bundle_command('install') if bundle_install?
-+        bundle_command('install --local') if bundle_install?
+-        bundle_command("install") if bundle_install?
++        bundle_command("install --local") if bundle_install?
        end
  
-       def generate_spring_binstubs
+       def run_webpack
