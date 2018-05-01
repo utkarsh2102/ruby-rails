@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module ActionView
   module Helpers
     module Tags # :nodoc:
@@ -17,7 +19,7 @@ module ActionView
             method_and_value = @tag_value.present? ? "#{@method_name}.#{@tag_value}" : @method_name
 
             content ||= Translator
-              .new(object, @object_name, method_and_value, "helpers.label")
+              .new(object, @object_name, method_and_value, scope: "helpers.label")
               .translate
             content ||= @method_name.humanize
 

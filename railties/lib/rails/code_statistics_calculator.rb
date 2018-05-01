@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class CodeStatisticsCalculator #:nodoc:
   attr_reader :lines, :code_lines, :classes, :methods
 
@@ -24,6 +26,9 @@ class CodeStatisticsCalculator #:nodoc:
     }
   }
 
+  PATTERNS[:minitest] = PATTERNS[:rb].merge method: /^\s*(def|test)\s+['"_a-z]/
+  PATTERNS[:rake] = PATTERNS[:rb]
+
   def initialize(lines = 0, code_lines = 0, classes = 0, methods = 0)
     @lines = lines
     @code_lines = code_lines
@@ -40,7 +45,7 @@ class CodeStatisticsCalculator #:nodoc:
 
   def add_by_file_path(file_path)
     File.open(file_path) do |f|
-      self.add_by_io(f, file_type(file_path))
+      add_by_io(f, file_type(file_path))
     end
   end
 
@@ -74,6 +79,10 @@ class CodeStatisticsCalculator #:nodoc:
 
   private
     def file_type(file_path)
-      File.extname(file_path).sub(/\A\./, '').downcase.to_sym
+      if file_path.end_with? "_test.rb"
+        :minitest
+      else
+        File.extname(file_path).sub(/\A\./, "").downcase.to_sym
+      end
     end
 end

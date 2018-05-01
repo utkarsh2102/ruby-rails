@@ -1,5 +1,7 @@
+# frozen_string_literal: true
+
 #--
-# Copyright (c) 2005-2014 David Heinemeier Hansson
+# Copyright (c) 2005-2018 David Heinemeier Hansson
 #
 # Permission is hereby granted, free of charge, to any person obtaining
 # a copy of this software and associated documentation files (the
@@ -21,7 +23,7 @@
 # WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #++
 
-require 'securerandom'
+require "securerandom"
 require "active_support/dependencies/autoload"
 require "active_support/version"
 require "active_support/logger"
@@ -32,11 +34,16 @@ module ActiveSupport
   extend ActiveSupport::Autoload
 
   autoload :Concern
+  autoload :CurrentAttributes
   autoload :Dependencies
   autoload :DescendantsTracker
+  autoload :ExecutionWrapper
+  autoload :Executor
   autoload :FileUpdateChecker
+  autoload :EventedFileUpdateChecker
   autoload :LogSubscriber
   autoload :Notifications
+  autoload :Reloader
 
   eager_autoload do
     autoload :BacktraceCleaner
@@ -46,6 +53,7 @@ module ActiveSupport
     autoload :Callbacks
     autoload :Configurable
     autoload :Deprecation
+    autoload :Digest
     autoload :Gzip
     autoload :Inflector
     autoload :JSON
@@ -60,6 +68,7 @@ module ActiveSupport
     autoload :StringInquirer
     autoload :TaggedLogging
     autoload :XmlMini
+    autoload :ArrayInquirer
   end
 
   autoload :Rescuable
@@ -72,15 +81,7 @@ module ActiveSupport
     NumberHelper.eager_load!
   end
 
-  @@test_order = nil
-
-  def self.test_order=(new_order) # :nodoc:
-    @@test_order = new_order
-  end
-
-  def self.test_order # :nodoc:
-    @@test_order
-  end
+  cattr_accessor :test_order # :nodoc:
 
   def self.to_time_preserves_timezone
     DateAndTime::Compatibility.preserve_timezone

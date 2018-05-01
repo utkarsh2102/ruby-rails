@@ -1,9 +1,11 @@
-module ActiveRecord::Associations::Builder
+# frozen_string_literal: true
+
+module ActiveRecord::Associations::Builder # :nodoc:
   class HasAndBelongsToMany # :nodoc:
-    class JoinTableResolver
+    class JoinTableResolver # :nodoc:
       KnownTable = Struct.new :join_table
 
-      class KnownClass
+      class KnownClass # :nodoc:
         def initialize(lhs_class, rhs_class_name)
           @lhs_class      = lhs_class
           @rhs_class_name = rhs_class_name
@@ -16,9 +18,9 @@ module ActiveRecord::Associations::Builder
 
         private
 
-        def klass
-          @lhs_class.send(:compute_type, @rhs_class_name)
-        end
+          def klass
+            @lhs_class.send(:compute_type, @rhs_class_name)
+          end
       end
 
       def self.build(lhs_class, name, options)
@@ -28,7 +30,7 @@ module ActiveRecord::Associations::Builder
           class_name = options.fetch(:class_name) {
             name.to_s.camelize.singularize
           }
-          KnownClass.new lhs_class, class_name
+          KnownClass.new lhs_class, class_name.to_s
         end
       end
     end
@@ -45,7 +47,7 @@ module ActiveRecord::Associations::Builder
       habtm = JoinTableResolver.build lhs_model, association_name, options
 
       join_model = Class.new(ActiveRecord::Base) {
-        class << self;
+        class << self
           attr_accessor :left_model
           attr_accessor :name
           attr_accessor :table_name_resolver
@@ -62,13 +64,13 @@ module ActiveRecord::Associations::Builder
         end
 
         def self.add_left_association(name, options)
-          belongs_to name, options
+          belongs_to name, required: false, **options
           self.left_reflection = _reflect_on_association(name)
         end
 
         def self.add_right_association(name, options)
           rhs_name = name.to_s.singularize.to_sym
-          belongs_to rhs_name, options
+          belongs_to rhs_name, required: false, **options
           self.right_reflection = _reflect_on_association(rhs_name)
         end
 
@@ -76,6 +78,11 @@ module ActiveRecord::Associations::Builder
           left_model.retrieve_connection
         end
 
+        private
+
+          def self.suppress_composite_primary_key(pk)
+            pk unless pk.is_a?(Array)
+          end
       }
 
       join_model.name                = "HABTM_#{association_name.to_s.camelize}"
@@ -89,40 +96,40 @@ module ActiveRecord::Associations::Builder
 
     def middle_reflection(join_model)
       middle_name = [lhs_model.name.downcase.pluralize,
-                     association_name].join('_').gsub(/::/, '_').to_sym
+                     association_name].join("_".freeze).gsub("::".freeze, "_".freeze).to_sym
       middle_options = middle_options join_model
-      hm_builder = HasMany.create_builder(lhs_model,
-                                          middle_name,
-                                          nil,
-                                          middle_options)
-      hm_builder.build lhs_model
+
+      HasMany.create_reflection(lhs_model,
+                                middle_name,
+                                nil,
+                                middle_options)
     end
 
     private
 
-    def middle_options(join_model)
-      middle_options = {}
-      middle_options[:class_name] = "#{lhs_model.name}::#{join_model.name}"
-      middle_options[:source] = join_model.left_reflection.name
-      if options.key? :foreign_key
-        middle_options[:foreign_key] = options[:foreign_key]
-      end
-      middle_options
-    end
-
-    def belongs_to_options(options)
-      rhs_options = {}
-
-      if options.key? :class_name
-        rhs_options[:foreign_key] = options[:class_name].to_s.foreign_key
-        rhs_options[:class_name] = options[:class_name]
+      def middle_options(join_model)
+        middle_options = {}
+        middle_options[:class_name] = "#{lhs_model.name}::#{join_model.name}"
+        middle_options[:source] = join_model.left_reflection.name
+        if options.key? :foreign_key
+          middle_options[:foreign_key] = options[:foreign_key]
+        end
+        middle_options
       end
 
-      if options.key? :association_foreign_key
-        rhs_options[:foreign_key] = options[:association_foreign_key]
-      end
+      def belongs_to_options(options)
+        rhs_options = {}
 
-      rhs_options
-    end
+        if options.key? :class_name
+          rhs_options[:foreign_key] = options[:class_name].to_s.foreign_key
+          rhs_options[:class_name] = options[:class_name]
+        end
+
+        if options.key? :association_foreign_key
+          rhs_options[:foreign_key] = options[:association_foreign_key]
+        end
+
+        rhs_options
+      end
   end
 end

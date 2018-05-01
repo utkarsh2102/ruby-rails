@@ -7,7 +7,7 @@ small units of work and run in parallel, really.
 
 It also serves as the backend for Action Mailer's #deliver_later functionality
 that makes it easy to turn any mailing into a job for running later. That's
-one of the most common jobs in a modern web application: Sending emails outside
+one of the most common jobs in a modern web application: sending emails outside
 of the request-response cycle, so the user doesn't have to wait on it.
 
 The main point is to ensure that all Rails apps will have a job infrastructure
@@ -20,12 +20,7 @@ switch between them without having to rewrite your jobs.
 
 ## Usage
 
-Set the queue adapter for Active Job:
-
-``` ruby
-ActiveJob::Base.queue_adapter = :inline # default queue adapter
-```
-Note: To learn how to use your preferred queueing backend see its adapter
+To learn how to use your preferred queueing backend see its adapter
 documentation at
 [ActiveJob::QueueAdapters](http://api.rubyonrails.org/classes/ActiveJob/QueueAdapters.html).
 
@@ -44,7 +39,7 @@ end
 Enqueue a job like so:
 
 ```ruby
-MyJob.perform_later record  # Enqueue a job to be performed as soon the queueing system is free.
+MyJob.perform_later record  # Enqueue a job to be performed as soon as the queueing system is free.
 ```
 
 ```ruby
@@ -102,27 +97,27 @@ see the API Documentation for [ActiveJob::QueueAdapters](http://api.rubyonrails.
 The latest version of Active Job can be installed with RubyGems:
 
 ```
-  % [sudo] gem install activejob
+  $ gem install activejob
 ```
 
-Source code can be downloaded as part of the Rails project on GitHub
+Source code can be downloaded as part of the Rails project on GitHub:
 
-* https://github.com/rails/rails/tree/4-2-stable/activejob
+* https://github.com/rails/rails/tree/5-2-stable/activejob
 
 ## License
 
 Active Job is released under the MIT license:
 
-* http://www.opensource.org/licenses/MIT
+* https://opensource.org/licenses/MIT
 
 
 ## Support
 
-API documentation is at
+API documentation is at:
 
 * http://api.rubyonrails.org
 
-Bug reports can be filed for the Ruby on Rails project here:
+Bug reports for the Ruby on Rails project can be filed here:
 
 * https://github.com/rails/rails/issues
 

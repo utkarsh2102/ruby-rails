@@ -1,5 +1,7 @@
-require 'abstract_unit'
-require 'active_support/notifications/instrumenter'
+# frozen_string_literal: true
+
+require "abstract_unit"
+require "active_support/notifications/instrumenter"
 
 module ActiveSupport
   module Notifications
@@ -22,11 +24,11 @@ module ActiveSupport
         super
         @notifier     = TestNotifier.new
         @instrumenter = Instrumenter.new @notifier
-        @payload      =  { :foo => Object.new }
+        @payload = { foo: Object.new }
       end
 
       def test_instrument
-        called  = false
+        called = false
         instrumenter.instrument("foo", payload) {
           called = true
         }
@@ -39,19 +41,19 @@ module ActiveSupport
         assert_equal 1, notifier.finishes.size
         name, _, payload = notifier.finishes.first
         assert_equal "awesome", name
-        assert_equal Hash[:result => 2], payload
+        assert_equal Hash[result: 2], payload
       end
 
       def test_start
         instrumenter.start("foo", payload)
         assert_equal [["foo", instrumenter.id, payload]], notifier.starts
-        assert_predicate notifier.finishes, :empty?
+        assert_empty notifier.finishes
       end
 
       def test_finish
         instrumenter.finish("foo", payload)
         assert_equal [["foo", instrumenter.id, payload]], notifier.finishes
-        assert_predicate notifier.starts, :empty?
+        assert_empty notifier.starts
       end
     end
   end

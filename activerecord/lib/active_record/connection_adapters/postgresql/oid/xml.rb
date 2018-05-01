@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module ActiveRecord
   module ConnectionAdapters
     module PostgreSQL
@@ -7,7 +9,7 @@ module ActiveRecord
             :xml
           end
 
-          def type_cast_for_database(value)
+          def serialize(value)
             return unless value
             Data.new(super)
           end

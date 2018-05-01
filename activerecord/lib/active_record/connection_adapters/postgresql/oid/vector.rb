@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module ActiveRecord
   module ConnectionAdapters
     module PostgreSQL
@@ -16,7 +18,7 @@ module ActiveRecord
           # FIXME: this should probably split on +delim+ and use +subtype+
           # to cast the values.  Unfortunately, the current Rails behavior
           # is to just return the string.
-          def type_cast(value)
+          def cast(value)
             value
           end
         end

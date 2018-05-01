@@ -1,25 +1,41 @@
-module ActiveRecord
-  # = Active Record Belongs To Association
-  module Associations
-    class BelongsToAssociation < SingularAssociation #:nodoc:
+# frozen_string_literal: true
 
+module ActiveRecord
+  module Associations
+    # = Active Record Belongs To Association
+    class BelongsToAssociation < SingularAssociation #:nodoc:
       def handle_dependency
-        target.send(options[:dependent]) if load_target
+        return unless load_target
+
+        case options[:dependent]
+        when :destroy
+          target.destroy
+          raise ActiveRecord::Rollback unless target.destroyed?
+        else
+          target.send(options[:dependent])
+        end
       end
 
       def replace(record)
         if record
           raise_on_type_mismatch!(record)
-          update_counters(record)
-          replace_keys(record)
+          update_counters_on_replace(record)
           set_inverse_instance(record)
           @updated = true
         else
           decrement_counters
-          remove_keys
         end
 
         self.target = record
+      end
+
+      def target=(record)
+        replace_keys(record)
+        super
+      end
+
+      def default(&block)
+        writer(owner.instance_exec(&block)) if reader.nil?
       end
 
       def reset
@@ -32,45 +48,38 @@ module ActiveRecord
       end
 
       def decrement_counters # :nodoc:
-        with_cache_name { |name| decrement_counter name }
+        update_counters(-1)
       end
 
       def increment_counters # :nodoc:
-        with_cache_name { |name| increment_counter name }
+        update_counters(1)
       end
 
       private
+
+        def update_counters(by)
+          if require_counter_update? && foreign_key_present?
+            if target && !stale_target?
+              target.increment!(reflection.counter_cache_column, by, touch: reflection.options[:touch])
+            else
+              klass.update_counters(target_id, reflection.counter_cache_column => by, touch: reflection.options[:touch])
+            end
+          end
+        end
 
         def find_target?
           !loaded? && foreign_key_present? && klass
         end
 
-        def with_cache_name
-          counter_cache_name = reflection.counter_cache_column
-          return unless counter_cache_name && owner.persisted?
-          yield counter_cache_name
+        def require_counter_update?
+          reflection.counter_cache_column && owner.persisted?
         end
 
-        def update_counters(record)
-          with_cache_name do |name|
-            return unless different_target? record
-            record.class.increment_counter(name, record.id)
-            decrement_counter name
-          end
-        end
-
-        def decrement_counter(counter_cache_name)
-          if foreign_key_present?
-            klass.decrement_counter(counter_cache_name, target_id)
-          end
-        end
-
-        def increment_counter(counter_cache_name)
-          if foreign_key_present?
-            klass.increment_counter(counter_cache_name, target_id)
-            if target && !stale_target? && counter_cache_available_in_memory?(counter_cache_name)
-              target.increment(counter_cache_name)
-            end
+        def update_counters_on_replace(record)
+          if require_counter_update? && different_target?(record)
+            owner.instance_variable_set :@_after_replace_counter_called, true
+            record.increment!(reflection.counter_cache_column)
+            decrement_counters
           end
         end
 
@@ -80,11 +89,8 @@ module ActiveRecord
         end
 
         def replace_keys(record)
-          owner[reflection.foreign_key] = record._read_attribute(reflection.association_primary_key(record.class))
-        end
-
-        def remove_keys
-          owner[reflection.foreign_key] = nil
+          owner[reflection.foreign_key] = record ?
+            record._read_attribute(reflection.association_primary_key(record.class)) : nil
         end
 
         def foreign_key_present?
@@ -107,12 +113,8 @@ module ActiveRecord
         end
 
         def stale_state
-          result = owner._read_attribute(reflection.foreign_key)
+          result = owner._read_attribute(reflection.foreign_key) { |n| owner.send(:missing_attribute, n, caller) }
           result && result.to_s
-        end
-
-        def counter_cache_available_in_memory?(counter_cache_name)
-          target.respond_to?(counter_cache_name)
         end
     end
   end

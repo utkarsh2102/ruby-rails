@@ -1,12 +1,13 @@
-require 'active_support/concern'
-require 'thread_safe'
+# frozen_string_literal: true
+
+require "active_support/concern"
 
 module ActiveSupport
-  module LoggerThreadSafeLevel
+  module LoggerThreadSafeLevel # :nodoc:
     extend ActiveSupport::Concern
 
     def after_initialize
-      @local_levels = ThreadSafe::Cache.new
+      @local_levels = Concurrent::Map.new(initial_capacity: 2)
     end
 
     def local_log_id

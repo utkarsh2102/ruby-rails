@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require "active_support/concern"
 require "active_support/inflector"
 
@@ -44,7 +46,6 @@ module ActiveSupport
           end
         end
       end
-
     end
   end
 end

@@ -1,14 +1,17 @@
+# frozen_string_literal: true
+
 require "cgi"
 
 module Rails
-  # This module helps build the runtime properties used to display in the
-  # Rails::InfoController responses. Including the active Rails version, Ruby
-  # version, Rack version, and so on.
+  # This module helps build the runtime properties that are displayed in
+  # Rails::InfoController responses. These include the active Rails version,
+  # Ruby version, Rack version, and so on.
   module Info
-    mattr_accessor :properties
-    class << (@@properties = [])
+    mattr_accessor :properties, default: []
+
+    class << @@properties
       def names
-        map {|val| val.first }
+        map(&:first)
       end
 
       def value_for(property_name)
@@ -26,7 +29,7 @@ module Rails
       end
 
       def to_s
-        column_width = properties.names.map {|name| name.length}.max
+        column_width = properties.names.map(&:length).max
         info = properties.map do |name, value|
           value = value.join(", ") if value.is_a?(Array)
           "%-#{column_width}s   %s" % [name, value]
@@ -38,65 +41,65 @@ module Rails
       alias inspect to_s
 
       def to_html
-        '<table>'.tap do |table|
+        "<table>".dup.tap do |table|
           properties.each do |(name, value)|
             table << %(<tr><td class="name">#{CGI.escapeHTML(name.to_s)}</td>)
             formatted_value = if value.kind_of?(Array)
-                  "<ul>" + value.map { |v| "<li>#{CGI.escapeHTML(v.to_s)}</li>" }.join + "</ul>"
-                else
-                  CGI.escapeHTML(value.to_s)
-                end
+              "<ul>" + value.map { |v| "<li>#{CGI.escapeHTML(v.to_s)}</li>" }.join + "</ul>"
+            else
+              CGI.escapeHTML(value.to_s)
+            end
             table << %(<td class="value">#{formatted_value}</td></tr>)
           end
-          table << '</table>'
+          table << "</table>"
         end
       end
     end
 
     # The Rails version.
-    property 'Rails version' do
+    property "Rails version" do
       Rails.version.to_s
     end
 
     # The Ruby version and platform, e.g. "2.0.0-p247 (x86_64-darwin12.4.0)".
-    property 'Ruby version' do
+    property "Ruby version" do
       "#{RUBY_VERSION}-p#{RUBY_PATCHLEVEL} (#{RUBY_PLATFORM})"
     end
 
     # The RubyGems version, if it's installed.
-    property 'RubyGems version' do
+    property "RubyGems version" do
       Gem::RubyGemsVersion
     end
 
-    property 'Rack version' do
+    property "Rack version" do
       ::Rack.release
     end
 
-    property 'JavaScript Runtime' do
+    property "JavaScript Runtime" do
       ExecJS.runtime.name
     end
 
-    property 'Middleware' do
+    property "Middleware" do
       Rails.configuration.middleware.map(&:inspect)
     end
 
     # The application's location on the filesystem.
-    property 'Application root' do
+    property "Application root" do
       File.expand_path(Rails.root)
     end
 
     # The current Rails environment (development, test, or production).
-    property 'Environment' do
+    property "Environment" do
       Rails.env
     end
 
     # The name of the database adapter for the current environment.
-    property 'Database adapter' do
-      ActiveRecord::Base.configurations[Rails.env]['adapter']
+    property "Database adapter" do
+      ActiveRecord::Base.configurations[Rails.env]["adapter"]
     end
 
-    property 'Database schema version' do
-      ActiveRecord::Migrator.current_version rescue nil
+    property "Database schema version" do
+      ActiveRecord::Base.connection.migration_context.current_version rescue nil
     end
   end
 end

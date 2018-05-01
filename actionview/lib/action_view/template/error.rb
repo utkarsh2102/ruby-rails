@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require "active_support/core_ext/enumerable"
 
 module ActionView
@@ -6,9 +8,6 @@ module ActionView
   end
 
   class EncodingError < StandardError #:nodoc:
-  end
-
-  class MissingRequestError < StandardError #:nodoc:
   end
 
   class WrongEncodingError < EncodingError #:nodoc:
@@ -35,10 +34,10 @@ module ActionView
       prefixes = Array(prefixes)
       template_type = if partial
         "partial"
-      elsif path =~ /layouts/i
-        'layout'
+      elsif /layouts/i.match?(path)
+        "layout"
       else
-        'template'
+        "template"
       end
 
       if partial && path.present?
@@ -59,13 +58,14 @@ module ActionView
     class Error < ActionViewError #:nodoc:
       SOURCE_CODE_RADIUS = 3
 
-      attr_reader :original_exception
+      # Override to prevent #cause resetting during re-raise.
+      attr_reader :cause
 
-      def initialize(template, original_exception)
-        super(original_exception.message)
-        @template, @original_exception = template, original_exception
-        @sub_templates = nil
-        set_backtrace(original_exception.backtrace)
+      def initialize(template)
+        super($!.message)
+        set_backtrace($!.backtrace)
+        @cause = $!
+        @template, @sub_templates = template, nil
       end
 
       def file_name
@@ -75,7 +75,7 @@ module ActionView
       def sub_template_message
         if @sub_templates
           "Trace of template inclusion: " +
-          @sub_templates.collect { |template| template.inspect }.join(", ")
+          @sub_templates.collect(&:inspect).join(", ")
         else
           ""
         end
@@ -119,18 +119,18 @@ module ActionView
           if line_number
             "on line ##{line_number} of "
           else
-            'in '
+            "in "
           end + file_name
         end
 
         def formatted_code_for(source_code, line_counter, indent, output)
-          start_value = (output == :html) ? {} : ""
+          start_value = (output == :html) ? {} : []
           source_code.inject(start_value) do |result, line|
             line_counter += 1
             if output == :html
               result.update(line_counter.to_s => "%#{indent}s %s\n" % ["", line])
             else
-              result << "%#{indent}s: %s\n" % [line_counter, line]
+              result << "%#{indent}s: %s" % [line_counter, line]
             end
           end
         end

@@ -1,4 +1,6 @@
-require 'abstract_unit'
+# frozen_string_literal: true
+
+require "abstract_unit"
 
 class GrandParent
   include ActiveSupport::Callbacks
@@ -9,8 +11,8 @@ class GrandParent
   end
 
   define_callbacks :dispatch
-  set_callback :dispatch, :before, :before1, :before2, :if => proc {|c| c.action_name == "index" || c.action_name == "update" }
-  set_callback :dispatch, :after, :after1, :after2, :if => proc {|c| c.action_name == "update" || c.action_name == "delete" }
+  set_callback :dispatch, :before, :before1, :before2, if: proc { |c| c.action_name == "index" || c.action_name == "update" }
+  set_callback :dispatch, :after, :after1, :after2, if: proc { |c| c.action_name == "update" || c.action_name == "delete" }
 
   def before1
     @log << "before1"
@@ -37,12 +39,12 @@ class GrandParent
 end
 
 class Parent < GrandParent
-  skip_callback :dispatch, :before, :before2, :unless => proc {|c| c.action_name == "update" }
-  skip_callback :dispatch, :after, :after2, :unless => proc {|c| c.action_name == "delete" }
+  skip_callback :dispatch, :before, :before2, unless: proc { |c| c.action_name == "update" }
+  skip_callback :dispatch, :after, :after2, unless: proc { |c| c.action_name == "delete" }
 end
 
 class Child < GrandParent
-  skip_callback :dispatch, :before, :before2, :unless => proc {|c| c.action_name == "update" }, :if => :state_open?
+  skip_callback :dispatch, :before, :before2, unless: proc { |c| c.action_name == "update" }, if: :state_open?
 
   def state_open?
     @state == :open
@@ -162,10 +164,10 @@ end
 class DynamicInheritedCallbacks < ActiveSupport::TestCase
   def test_callbacks_looks_to_the_superclass_before_running
     child = EmptyChild.new.dispatch
-    assert !child.performed?
+    assert_not_predicate child, :performed?
     EmptyParent.set_callback :dispatch, :before, :perform!
     child = EmptyChild.new.dispatch
-    assert child.performed?
+    assert_predicate child, :performed?
   end
 
   def test_callbacks_should_be_performed_once_in_child_class

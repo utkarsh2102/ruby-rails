@@ -1,4 +1,4 @@
-# encoding: utf-8
+# frozen_string_literal: true
 
 module ActionDispatch
   module Journey # :nodoc:
@@ -9,18 +9,18 @@ module ActionDispatch
             "  #{from} -> #{to} [label=\"#{sym || 'ε'}\"];"
           }
 
-          #memo_nodes = memos.values.flatten.map { |n|
-          #  label = n
-          #  if Journey::Route === n
-          #    label = "#{n.verb.source} #{n.path.spec}"
-          #  end
-          #  "  #{n.object_id} [label=\"#{label}\", shape=box];"
-          #}
-          #memo_edges = memos.flat_map { |k, memos|
-          #  (memos || []).map { |v| "  #{k} -> #{v.object_id};" }
-          #}.uniq
+          # memo_nodes = memos.values.flatten.map { |n|
+          #   label = n
+          #   if Journey::Route === n
+          #     label = "#{n.verb.source} #{n.path.spec}"
+          #   end
+          #   "  #{n.object_id} [label=\"#{label}\", shape=box];"
+          # }
+          # memo_edges = memos.flat_map { |k, memos|
+          #   (memos || []).map { |v| "  #{k} -> #{v.object_id};" }
+          # }.uniq
 
-        <<-eodot
+          <<-eodot
 digraph nfa {
   rankdir=LR;
   node [shape = doublecircle];
@@ -28,7 +28,7 @@ digraph nfa {
   node [shape = circle];
 #{edges.join "\n"}
 }
-        eodot
+          eodot
         end
       end
     end

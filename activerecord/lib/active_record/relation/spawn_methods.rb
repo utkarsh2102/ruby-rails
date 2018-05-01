@@ -1,16 +1,17 @@
-require 'active_support/core_ext/hash/except'
-require 'active_support/core_ext/hash/slice'
-require 'active_record/relation/merger'
+# frozen_string_literal: true
+
+require "active_support/core_ext/hash/except"
+require "active_support/core_ext/hash/slice"
+require "active_record/relation/merger"
 
 module ActiveRecord
   module SpawnMethods
-
     # This is overridden by Associations::CollectionProxy
     def spawn #:nodoc:
       clone
     end
 
-    # Merges in the conditions from <tt>other</tt>, if <tt>other</tt> is an <tt>ActiveRecord::Relation</tt>.
+    # Merges in the conditions from <tt>other</tt>, if <tt>other</tt> is an ActiveRecord::Relation.
     # Returns an array representing the intersection of the resulting records with <tt>other</tt>, if <tt>other</tt> is an array.
     #
     #   Post.where(published: true).joins(:comments).merge( Comment.where(spam: false) )
@@ -29,11 +30,11 @@ module ActiveRecord
     # This is mainly intended for sharing common conditions between multiple associations.
     def merge(other)
       if other.is_a?(Array)
-        to_a & other
+        records & other
       elsif other
         spawn.merge!(other)
       else
-        self
+        raise ArgumentError, "invalid argument: #{other.inspect}."
       end
     end
 
@@ -62,16 +63,13 @@ module ActiveRecord
     #   Post.order('id asc').only(:where)         # discards the order condition
     #   Post.order('id asc').only(:where, :order) # uses the specified order
     def only(*onlies)
-      if onlies.any? { |o| o == :where }
-        onlies << :bind
-      end
       relation_with values.slice(*onlies)
     end
 
     private
 
-      def relation_with(values) # :nodoc:
-        result = Relation.create(klass, table, values)
+      def relation_with(values)
+        result = Relation.create(klass, values: values)
         result.extend(*extending_values) if extending_values.any?
         result
       end

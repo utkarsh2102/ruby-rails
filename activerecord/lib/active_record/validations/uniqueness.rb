@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module ActiveRecord
   module Validations
     class UniquenessValidator < ActiveModel::EachValidator # :nodoc:
@@ -6,30 +8,28 @@ module ActiveRecord
           raise ArgumentError, "#{options[:conditions]} was passed as :conditions but is not callable. " \
                                "Pass a callable instead: `conditions: -> { where(approved: true) }`"
         end
+        unless Array(options[:scope]).all? { |scope| scope.respond_to?(:to_sym) }
+          raise ArgumentError, "#{options[:scope]} is not supported format for :scope option. " \
+            "Pass a symbol or an array of symbols instead: `scope: :user_id`"
+        end
         super({ case_sensitive: true }.merge!(options))
         @klass = options[:class]
       end
 
       def validate_each(record, attribute, value)
         finder_class = find_finder_class_for(record)
-        table = finder_class.arel_table
         value = map_enum_attribute(finder_class, attribute, value)
 
-        begin
-          relation = build_relation(finder_class, table, attribute, value)
-          if record.persisted?
-            if finder_class.primary_key
-              relation = relation.and(table[finder_class.primary_key.to_sym].not_eq(record.id))
-            else
-              raise UnknownPrimaryKey.new(finder_class, "Can not validate uniqueness for persisted record without primary key.")
-            end
+        relation = build_relation(finder_class, attribute, value)
+        if record.persisted?
+          if finder_class.primary_key
+            relation = relation.where.not(finder_class.primary_key => record.id_in_database)
+          else
+            raise UnknownPrimaryKey.new(finder_class, "Can not validate uniqueness for persisted record without primary key.")
           end
-          relation = scope_relation(record, table, relation)
-          relation = finder_class.unscoped.where(relation)
-          relation = relation.merge(options[:conditions]) if options[:conditions]
-        rescue RangeError
-          relation = finder_class.none
         end
+        relation = scope_relation(record, relation)
+        relation = relation.merge(options[:conditions]) if options[:conditions]
 
         if relation.exists?
           error_options = options.except(:case_sensitive, :scope, :conditions)
@@ -39,13 +39,13 @@ module ActiveRecord
         end
       end
 
-    protected
+    private
       # The check for an existing value should be run from a class that
       # isn't abstract. This means working down from the current class
       # (self), to the first non-abstract class. Since classes don't know
       # their subclasses, we have to build the hierarchy between self and
       # the record's class.
-      def find_finder_class_for(record) #:nodoc:
+      def find_finder_class_for(record)
         class_hierarchy = [record.class]
 
         while class_hierarchy.first != @klass
@@ -55,43 +55,44 @@ module ActiveRecord
         class_hierarchy.detect { |klass| !klass.abstract_class? }
       end
 
-      def build_relation(klass, table, attribute, value) #:nodoc:
+      def build_relation(klass, attribute, value)
         if reflection = klass._reflect_on_association(attribute)
           attribute = reflection.foreign_key
           value = value.attributes[reflection.klass.primary_key] unless value.nil?
         end
 
-        attribute_name = attribute.to_s
+        if value.nil?
+          return klass.unscoped.where!(attribute => value)
+        end
 
         # the attribute may be an aliased attribute
-        if klass.attribute_aliases[attribute_name]
-          attribute = klass.attribute_aliases[attribute_name]
-          attribute_name = attribute.to_s
+        if klass.attribute_alias?(attribute)
+          attribute = klass.attribute_alias(attribute)
         end
 
+        attribute_name = attribute.to_s
+        value = klass.predicate_builder.build_bind_attribute(attribute_name, value)
+
+        table = klass.arel_table
         column = klass.columns_hash[attribute_name]
-        value  = klass.connection.type_cast(value, column)
-        if value.is_a?(String) && column.limit
-          value = value.to_s[0, column.limit]
-        end
 
-        if !options[:case_sensitive] && value && column.text?
+        comparison = if !options[:case_sensitive]
           # will use SQL LOWER function before comparison, unless it detects a case insensitive collation
           klass.connection.case_insensitive_comparison(table, attribute, column, value)
         else
           klass.connection.case_sensitive_comparison(table, attribute, column, value)
         end
+        klass.unscoped.where!(comparison)
       end
 
-      def scope_relation(record, table, relation)
+      def scope_relation(record, relation)
         Array(options[:scope]).each do |scope_item|
-          if reflection = record.class._reflect_on_association(scope_item)
-            scope_value = record.send(reflection.foreign_key)
-            scope_item  = reflection.foreign_key
+          scope_value = if record.class._reflect_on_association(scope_item)
+            record.association(scope_item).reader
           else
-            scope_value = record._read_attribute(scope_item)
+            record._read_attribute(scope_item)
           end
-          relation = relation.and(table[scope_item].eq(scope_value))
+          relation = relation.where(scope_item => scope_value)
         end
 
         relation
@@ -169,7 +170,8 @@ module ActiveRecord
       #
       # === Concurrency and integrity
       #
-      # Using this validation method in conjunction with ActiveRecord::Base#save
+      # Using this validation method in conjunction with
+      # {ActiveRecord::Base#save}[rdoc-ref:Persistence#save]
       # does not guarantee the absence of duplicate record insertions, because
       # uniqueness checks on the application level are inherently prone to race
       # conditions. For example, suppose that two users try to post a Comment at
@@ -203,21 +205,19 @@ module ActiveRecord
       #                                      | # Boom! We now have a duplicate
       #                                      | # title!
       #
-      # This could even happen if you use transactions with the 'serializable'
-      # isolation level. The best way to work around this problem is to add a unique
-      # index to the database table using
-      # ActiveRecord::ConnectionAdapters::SchemaStatements#add_index. In the
-      # rare case that a race condition occurs, the database will guarantee
+      # The best way to work around this problem is to add a unique index to the database table using
+      # {connection.add_index}[rdoc-ref:ConnectionAdapters::SchemaStatements#add_index].
+      # In the rare case that a race condition occurs, the database will guarantee
       # the field's uniqueness.
       #
       # When the database catches such a duplicate insertion,
-      # ActiveRecord::Base#save will raise an ActiveRecord::StatementInvalid
+      # {ActiveRecord::Base#save}[rdoc-ref:Persistence#save] will raise an ActiveRecord::StatementInvalid
       # exception. You can either choose to let this error propagate (which
       # will result in the default Rails exception page being shown), or you
       # can catch it and restart the transaction (e.g. by telling the user
       # that the title already exists, and asking them to re-enter the title).
       # This technique is also known as
-      # {optimistic concurrency control}[http://en.wikipedia.org/wiki/Optimistic_concurrency_control].
+      # {optimistic concurrency control}[https://en.wikipedia.org/wiki/Optimistic_concurrency_control].
       #
       # The bundled ActiveRecord::ConnectionAdapters distinguish unique index
       # constraint errors from other types of database errors by throwing an
@@ -227,7 +227,6 @@ module ActiveRecord
       #
       # The following bundled adapters throw the ActiveRecord::RecordNotUnique exception:
       #
-      # * ActiveRecord::ConnectionAdapters::MysqlAdapter.
       # * ActiveRecord::ConnectionAdapters::Mysql2Adapter.
       # * ActiveRecord::ConnectionAdapters::SQLite3Adapter.
       # * ActiveRecord::ConnectionAdapters::PostgreSQLAdapter.

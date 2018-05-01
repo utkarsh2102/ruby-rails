@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require "isolation/abstract_unit"
 
 module RailtiesTest
@@ -6,7 +8,6 @@ module RailtiesTest
 
     def setup
       build_app
-      boot_rails
       FileUtils.rm_rf("#{app_path}/config/environments")
       require "rails/all"
     end
@@ -107,9 +108,9 @@ module RailtiesTest
       require "#{app_path}/config/environment"
 
       assert !$ran_block
-      require 'rake'
-      require 'rake/testtask'
-      require 'rdoc/task'
+      require "rake"
+      require "rake/testtask"
+      require "rdoc/task"
 
       Rails.application.load_tasks
       assert $ran_block
@@ -131,12 +132,12 @@ module RailtiesTest
       require "#{app_path}/config/environment"
 
       assert_equal [], $ran_block
-      require 'rake'
-      require 'rake/testtask'
-      require 'rdoc/task'
+      require "rake"
+      require "rake/testtask"
+      require "rdoc/task"
 
       Rails.application.load_tasks
-      assert $ran_block.include?("my_tie")
+      assert_includes $ran_block, "my_tie"
     end
 
     test "generators block is executed when MyApp.load_generators is called" do
@@ -204,8 +205,8 @@ module RailtiesTest
     test "we can change our environment if we want to" do
       begin
         original_env = Rails.env
-        Rails.env = 'foo'
-        assert_equal('foo', Rails.env)
+        Rails.env = "foo"
+        assert_equal("foo", Rails.env)
       ensure
         Rails.env = original_env
         assert_equal(original_env, Rails.env)
