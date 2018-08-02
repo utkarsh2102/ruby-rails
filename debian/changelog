@@ -1,7 +1,7 @@
-rails (2:5.2.0-1) UNRELEASED; urgency=medium
+rails (2:5.2.0+dfsg-1) UNRELEASED; urgency=medium
 
   * Team upload
-  * 
+  * New upstream release
 
  -- Sruthi Chandran <srud@disroot.org>  Tue, 01 May 2018 11:15:03 +0530
 
