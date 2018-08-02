@@ -6,13 +6,20 @@
 overrride_dh_auto_build:
 	racc -o actionpack/lib/action_dispatch/journey/parser.rb \
 		actionpack/lib/action_dispatch/journey/parser.y
+	webpack --config activestorage/webpack.config.js
 
 override_dh_clean:
 	dh_clean -X~ -X.bak
 	$(RM) -r railties/guides/output
+	$(RM) activestorage/app/assets/javascripts/activestorage.js
 
 override_dh_auto_install:
 	dh_auto_install
 	$(RM) debian/ruby-activesupport/usr/bin/generate_tables
 	$(RM) debian/*/usr/bin/test
 	rmdir debian/*/usr/bin || true
+
+override_dh_auto_test:
+ifeq ($(filter nocheck,$(DEB_BUILD_PROFILES)),)
+	dh_auto_test
+endif
