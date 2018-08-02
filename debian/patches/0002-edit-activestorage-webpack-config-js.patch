@@ -1,0 +1,17 @@
+--- a/activestorage/webpack.config.js
++++ b/activestorage/webpack.config.js
+@@ -12,6 +12,14 @@
+     libraryTarget: "umd"
+   },
+ 
++  resolve: {
++    modules: ['/usr/lib/nodejs', 'debian/node_modules'],
++  },
++
++  resolveLoader: {
++    modules: ['/usr/lib/nodejs'],
++  },
++
+   module: {
+     rules: [
+       {
