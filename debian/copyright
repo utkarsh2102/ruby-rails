@@ -8,6 +8,39 @@ Files: *
 Copyright: Copyright 2004-2013 David Heinemeier Hansson
 License: Expat
 
+Files: actioncable/lib/action_cable.rb
+Copyright: 2015-2018, Basecamp, LLC
+License: Expat
+
+Files: actioncable/lib/action_cable/connection/client_socket.rb
+  actioncable/lib/action_cable/connection/stream.rb
+Copyright: 2010-2015, James Coglan
+License: Expat
+
+Files: actionview/test/ujs/public/vendor/*
+Copyright: 2013, jQuery Foundation and other contributors
+License: Expat
+
+Files: actionview/test/ujs/public/vendor/jquery-2.2.0.js
+Copyright: jQuery Foundation and other contributors
+License: Expat
+
+Files: actionview/test/ujs/public/vendor/jquery.metadata.js
+Copyright: 2006, John Resig, Yehuda Katz, J�örn Zaefferer, Paul McLanahan
+License: Expat
+
+Files: activestorage/lib/active_storage.rb
+Copyright: 2017, 2018, David Heinemeier Hansson, Basecamp
+License: Expat
+
+Files: debian/missing-sources/jquery.js
+Copyright: 2011, John Resig
+License: Expat
+
+Files: debian/missing-sources/shCore.js
+Copyright: Copyright (C) 2004-2010, Alex Gorbatchev.
+License: Expat
+
 Files: guides/*
 Copyright: Copyright 2004-2013 David Heinemeier Hansson
 License: CC-BY-3.0
@@ -22,15 +55,21 @@ Files: guides/assets/javascripts/syntaxhighlighter/*.js
 Copyright: 2004-2010 Alex Gorbatchev
 License: GPL or Expat
 
-Files: actionpack/lib/action_dispatch/testing/assertions/selector.rb
-Copyright: 2006 Assaf Arkin (http://labnotes.org)
-License: Expat or CC-BY-3.0
+Files: guides/assets/javascripts/syntaxhighlighter.js
+Copyright: Copyright (C) 2004-2016, Alex Gorbatchev.
+License: CC-BY-3.0
 
-Files: actionpack/test/fixtures/multipart/mona_lisa.jpg
-Copyright: Musée du Louvre
-License: public-domain
- This files is a reproduction of the famous Mona Lisa, a painting from the
- 16th century which is already the public domain.
+Files: guides/assets/stylesheets/syntaxhighlighter/shCore.css
+Copyright: Copyright (C) 2004-2010, Alex Gorbatchev.
+License: CC-BY-3.0
+
+Files: guides/rails_guides/levenshtein.rb
+Copyright: 2006-2013, Paul Battley, Michael Neumann, Tim Fletcher.
+License: CC-BY-3.0
+
+Files: railties/lib/rails/command/behavior.rb
+Copyright: 2006-2013, Paul Battley, Michael Neumann, Tim Fletcher.
+License: Expat
 
 Files: debian/*
 Copyright: Copyright 2011 Ondřej Surý <ondrej@debian.org>
