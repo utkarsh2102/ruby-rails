@@ -1,9 +1,17 @@
-rails (2:5.2.0+dfsg-1) UNRELEASED; urgency=medium
+rails (2:5.2.0+dfsg-1) experimental; urgency=medium
 
-  * Team upload
   * New upstream release
+  * Add myself to uploaders
+  * Embed spark-md5
+  * Remove activestorage.js and syntaxhighlighter.js for dfsg
+  * Use webpack to build activestorage.js
+  * Bump Standards-Version to 4.2.0 (no changes needed)
+  * Update lintian overrides
+  * Use salsa.debian.org in Vcs-* fields
+  * Add nocheck build profile
+  * Remove shCore.js from missing-sources
 
- -- Sruthi Chandran <srud@disroot.org>  Tue, 01 May 2018 11:15:03 +0530
+ -- Sruthi Chandran <srud@disroot.org>  Fri, 03 Aug 2018 20:37:48 +0530
 
 rails (2:4.2.10-1) unstable; urgency=medium
 
