@@ -1,3 +1,9 @@
+rails (2:5.2.0+dfsg-2) unstable; urgency=medium
+
+  * Re-upload to unstable
+
+ -- Sruthi Chandran <srud@disroot.org>  Thu, 03 Jan 2019 13:14:54 +0530
+
 rails (2:5.2.0+dfsg-1) experimental; urgency=medium
 
   * New upstream release
