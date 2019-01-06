@@ -292,6 +292,18 @@ class TransactionTest < ActiveRecord::TestCase
     assert_nil new_topic.id, "The topic should not have an ID"
   end
 
+  def test_callback_rollback_in_create_with_rollback_exception
+    topic = Class.new(Topic) {
+      def after_create_for_transaction
+        raise ActiveRecord::Rollback
+      end
+    }
+
+    new_topic = topic.create(title: "A new topic")
+    assert !new_topic.persisted?, "The topic should not be persisted"
+    assert_nil new_topic.id, "The topic should not have an ID"
+  end
+
   def test_nested_explicit_transactions
     Topic.transaction do
       Topic.transaction do
@@ -665,6 +677,36 @@ class TransactionTest < ActiveRecord::TestCase
 
     assert_not_predicate reply, :frozen?
     assert_not_predicate topic, :frozen?
+  end
+
+  def test_restore_new_record_after_double_save
+    topic = Topic.new
+
+    Topic.transaction do
+      topic.save!
+      topic.save!
+      raise ActiveRecord::Rollback
+    end
+
+    assert_nil topic.id
+    assert_predicate topic, :new_record?
+  end
+
+  def test_dont_restore_new_record_in_subsequent_transaction
+    topic = Topic.new
+
+    Topic.transaction do
+      topic.save!
+      topic.save!
+    end
+
+    Topic.transaction do
+      topic.save!
+      raise ActiveRecord::Rollback
+    end
+
+    assert_predicate topic, :persisted?
+    assert_not_predicate topic, :new_record?
   end
 
   def test_restore_id_after_rollback

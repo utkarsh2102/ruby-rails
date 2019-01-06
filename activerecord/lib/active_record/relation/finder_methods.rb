@@ -363,7 +363,7 @@ module ActiveRecord
 
         case conditions
         when Array, Hash
-          relation.where!(conditions)
+          relation.where!(conditions) unless conditions.empty?
         else
           relation.where!(primary_key => conditions) unless conditions == :none
         end
@@ -373,13 +373,12 @@ module ActiveRecord
 
       def construct_join_dependency
         including = eager_load_values + includes_values
-        joins = joins_values.select { |join| join.is_a?(Arel::Nodes::Join) }
         ActiveRecord::Associations::JoinDependency.new(
-          klass, table, including, alias_tracker(joins)
+          klass, table, including
         )
       end
 
-      def apply_join_dependency(eager_loading: true)
+      def apply_join_dependency(eager_loading: group_values.empty?)
         join_dependency = construct_join_dependency
         relation = except(:includes, :eager_load, :preload).joins!(join_dependency)
 
@@ -392,7 +391,6 @@ module ActiveRecord
         end
 
         if block_given?
-          relation._select!(join_dependency.aliases.columns)
           yield relation, join_dependency
         else
           relation
@@ -419,7 +417,7 @@ module ActiveRecord
         raise UnknownPrimaryKey.new(@klass) if primary_key.nil?
 
         expects_array = ids.first.kind_of?(Array)
-        return ids.first if expects_array && ids.first.empty?
+        return [] if expects_array && ids.first.empty?
 
         ids = ids.flatten.compact.uniq
 

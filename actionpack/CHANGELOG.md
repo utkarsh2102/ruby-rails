@@ -1,3 +1,108 @@
+## Rails 5.2.2 (December 04, 2018) ##
+
+*   Reset Capybara sessions if failed system test screenshot raising an exception.
+
+    Reset Capybara sessions if `take_failed_screenshot` raise exception
+    in system test `after_teardown`.
+
+    *Maxim Perepelitsa*
+
+*   Use request object for context if there's no controller
+
+    There is no controller instance when using a redirect route or a
+    mounted rack application so pass the request object as the context
+    when resolving dynamic CSP sources in this scenario.
+
+    Fixes #34200.
+
+    *Andrew White*
+
+*   Apply mapping to symbols returned from dynamic CSP sources
+
+    Previously if a dynamic source returned a symbol such as :self it
+    would be converted to a string implicity, e.g:
+
+        policy.default_src -> { :self }
+
+    would generate the header:
+
+        Content-Security-Policy: default-src self
+
+    and now it generates:
+
+        Content-Security-Policy: default-src 'self'
+
+    *Andrew White*
+
+*   Fix `rails routes -c` for controller name consists of multiple word.
+
+    *Yoshiyuki Kinjo*
+
+*   Call the `#redirect_to` block in controller context.
+
+    *Steven Peckins*
+
+
+## Rails 5.2.1.1 (November 27, 2018) ##
+
+*   No changes.
+
+
+## Rails 5.2.1 (August 07, 2018) ##
+
+*   Prevent `?null=` being passed on JSON encoded test requests.
+
+    `RequestEncoder#encode_params` won't attempt to parse params if
+    there are none.
+
+    So call like this will no longer append a `?null=` query param.
+
+        get foos_url, as: :json
+
+    *Alireza Bashiri*
+
+*   Ensure `ActionController::Parameters#transform_values` and
+    `ActionController::Parameters#transform_values!` converts hashes into
+    parameters.
+
+    *Kevin Sjöberg*
+
+*   Fix strong parameters `permit!` with nested arrays.
+
+    Given:
+    ```
+    params = ActionController::Parameters.new(nested_arrays: [[{ x: 2, y: 3 }, { x: 21, y: 42 }]])
+    params.permit!
+    ```
+
+    `params[:nested_arrays][0][0].permitted?` will now return `true` instead of `false`.
+
+    *Steve Hull*
+
+*   Reset `RAW_POST_DATA` and `CONTENT_LENGTH` request environment between test requests in
+    `ActionController::TestCase` subclasses.
+
+    *Eugene Kenny*
+
+*   Output only one Content-Security-Policy nonce header value per request.
+
+    Fixes #32597.
+
+    *Andrey Novikov*, *Andrew White*
+
+*   Only disable GPUs for headless Chrome on Windows.
+
+    It is not necessary anymore for Linux and macOS machines.
+
+    https://bugs.chromium.org/p/chromium/issues/detail?id=737678#c1
+
+    *Stefan Wrobel*
+
+*   Fix system tests transactions not closed between examples.
+
+    *Sergey Tarasov*
+
+
 ## Rails 5.2.0 (April 09, 2018) ##
 
 *   Check exclude before flagging cookies as secure.

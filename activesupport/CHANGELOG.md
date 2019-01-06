@@ -1,3 +1,53 @@
+## Rails 5.2.2 (December 04, 2018) ##
+
+*   Fix bug where `#to_options` for `ActiveSupport::HashWithIndifferentAccess`
+    would not act as alias for `#symbolize_keys`.
+
+    *Nick Weiland*
+
+*   Improve the logic that detects non-autoloaded constants.
+
+    *Jan Habermann*, *Xavier Noria*
+
+*   Fix bug where `URI.unescape` would fail with mixed Unicode/escaped character input:
+
+        URI.unescape("\xe3\x83\x90")  # => "バ"
+        URI.unescape("%E3%83%90")  # => "バ"
+        URI.unescape("\xe3\x83\x90%E3%83%90")  # => Encoding::CompatibilityError
+
+    *Ashe Connor*, *Aaron Patterson*
+
+
+## Rails 5.2.1.1 (November 27, 2018) ##
+
+*   No changes.
+
+
+## Rails 5.2.1 (August 07, 2018) ##
+
+*   Redis cache store: `delete_matched` no longer blocks the Redis server.
+    (Switches from evaled Lua to a batched SCAN + DEL loop.)
+
+    *Gleb Mazovetskiy*
+
+*   Fix bug where `ActiveSupport::Timezone.all` would fail when tzinfo data for
+    any timezone defined in `ActiveSupport::TimeZone::MAPPING` is missing.
+
+    *Dominik Sander*
+
+*   Fix bug where `ActiveSupport::Cache` will massively inflate the storage
+    size when compression is enabled (which is true by default). This patch
+    does not attempt to repair existing data: please manually flush the cache
+    to clear out the problematic entries.
+
+    *Godfrey Chan*
+
+*   Fix `ActiveSupport::Cache#read_multi` bug with local cache enabled that was
+    returning instances of `ActiveSupport::Cache::Entry` instead of the raw values.
+
+    *Jason Lee*
+
+
 ## Rails 5.2.0 (April 09, 2018) ##
 
 *   Caching: MemCache and Redis `read_multi` and `fetch_multi` speedup.

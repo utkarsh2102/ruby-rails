@@ -97,6 +97,8 @@ module ActiveSupport #:nodoc:
       # parent.rb then requires namespace/child.rb, the stack will look like
       # [[Object], [Namespace]].
 
+      attr_reader :watching
+
       def initialize
         @watching = []
         @stack = Hash.new { |h, k| h[k] = [] }
@@ -224,6 +226,8 @@ module ActiveSupport #:nodoc:
         Dependencies.require_or_load(file_name)
       end
 
+      # :doc:
+
       # Interprets a file using <tt>mechanism</tt> and marks its defined
       # constants as autoloaded. <tt>file_name</tt> can be either a string or
       # respond to <tt>to_path</tt>.
@@ -242,9 +246,13 @@ module ActiveSupport #:nodoc:
         Dependencies.depend_on(file_name, message)
       end
 
+      # :nodoc:
+
       def load_dependency(file)
         if Dependencies.load? && Dependencies.constant_watch_stack.watching?
-          Dependencies.new_constants_in(Object) { yield }
+          descs = Dependencies.constant_watch_stack.watching.flatten.uniq
+
+          Dependencies.new_constants_in(*descs) { yield }
         else
           yield
         end

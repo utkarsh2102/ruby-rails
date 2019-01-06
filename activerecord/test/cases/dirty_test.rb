@@ -473,6 +473,14 @@ class DirtyTest < ActiveRecord::TestCase
     end
   end
 
+  def test_changes_to_save_should_not_mutate_array_of_hashes
+    topic = Topic.new(author_name: "Bill", content: [{ a: "a" }])
+
+    topic.changes_to_save
+
+    assert_equal [{ a: "a" }], topic.content
+  end
+
   def test_previous_changes
     # original values should be in previous_changes
     pirate = Pirate.new
@@ -875,6 +883,26 @@ class DirtyTest < ActiveRecord::TestCase
         raise "changed? should be false" if changed?
         raise "has_changes_to_save? should be false" if has_changes_to_save?
         raise "saved_changes? should be true" unless saved_changes?
+        raise "id_in_database should not be nil" if id_in_database.nil?
+      end
+    end
+
+    person = klass.create!(first_name: "Sean")
+    assert_not_predicate person, :changed?
+  end
+
+  test "changed? in around callbacks after yield returns false" do
+    klass = Class.new(ActiveRecord::Base) do
+      self.table_name = "people"
+
+      around_create :check_around
+
+      def check_around
+        yield
+        raise "changed? should be false" if changed?
+        raise "has_changes_to_save? should be false" if has_changes_to_save?
+        raise "saved_changes? should be true" unless saved_changes?
+        raise "id_in_database should not be nil" if id_in_database.nil?
       end
     end
 

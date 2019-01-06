@@ -16,7 +16,7 @@ module ActiveStorage
       @upload_options = upload
     end
 
-    def upload(key, io, checksum: nil)
+    def upload(key, io, checksum: nil, **)
       instrument :upload, key: key, checksum: checksum do
         begin
           object_for(key).put(upload_options.merge(body: io, content_md5: checksum))
@@ -33,7 +33,7 @@ module ActiveStorage
         end
       else
         instrument :download, key: key do
-          object_for(key).get.body.read.force_encoding(Encoding::BINARY)
+          object_for(key).get.body.string.force_encoding(Encoding::BINARY)
         end
       end
     end

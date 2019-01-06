@@ -61,14 +61,14 @@ module ActiveJob
         when Array
           argument.map { |arg| serialize_argument(arg) }
         when ActiveSupport::HashWithIndifferentAccess
-          result = serialize_hash(argument)
-          result[WITH_INDIFFERENT_ACCESS_KEY] = serialize_argument(true)
-          result
+          serialize_indifferent_hash(argument)
         when Hash
           symbol_keys = argument.each_key.grep(Symbol).map(&:to_s)
           result = serialize_hash(argument)
           result[SYMBOL_KEYS_KEY] = symbol_keys
           result
+        when -> (arg) { arg.respond_to?(:permitted?) }
+          serialize_indifferent_hash(argument.to_h)
         else
           raise SerializationError.new("Unsupported argument type: #{argument.class.name}")
         end
@@ -77,7 +77,7 @@ module ActiveJob
       def deserialize_argument(argument)
         case argument
         when String
-          GlobalID::Locator.locate(argument) || argument
+          argument
         when *TYPE_WHITELIST
           argument
         when Array
@@ -136,8 +136,17 @@ module ActiveJob
         end
       end
 
+      def serialize_indifferent_hash(indifferent_hash)
+        result = serialize_hash(indifferent_hash)
+        result[WITH_INDIFFERENT_ACCESS_KEY] = serialize_argument(true)
+        result
+      end
+
       def transform_symbol_keys(hash, symbol_keys)
-        hash.transform_keys do |key|
+        # NOTE: HashWithIndifferentAccess#transform_keys always
+        # returns stringified keys with indifferent access
+        # so we call #to_h here to ensure keys are symbolized.
+        hash.to_h.transform_keys do |key|
           if symbol_keys.include?(key)
             key.to_sym
           else

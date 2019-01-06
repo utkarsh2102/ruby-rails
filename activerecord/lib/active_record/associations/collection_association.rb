@@ -45,6 +45,8 @@ module ActiveRecord
       def ids_reader
         if loaded?
           target.pluck(reflection.association_primary_key)
+        elsif !target.empty?
+          load_target.pluck(reflection.association_primary_key)
         else
           @association_ids ||= scope.pluck(reflection.association_primary_key)
         end
@@ -103,9 +105,7 @@ module ActiveRecord
         if attributes.is_a?(Array)
           attributes.collect { |attr| build(attr, &block) }
         else
-          add_to_target(build_record(attributes)) do |record|
-            yield(record) if block_given?
-          end
+          add_to_target(build_record(attributes, &block))
         end
       end
 
@@ -356,15 +356,18 @@ module ActiveRecord
           if attributes.is_a?(Array)
             attributes.collect { |attr| _create_record(attr, raise, &block) }
           else
+            record = build_record(attributes, &block)
             transaction do
-              add_to_target(build_record(attributes)) do |record|
-                yield(record) if block_given?
-                insert_record(record, true, raise) {
+              result = nil
+              add_to_target(record) do
+                result = insert_record(record, true, raise) {
                   @_was_loaded = loaded?
                   @association_ids = nil
                 }
               end
+              raise ActiveRecord::Rollback unless result
             end
+            record
           end
         end
 
@@ -408,9 +411,9 @@ module ActiveRecord
         end
 
         def replace_records(new_target, original_target)
-          delete(target - new_target)
+          delete(difference(target, new_target))
 
-          unless concat(new_target - target)
+          unless concat(difference(new_target, target))
             @target = original_target
             raise RecordNotSaved, "Failed to replace #{reflection.name} because one or more of the " \
                                   "new records could not be saved."
@@ -420,7 +423,7 @@ module ActiveRecord
         end
 
         def replace_common_records_in_memory(new_target, original_target)
-          common_records = new_target & original_target
+          common_records = intersection(new_target, original_target)
           common_records.each do |record|
             skip_callbacks = true
             replace_on_target(record, @target.index(record), skip_callbacks)
@@ -442,7 +445,9 @@ module ActiveRecord
             end
           end
 
-          result && records
+          raise ActiveRecord::Rollback unless result
+
+          records
         end
 
         def replace_on_target(record, index, skip_callbacks)

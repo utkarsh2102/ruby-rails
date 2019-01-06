@@ -1,3 +1,45 @@
+## Rails 5.2.2 (December 04, 2018) ##
+
+*   No changes.
+
+
+## Rails 5.2.1.1 (November 27, 2018) ##
+
+*   No changes.
+
+
+## Rails 5.2.1 (August 07, 2018) ##
+
+*   Fix leak of `skip_default_ids` and `allow_method_names_outside_object` options
+    to HTML attributes.
+
+    *Yurii Cherniavskyi*
+
+*   Fix issue with `button_to`'s `to_form_params`
+
+    `button_to` was throwing exception when invoked with `params` hash that
+    contains symbol and string keys. The reason for the exception was that
+    `to_form_params` was comparing the given symbol and string keys.
+
+    The issue is fixed by turning all keys to strings inside
+    `to_form_params` before comparing them.
+
+    *Georgi Georgiev*
+
+*   Fix JavaScript views rendering does not work with Firefox when using
+    Content Security Policy.
+
+    Fixes #32577.
+
+    *Yuji Yaginuma*
+
+*   Add the `nonce: true` option for `javascript_include_tag` helper to
+    support automatic nonce generation for Content Security Policy.
+    Works the same way as `javascript_tag nonce: true` does.
+
+    *Yaroslav Markin*
+
+
 ## Rails 5.2.0 (April 09, 2018) ##
 
 *   Pass the `:skip_pipeline` option in `image_submit_tag` when calling `path_to_image`.

@@ -117,13 +117,11 @@ module ActiveRecord
           if other.klass == relation.klass
             relation.joins!(*other.joins_values)
           else
-            alias_tracker = nil
             joins_dependency = other.joins_values.map do |join|
               case join
               when Hash, Symbol, Array
-                alias_tracker ||= other.alias_tracker
                 ActiveRecord::Associations::JoinDependency.new(
-                  other.klass, other.table, join, alias_tracker
+                  other.klass, other.table, join
                 )
               else
                 join
@@ -140,13 +138,11 @@ module ActiveRecord
           if other.klass == relation.klass
             relation.left_outer_joins!(*other.left_outer_joins_values)
           else
-            alias_tracker = nil
             joins_dependency = other.left_outer_joins_values.map do |join|
               case join
               when Hash, Symbol, Array
-                alias_tracker ||= other.alias_tracker
                 ActiveRecord::Associations::JoinDependency.new(
-                  other.klass, other.table, join, alias_tracker
+                  other.klass, other.table, join
                 )
               else
                 join
@@ -160,10 +156,10 @@ module ActiveRecord
         def merge_multi_values
           if other.reordering_value
             # override any order specified in the original relation
-            relation.reorder! other.order_values
+            relation.reorder!(*other.order_values)
           elsif other.order_values.any?
             # merge in order_values from relation
-            relation.order! other.order_values
+            relation.order!(*other.order_values)
           end
 
           extensions = other.extensions - relation.extensions

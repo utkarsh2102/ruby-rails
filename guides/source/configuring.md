@@ -165,7 +165,7 @@ pipeline is enabled. It is set to `true` by default.
 
 * `config.assets.precompile` allows you to specify additional assets (other than `application.css` and `application.js`) which are to be precompiled when `rake assets:precompile` is run.
 
-* `config.assets.unknown_asset_fallback` allows you to modify the behavior of the asset pipeline when an asset is not in the pipeline, if you use sprockets-rails 3.2.0 or newer. Defaults to `true`.
+* `config.assets.unknown_asset_fallback` allows you to modify the behavior of the asset pipeline when an asset is not in the pipeline, if you use sprockets-rails 3.2.0 or newer. Defaults to `false`.
 
 * `config.assets.prefix` defines the prefix where assets are served from. Defaults to `/assets`.
 
@@ -502,9 +502,9 @@ Defaults to `'signed cookie'`.
 * `config.action_dispatch.cookies_rotations` allows rotating
   secrets, ciphers, and digests for encrypted and signed cookies.
 
-* `config.action_dispatch.use_authenticated_cookie_encryption` controls encrypted cookies to use AES-256-GC
-  authenticated encryption and if signed and encrypted cookies are going to embed the expiry information
-  in the value. It defaults to `false`.
+* `config.action_dispatch.use_authenticated_cookie_encryption` controls whether
+  signed and encrypted cookies use the AES-256-GCM cipher or
+  the older AES-256-CBC cipher. It defaults to `true`.
 
 * `config.action_dispatch.perform_deep_munge` configures whether `deep_munge`
   method should be performed on the parameters. See [Security Guide](security.html#unsafe-query-generation)
@@ -682,6 +682,8 @@ There are a few configuration options available in Active Support:
 
 * `config.active_support.use_sha1_digests` specifies whether to use SHA-1 instead of MD5 to generate non-sensitive digests, such as the ETag header. Defaults to false.
 
+* `config.active_support.use_authenticated_message_encryption` specifies whether to use AES-256-GCM authenticated encryption as the default cipher for encrypting messages instead of AES-256-CBC. This is false by default, but enabled when loading defaults for Rails 5.2.
+
 * `ActiveSupport::Logger.silencer` is set to `false` to disable the ability to silence logging in a block. The default is `true`.
 
 * `ActiveSupport::Cache::Store.logger` specifies the logger to use within cache store operations.
@@ -774,7 +776,7 @@ normal Rails server.
    config.active_storage.paths[:ffprobe] = '/usr/local/bin/ffprobe'
    ```
 
-* `config.active_storage.variable_content_types` accepts an array of strings indicating the content types that Active Storage can transform through ImageMagick. The default is `%w(image/png image/gif image/jpg image/jpeg image/vnd.adobe.photoshop)`.
+* `config.active_storage.variable_content_types` accepts an array of strings indicating the content types that Active Storage can transform through ImageMagick. The default is `%w(image/png image/gif image/jpg image/jpeg image/vnd.adobe.photoshop image/vnd.microsoft.icon)`.
 
 * `config.active_storage.content_types_to_serve_as_binary` accepts an array of strings indicating the content types that Active Storage will always serve as an attachment, rather than inline. The default is `%w(text/html
 text/javascript image/svg+xml application/postscript application/x-shockwave-flash text/xml application/xml application/xhtml+xml)`.
@@ -782,13 +784,13 @@ text/javascript image/svg+xml application/postscript application/x-shockwave-fla
 * `config.active_storage.queue` can be used to set the name of the Active Job queue used to perform jobs like analyzing the content of a blob or purging a blog.
 
   ```ruby
-  config.active_job.queue = :low_priority
+  config.active_storage.queue = :low_priority
   ```
 
 * `config.active_storage.logger` can be used to set the logger used by Active Storage. Accepts a logger conforming to the interface of Log4r or the default Ruby Logger class.
 
   ```ruby
-  config.active_job.logger = ActiveSupport::Logger.new(STDOUT)
+  config.active_storage.logger = ActiveSupport::Logger.new(STDOUT)
   ```
 
 ### Configuring a Database

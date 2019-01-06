@@ -191,6 +191,27 @@ class ParametersAccessorsTest < ActiveSupport::TestCase
     assert_not_predicate @params.transform_values { |v| v }, :permitted?
   end
 
+  test "transform_values converts hashes to parameters" do
+    @params.transform_values do |value|
+      assert_kind_of ActionController::Parameters, value
+      value
+    end
+  end
+
+  test "transform_values without block yieds an enumerator" do
+    assert_kind_of Enumerator, @params.transform_values
+  end
+
+  test "transform_values! converts hashes to parameters" do
+    @params.transform_values! do |value|
+      assert_kind_of ActionController::Parameters, value
+    end
+  end
+
+  test "transform_values! without block yields an enumerator" do
+    assert_kind_of Enumerator, @params.transform_values!
+  end
+
   test "value? returns true if the given value is present in the params" do
     params = ActionController::Parameters.new(city: "Chicago", state: "Illinois")
     assert params.value?("Chicago")
@@ -285,6 +306,14 @@ class ParametersAccessorsTest < ActiveSupport::TestCase
       assert @params.dig(:person, :addresses).all? do |value|
         value.is_a?(ActionController::Parameters)
       end
+    end
+
+    test "mutating #dig return value mutates underlying parameters" do
+      @params.dig(:person, :name)[:first] = "Bill"
+      assert_equal "Bill", @params.dig(:person, :name, :first)
+
+      @params.dig(:person, :addresses)[0] = { city: "Boston", state: "Massachusetts" }
+      assert_equal "Boston", @params.dig(:person, :addresses, 0, :city)
     end
   else
     test "ActionController::Parameters does not respond to #dig on Ruby 2.2" do

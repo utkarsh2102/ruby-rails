@@ -390,7 +390,7 @@ module ActionDispatch
       # for root cases, where the latter is the correct one.
       def self.normalize_path(path)
         path = Journey::Router::Utils.normalize_path(path)
-        path.gsub!(%r{/(\(+)/?}, '\1/') unless path =~ %r{^/\(+[^)]+\)$}
+        path.gsub!(%r{/(\(+)/?}, '\1/') unless path =~ %r{^/(\(+[^)]+\)){1,}$}
         path
       end
 
@@ -664,6 +664,7 @@ module ActionDispatch
           def define_generate_prefix(app, name)
             _route = @set.named_routes.get name
             _routes = @set
+            _url_helpers = @set.url_helpers
 
             script_namer = ->(options) do
               prefix_options = options.slice(*_route.segment_keys)
@@ -675,7 +676,7 @@ module ActionDispatch
 
               # We must actually delete prefix segment keys to avoid passing them to next url_for.
               _route.segment_keys.each { |k| options.delete(k) }
-              _routes.url_helpers.send("#{name}_path", prefix_options)
+              _url_helpers.send("#{name}_path", prefix_options)
             end
 
             app.routes.define_mounted_helper(name, script_namer)
