@@ -1,3 +1,12 @@
+rails (2:5.2.2+dfsg-1) unstable; urgency=medium
+
+  * New upstream version 5.2.2 (Closes: #914847, #914848)
+    (Fixes: CVE-2018-16476, CVE-2018-16477)
+  * Delete 0002-edit-activestorage-webpack-config-js.patch
+  * Add 0002-disable-uglify-in-activestorage-rollup-config-js.patch
+
+ -- Sruthi Chandran <srud@disroot.org>  Mon, 07 Jan 2019 00:23:02 +0530
+
 rails (2:5.2.0+dfsg-2) unstable; urgency=medium
 
   * Re-upload to unstable
