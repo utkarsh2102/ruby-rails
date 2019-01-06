@@ -1,0 +1,34 @@
+Description: rollup-plugin-uglify is not packaged, hence disabling it.
+
+--- a/activestorage/rollup.config.js
++++ b/activestorage/rollup.config.js
+@@ -1,16 +1,16 @@
+ import resolve from "rollup-plugin-node-resolve"
+ import commonjs from "rollup-plugin-commonjs"
+ import babel from "rollup-plugin-babel"
+-import uglify from "rollup-plugin-uglify"
++//import uglify from "rollup-plugin-uglify"
+ 
+-const uglifyOptions = {
++/*const uglifyOptions = {
+   mangle: false,
+   compress: false,
+   output: {
+     beautify: true,
+     indent_level: 2
+   }
+-}
++}*/
+ 
+ export default {
+   input: "app/javascript/activestorage/index.js",
+@@ -22,7 +22,7 @@
+   plugins: [
+     resolve(),
+     commonjs(),
+-    babel(),
+-    uglify(uglifyOptions)
++    babel()
++//    uglify(uglifyOptions)
+   ]
+ }

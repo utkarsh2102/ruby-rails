@@ -1,2 +1,2 @@
 0001-Be-careful-with-that-bundler.patch
-0002-edit-activestorage-webpack-config-js.patch
+0002-disable-uglify-in-activestorage-rollup-config-js.patch
