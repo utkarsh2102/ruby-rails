@@ -8,6 +8,7 @@ require "jobs/logging_job"
 require "jobs/nested_job"
 require "jobs/rescue_job"
 require "jobs/inherited_job"
+require "jobs/multiple_kwargs_job"
 require "models/person"
 
 class EnqueuedJobsTest < ActiveJob::TestCase
@@ -397,16 +398,16 @@ class EnqueuedJobsTest < ActiveJob::TestCase
 
   def test_assert_enqueued_job_returns
     job = assert_enqueued_with(job: LoggingJob) do
-      LoggingJob.set(wait_until: 5.minutes.from_now).perform_later(1, 2, 3)
+      LoggingJob.set(wait_until: 5.minutes.from_now).perform_later(1, 2, 3, keyword: true)
     end
 
     assert_instance_of LoggingJob, job
     assert_in_delta 5.minutes.from_now, job.scheduled_at, 1
     assert_equal "default", job.queue_name
-    assert_equal [1, 2, 3], job.arguments
+    assert_equal [1, 2, 3, { keyword: true }], job.arguments
   end
 
-  def test_assert_enqueued_job_failure
+  def test_assert_enqueued_with_failure
     assert_raise ActiveSupport::TestCase::Assertion do
       assert_enqueued_with(job: LoggingJob, queue: "default") do
         NestedJob.perform_later
@@ -433,6 +434,12 @@ class EnqueuedJobsTest < ActiveJob::TestCase
   def test_assert_enqueued_job_with_at_option
     assert_enqueued_with(job: HelloJob, at: Date.tomorrow.noon) do
       HelloJob.set(wait_until: Date.tomorrow.noon).perform_later
+    end
+  end
+
+  def test_assert_enqueued_with_with_hash_arg
+    assert_enqueued_with(job: MultipleKwargsJob, args: [{ argument1: 1, argument2: { a: 1, b: 2 } }]) do
+      MultipleKwargsJob.perform_later(argument2: { b: 2, a: 1 }, argument1: 1)
     end
   end
 
@@ -824,18 +831,18 @@ class PerformedJobsTest < ActiveJob::TestCase
     end
   end
 
-  def test_assert_performed_job_returns
-    job = assert_performed_with(job: NestedJob, queue: "default") do
-      NestedJob.perform_later
+  def test_assert_performed_with_returns
+    job = assert_performed_with(job: LoggingJob, queue: "default") do
+      LoggingJob.perform_later(keyword: true)
     end
 
-    assert_instance_of NestedJob, job
+    assert_instance_of LoggingJob, job
     assert_nil job.scheduled_at
-    assert_equal [], job.arguments
+    assert_equal [{ keyword: true }], job.arguments
     assert_equal "default", job.queue_name
   end
 
-  def test_assert_performed_job_failure
+  def test_assert_performed_with_failure
     assert_raise ActiveSupport::TestCase::Assertion do
       assert_performed_with(job: LoggingJob) do
         HelloJob.perform_later
@@ -858,6 +865,12 @@ class PerformedJobsTest < ActiveJob::TestCase
       assert_performed_with(job: HelloJob, at: Date.today.noon) do
         HelloJob.set(wait_until: Date.tomorrow.noon).perform_later
       end
+    end
+  end
+
+  def test_assert_performed_with_with_hash_arg
+    assert_performed_with(job: MultipleKwargsJob, args: [{ argument1: 1, argument2: { a: 1, b: 2 } }]) do
+      MultipleKwargsJob.perform_later(argument2: { b: 2, a: 1 }, argument1: 1)
     end
   end
 

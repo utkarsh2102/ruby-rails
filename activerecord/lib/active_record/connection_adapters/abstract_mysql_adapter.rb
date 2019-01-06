@@ -560,17 +560,6 @@ module ActiveRecord
           @max_allowed_packet ||= (show_variable("max_allowed_packet") - bytes_margin)
         end
 
-        def with_multi_statements
-          previous_flags = @config[:flags]
-          @config[:flags] = Mysql2::Client::MULTI_STATEMENTS
-          reconnect!
-
-          yield
-        ensure
-          @config[:flags] = previous_flags
-          reconnect!
-        end
-
         def initialize_type_map(m = type_map)
           super
 

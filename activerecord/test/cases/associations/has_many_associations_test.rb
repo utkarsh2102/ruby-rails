@@ -987,6 +987,26 @@ class HasManyAssociationsTest < ActiveRecord::TestCase
     assert_not_empty company.contracts
   end
 
+  def test_collection_size_with_dirty_target
+    post = posts(:thinking)
+    assert_equal [], post.reader_ids
+    assert_equal 0, post.readers.size
+    post.readers.reset
+    post.readers.build
+    assert_equal [nil], post.reader_ids
+    assert_equal 1, post.readers.size
+  end
+
+  def test_collection_empty_with_dirty_target
+    post = posts(:thinking)
+    assert_equal [], post.reader_ids
+    assert_empty post.readers
+    post.readers.reset
+    post.readers.build
+    assert_equal [nil], post.reader_ids
+    assert_not_empty post.readers
+  end
+
   def test_collection_size_twice_for_regressions
     post = posts(:thinking)
     assert_equal 0, post.readers.size
@@ -2274,6 +2294,19 @@ class HasManyAssociationsTest < ActiveRecord::TestCase
   def test_collection_association_with_private_kernel_method
     firm = companies(:first_firm)
     assert_equal [accounts(:signals37)], firm.accounts.open
+    assert_equal [accounts(:signals37)], firm.accounts.available
+  end
+
+  def test_association_with_or_doesnt_set_inverse_instance_key
+    firm = companies(:first_firm)
+    accounts = firm.accounts.or(Account.where(firm_id: nil)).order(:id)
+    assert_equal [firm.id, nil], accounts.map(&:firm_id)
+  end
+
+  def test_association_with_rewhere_doesnt_set_inverse_instance_key
+    firm = companies(:first_firm)
+    accounts = firm.accounts.rewhere(firm_id: [firm.id, nil]).order(:id)
+    assert_equal [firm.id, nil], accounts.map(&:firm_id)
   end
 
   test "first_or_initialize adds the record to the association" do
@@ -2618,6 +2651,17 @@ class HasManyAssociationsTest < ActiveRecord::TestCase
       bulb = car.bulbs.create!
 
       assert_equal [bulb], car.bulbs
+    end
+  end
+
+  def test_create_children_could_be_rolled_back_by_after_save
+    firm = Firm.create!(name: "A New Firm, Inc")
+    assert_no_difference "Client.count" do
+      client = firm.clients.create(name: "New Client") do |cli|
+        cli.rollback_on_save = true
+        assert_not cli.rollback_on_create_called
+      end
+      assert client.rollback_on_create_called
     end
   end
 

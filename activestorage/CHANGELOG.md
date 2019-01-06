@@ -1,3 +1,46 @@
+## Rails 5.2.2 (December 04, 2018) ##
+
+*   Support multiple submit buttons in Active Storage forms.
+
+    *Chrıs Seelus*
+
+*   Fix `ArgumentError` when uploading to amazon s3
+
+    *Hiroki Sanpei*
+
+*   Add a foreign-key constraint to the `active_storage_attachments` table for blobs.
+
+    *George Claghorn*
+
+*   Discard `ActiveStorage::PurgeJobs` for missing blobs.
+
+    *George Claghorn*
+
+*   Fix uploading Tempfiles to Azure Storage.
+
+    *George Claghorn*
+
+
+## Rails 5.2.1.1 (November 27, 2018) ##
+
+*   Prevent content type and disposition bypass in storage service URLs.
+
+    Fix CVE-2018-16477.
+
+    *Rosa Gutierrez*
+
+
+## Rails 5.2.1 (August 07, 2018) ##
+
+*   Fix direct upload with zero-byte files.
+
+    *George Claghorn*
+
+*   Exclude JSON root from `active_storage/direct_uploads#create` response.
+
+    *Javan Makhmali*
+
+
 ## Rails 5.2.0 (April 09, 2018) ##
 
 *   Allow full use of the AWS S3 SDK options for authentication. If an

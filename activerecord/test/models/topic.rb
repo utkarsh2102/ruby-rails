@@ -47,6 +47,7 @@ class Topic < ActiveRecord::Base
 
   has_many :unique_replies, dependent: :destroy, foreign_key: "parent_id"
   has_many :silly_unique_replies, dependent: :destroy, foreign_key: "parent_id"
+  has_many :validate_unique_content_replies, dependent: :destroy, foreign_key: "parent_id"
 
   serialize :content
 
@@ -81,6 +82,16 @@ class Topic < ActiveRecord::Base
     self.class.after_initialize_called = true
   end
 
+  attr_accessor :after_touch_called
+
+  after_initialize do
+    self.after_touch_called = 0
+  end
+
+  after_touch do
+    self.after_touch_called += 1
+  end
+
   def approved=(val)
     @custom_approved = val
     write_attribute(:approved, val)
@@ -97,7 +108,7 @@ class Topic < ActiveRecord::Base
     end
 
     def set_email_address
-      unless persisted?
+      unless persisted? || will_save_change_to_author_email_address?
         self.author_email_address = "test@test.com"
       end
     end

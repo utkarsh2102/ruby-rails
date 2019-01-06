@@ -8,20 +8,14 @@ class ActiveStorage::BlobTest < ActiveSupport::TestCase
   include ActiveSupport::Testing::MethodCallAssertions
 
   test ".unattached scope returns not attached blobs" do
-    class UserWithHasOneAttachedDependentFalse < User
-      has_one_attached :avatar, dependent: false
+    [ create_blob(filename: "funky.jpg"), create_blob(filename: "town.jpg") ].tap do |blobs|
+      User.create! name: "DHH", avatar: blobs.first
+      assert_includes ActiveStorage::Blob.unattached, blobs.second
+      assert_not_includes ActiveStorage::Blob.unattached, blobs.first
+
+      User.create! name: "Jason", avatar: blobs.second
+      assert_not_includes ActiveStorage::Blob.unattached, blobs.second
     end
-
-    ActiveStorage::Blob.delete_all
-    blob_1 = create_blob filename: "funky.jpg"
-    blob_2 = create_blob filename: "town.jpg"
-
-    user = UserWithHasOneAttachedDependentFalse.create!
-    user.avatar.attach blob_1
-
-    assert_equal [blob_2], ActiveStorage::Blob.unattached
-    user.destroy
-    assert_equal [blob_1, blob_2].map(&:id).sort, ActiveStorage::Blob.unattached.pluck(:id).sort
   end
 
   test "create after upload sets byte size and checksum" do
@@ -62,7 +56,7 @@ class ActiveStorage::BlobTest < ActiveSupport::TestCase
   end
 
   test "download yields chunks" do
-    blob   = create_blob data: "a" * 75.kilobytes
+    blob   = create_blob data: "a" * 5.0625.megabytes
     chunks = []
 
     blob.download do |chunk|
@@ -70,8 +64,8 @@ class ActiveStorage::BlobTest < ActiveSupport::TestCase
     end
 
     assert_equal 2, chunks.size
-    assert_equal "a" * 64.kilobytes, chunks.first
-    assert_equal "a" * 11.kilobytes, chunks.second
+    assert_equal "a" * 5.megabytes, chunks.first
+    assert_equal "a" * 64.kilobytes, chunks.second
   end
 
   test "urls expiring in 5 minutes" do
@@ -83,12 +77,21 @@ class ActiveStorage::BlobTest < ActiveSupport::TestCase
     end
   end
 
-  test "urls force attachment as content disposition for content types served as binary" do
+  test "urls force content_type to binary and attachment as content disposition for content types served as binary" do
     blob = create_blob(content_type: "text/html")
 
     freeze_time do
-      assert_equal expected_url_for(blob, disposition: :attachment), blob.service_url
-      assert_equal expected_url_for(blob, disposition: :attachment), blob.service_url(disposition: :inline)
+      assert_equal expected_url_for(blob, disposition: :attachment, content_type: "application/octet-stream"), blob.service_url
+      assert_equal expected_url_for(blob, disposition: :attachment, content_type: "application/octet-stream"), blob.service_url(disposition: :inline)
+    end
+  end
+
+  test "urls force attachment as content disposition when the content type is not allowed inline" do
+    blob = create_blob(content_type: "application/zip")
+
+    freeze_time do
+      assert_equal expected_url_for(blob, disposition: :attachment, content_type: "application/zip"), blob.service_url
+      assert_equal expected_url_for(blob, disposition: :attachment, content_type: "application/zip"), blob.service_url(disposition: :inline)
     end
   end
 
@@ -110,7 +113,7 @@ class ActiveStorage::BlobTest < ActiveSupport::TestCase
     options = [
       blob.key,
       expires_in: blob.service.url_expires_in,
-      disposition: :inline,
+      disposition: :attachment,
       content_type: blob.content_type,
       filename: blob.filename,
       thumb_size: "300x300",
@@ -136,10 +139,22 @@ class ActiveStorage::BlobTest < ActiveSupport::TestCase
     assert_not ActiveStorage::Blob.service.exist?(variant.key)
   end
 
+  test "purge does nothing when attachments exist" do
+    create_blob.tap do |blob|
+      User.create! name: "DHH", avatar: blob
+      assert_no_difference(-> { ActiveStorage::Blob.count }) { blob.purge }
+      assert ActiveStorage::Blob.service.exist?(blob.key)
+    end
+  end
+
   private
-    def expected_url_for(blob, disposition: :inline, filename: nil)
+    def expected_url_for(blob, disposition: :attachment, filename: nil, content_type: nil)
       filename ||= blob.filename
-      query_string = { content_type: blob.content_type, disposition: "#{disposition}; #{filename.parameters}" }.to_param
-      "https://example.com/rails/active_storage/disk/#{ActiveStorage.verifier.generate(blob.key, expires_in: 5.minutes, purpose: :blob_key)}/#{filename}?#{query_string}"
+      content_type ||= blob.content_type
+
+      query = { disposition: disposition.to_s + "; #{filename.parameters}", content_type: content_type }
+      key_params = { key: blob.key }.merge(query)
+
+      "https://example.com/rails/active_storage/disk/#{ActiveStorage.verifier.generate(key_params, expires_in: 5.minutes, purpose: :blob_key)}/#{filename}?#{query.to_param}"
     end
 end

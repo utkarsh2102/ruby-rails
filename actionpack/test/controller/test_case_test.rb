@@ -223,6 +223,27 @@ XML
     assert_equal params.to_query, @response.body
   end
 
+  def test_params_round_trip
+    params = {"foo"=>{"contents"=>[{"name"=>"gorby", "id"=>"123"}, {"name"=>"puff", "d"=>"true"}]}}
+    post :test_params, params: params.dup
+
+    controller_info = { "controller" => "test_case_test/test", "action" => "test_params" }
+    assert_equal params.merge(controller_info), JSON.parse(@response.body)
+  end
+
+  def test_handle_to_params
+    klass = Class.new do
+      def to_param
+        "bar"
+      end
+    end
+
+    post :test_params, params: { foo: klass.new }
+
+    assert_equal JSON.parse(@response.body)["foo"], "bar"
+  end
+
+
   def test_body_stream
     params = Hash[:page, { name: "page name" }, "some key", 123]
 
@@ -679,6 +700,22 @@ XML
 
     get :no_op, params: { foo: "baz" }
     assert_equal "baz", @request.filtered_parameters[:foo]
+  end
+
+  def test_raw_post_reset_between_post_requests
+    post :no_op, params: { foo: "bar" }
+    assert_equal "foo=bar", @request.raw_post
+
+    post :no_op, params: { foo: "baz" }
+    assert_equal "foo=baz", @request.raw_post
+  end
+
+  def test_content_length_reset_after_post_request
+    post :no_op, params: { foo: "bar" }
+    assert_not_equal 0, @request.content_length
+
+    get :no_op
+    assert_equal 0, @request.content_length
   end
 
   def test_path_is_kept_after_the_request

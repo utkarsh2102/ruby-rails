@@ -297,6 +297,30 @@ class AppGeneratorTest < Rails::Generators::TestCase
     end
   end
 
+  def test_app_update_does_not_generate_assets_initializer_when_skip_sprockets_is_given
+    app_root = File.join(destination_root, "myapp")
+    run_generator [app_root, "--skip-sprockets"]
+
+    stub_rails_application(app_root) do
+      generator = Rails::Generators::AppGenerator.new ["rails"], { update: true, skip_sprockets: true }, { destination_root: app_root, shell: @shell }
+      generator.send(:app_const)
+      quietly { generator.send(:update_config_files) }
+
+      assert_no_file "#{app_root}/config/initializers/assets.rb"
+    end
+  end
+
+  def test_app_update_does_not_generate_spring_contents_when_skip_spring_is_given
+    app_root = File.join(destination_root, "myapp")
+    run_generator [app_root, "--skip-spring"]
+
+    FileUtils.cd(app_root) do
+      quietly { system("bin/rails app:update") }
+    end
+
+    assert_no_file "#{app_root}/config/spring.rb"
+  end
+
   def test_app_update_does_not_generate_action_cable_contents_when_skip_action_cable_is_given
     app_root = File.join(destination_root, "myapp")
     run_generator [app_root, "--skip-action-cable"]
@@ -814,9 +838,18 @@ class AppGeneratorTest < Rails::Generators::TestCase
   def test_bootsnap
     run_generator
 
-    assert_gem "bootsnap"
-    assert_file "config/boot.rb" do |content|
-      assert_match(/require 'bootsnap\/setup'/, content)
+    unless defined?(JRUBY_VERSION)
+      assert_gem "bootsnap"
+      assert_file "config/boot.rb" do |content|
+        assert_match(/require 'bootsnap\/setup'/, content)
+      end
+    else
+       assert_file "Gemfile" do |content|
+        assert_no_match(/bootsnap/, content)
+      end
+      assert_file "config/boot.rb" do |content|
+        assert_no_match(/require 'bootsnap\/setup'/, content)
+      end
     end
   end
 
@@ -849,7 +882,15 @@ class AppGeneratorTest < Rails::Generators::TestCase
       assert_match(/ruby '#{RUBY_VERSION}'/, content)
     end
     assert_file ".ruby-version" do |content|
-      assert_match(/#{RUBY_VERSION}/, content)
+      if ENV["RBENV_VERSION"]
+        assert_match(/#{ENV["RBENV_VERSION"]}/, content)
+      elsif ENV["rvm_ruby_string"]
+        assert_match(/#{ENV["rvm_ruby_string"]}/, content)
+      elsif defined?(JRUBY_VERSION)
+        assert_match(/jruby-#{JRUBY_VERSION}/, content)
+      else
+        assert_match(/#{RUBY_ENGINE}-#{RUBY_VERSION}/, content)
+      end
     end
   end
 
@@ -937,6 +978,15 @@ class AppGeneratorTest < Rails::Generators::TestCase
 
     assert_file("test/system/.keep")
     assert_directory("test/system")
+  end
+
+  unless Gem.win_platform?
+    def test_master_key_is_only_readable_by_the_owner
+      run_generator
+
+      stat = File.stat("config/master.key")
+      assert_equal "100600", sprintf("%o", stat.mode)
+    end
   end
 
   private

@@ -16,9 +16,6 @@ module ActiveRecord
 
         class_attribute :partial_writes, instance_writer: false, default: true
 
-        after_create { changes_applied }
-        after_update { changes_applied }
-
         # Attribute methods for "changed in last call to save?"
         attribute_method_affix(prefix: "saved_change_to_", suffix: "?")
         attribute_method_prefix("saved_change_to_")
@@ -114,27 +111,35 @@ module ActiveRecord
 
       # Alias for +changed+
       def changed_attribute_names_to_save
-        changes_to_save.keys
+        mutations_from_database.changed_attribute_names
       end
 
       # Alias for +changed_attributes+
       def attributes_in_database
-        changes_to_save.transform_values(&:first)
+        mutations_from_database.changed_values
       end
 
       private
-        def write_attribute_without_type_cast(attr_name, _)
-          result = super
-          clear_attribute_change(attr_name)
+        def write_attribute_without_type_cast(attr_name, value)
+          name = attr_name.to_s
+          if self.class.attribute_alias?(name)
+            name = self.class.attribute_alias(name)
+          end
+          result = super(name, value)
+          clear_attribute_change(name)
           result
         end
 
         def _update_record(*)
-          partial_writes? ? super(keys_for_partial_write) : super
+          affected_rows = partial_writes? ? super(keys_for_partial_write) : super
+          changes_applied
+          affected_rows
         end
 
         def _create_record(*)
-          partial_writes? ? super(keys_for_partial_write) : super
+          id = partial_writes? ? super(keys_for_partial_write) : super
+          changes_applied
+          id
         end
 
         def keys_for_partial_write

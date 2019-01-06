@@ -572,6 +572,16 @@ class HasManyThroughAssociationsTest < ActiveRecord::TestCase
     assert_not_includes posts(:welcome).reload.people.reload, people(:michael)
   end
 
+  def test_replace_association_with_duplicates
+    post   = posts(:thinking)
+    person = people(:david)
+
+    assert_difference "post.people.count", 2 do
+      post.people = [person]
+      post.people = [person, person]
+    end
+  end
+
   def test_replace_order_is_preserved
     posts(:welcome).people.clear
     posts(:welcome).people = [people(:david), people(:michael)]
@@ -738,6 +748,18 @@ class HasManyThroughAssociationsTest < ActiveRecord::TestCase
       [:added, :before, "Roger"],
       [:added, :after, "Roger"]
     ], log.last(4)
+
+    post.people_with_callbacks.build { |person| person.first_name = "Ted" }
+    assert_equal [
+      [:added, :before, "Ted"],
+      [:added, :after, "Ted"]
+    ], log.last(2)
+
+    post.people_with_callbacks.create { |person| person.first_name = "Sam" }
+    assert_equal [
+      [:added, :before, "Sam"],
+      [:added, :after, "Sam"]
+    ], log.last(2)
   end
 
   def test_dynamic_find_should_respect_association_include
@@ -1276,6 +1298,10 @@ class HasManyThroughAssociationsTest < ActiveRecord::TestCase
 
   def test_has_many_through_with_scope_that_has_joined_same_table_with_parent_relation
     assert_equal authors(:david), Author.joins(:comments_for_first_author).take
+  end
+
+  def test_has_many_through_with_left_joined_same_table_with_through_table
+    assert_equal [comments(:eager_other_comment1)], authors(:mary).comments.left_joins(:post)
   end
 
   def test_has_many_through_with_unscope_should_affect_to_through_scope

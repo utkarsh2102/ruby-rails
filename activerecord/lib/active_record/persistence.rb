@@ -97,13 +97,11 @@ module ActiveRecord
       # When running callbacks is not needed for each record update,
       # it is preferred to use {update_all}[rdoc-ref:Relation#update_all]
       # for updating all records in a single query.
-      def update(id = :all, attributes)
+      def update(id, attributes)
         if id.is_a?(Array)
           id.map { |one_id| find(one_id) }.each_with_index { |object, idx|
             object.update(attributes[idx])
           }
-        elsif id == :all
-          all.each { |record| record.update(attributes) }
         else
           if ActiveRecord::Base === id
             raise ArgumentError,
@@ -373,7 +371,7 @@ module ActiveRecord
       became = klass.allocate
       became.send(:initialize)
       became.instance_variable_set("@attributes", @attributes)
-      became.instance_variable_set("@mutations_from_database", @mutations_from_database) if defined?(@mutations_from_database)
+      became.instance_variable_set("@mutations_from_database", @mutations_from_database ||= nil)
       became.instance_variable_set("@changed_attributes", attributes_changed_by_setter)
       became.instance_variable_set("@new_record", new_record?)
       became.instance_variable_set("@destroyed", destroyed?)
@@ -473,14 +471,15 @@ module ActiveRecord
         verify_readonly_attribute(key.to_s)
       end
 
+      id_in_database = self.id_in_database
+      attributes.each do |k, v|
+        write_attribute_without_type_cast(k, v)
+      end
+
       affected_rows = self.class._update_record(
         attributes,
         self.class.primary_key => id_in_database
       )
-
-      attributes.each do |k, v|
-        write_attribute_without_type_cast(k, v)
-      end
 
       affected_rows == 1
     end

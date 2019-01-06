@@ -973,16 +973,16 @@ The `get` method kicks off the web request and populates the results into the `@
 
 All of these keyword arguments are optional.
 
-Example: Calling the `:show` action, passing an `id` of 12 as the `params` and setting `HTTP_REFERER` header:
+Example: Calling the `:show` action for the first `Article`, passing in an `HTTP_REFERER` header:
 
 ```ruby
-get article_url, params: { id: 12 }, headers: { "HTTP_REFERER" => "http://example.com/home" }
+get article_url(Article.first), headers: { "HTTP_REFERER" => "http://example.com/home" }
 ```
 
-Another example: Calling the `:update` action, passing an `id` of 12 as the `params` as an Ajax request.
+Another example: Calling the `:update` action for the last `Article`, passing in new text for the `title` in `params`, as an Ajax request:
 
 ```ruby
-patch article_url, params: { id: 12 }, xhr: true
+patch article_url(Article.last), params: { article: { title: "updated" } }, xhr: true
 ```
 
 NOTE: If you try running `test_should_create_article` test from `articles_controller_test.rb` it will fail on account of the newly added model level validation and rightly so.
@@ -1373,7 +1373,7 @@ located under the `test/helpers` directory.
 Given we have the following helper:
 
 ```ruby
-module UserHelper
+module UsersHelper
   def link_to_user(user)
     link_to "#{user.first_name} #{user.last_name}", user
   end
@@ -1383,7 +1383,7 @@ end
 We can test the output of this method like this:
 
 ```ruby
-class UserHelperTest < ActionView::TestCase
+class UsersHelperTest < ActionView::TestCase
   test "should return the user's full name" do
     user = users(:david)
 
@@ -1482,26 +1482,45 @@ NOTE: The `ActionMailer::Base.deliveries` array is only reset automatically in
 If you want to have a clean slate outside these test cases, you can reset it
 manually with: `ActionMailer::Base.deliveries.clear`
 
-### Functional Testing
+### Functional and System Testing
 
-Functional testing for mailers involves more than just checking that the email body, recipients and so forth are correct. In functional mail tests you call the mail deliver methods and check that the appropriate emails have been appended to the delivery list. It is fairly safe to assume that the deliver methods themselves do their job. You are probably more interested in whether your own business logic is sending emails when you expect them to go out. For example, you can check that the invite friend operation is sending an email appropriately:
+Unit testing allows us to test the email body, and recipients. In functional and system tests, we test whether user interactions appropriately trigger email to be delivered. For example, you can check that the invite friend operation is sending an email appropriately:
 
 ```ruby
+# Integration Test
 require 'test_helper'
 
-class UserControllerTest < ActionDispatch::IntegrationTest
+class UsersControllerTest < ActionDispatch::IntegrationTest
+  include ActionMailer::TestHelper
+
   test "invite friend" do
-    assert_difference 'ActionMailer::Base.deliveries.size', +1 do
+    # Asserts the difference in the ActionMailer::Base.deliveries
+    assert_emails 1 do
       post invite_friend_url, params: { email: 'friend@example.com' }
     end
-    invite_email = ActionMailer::Base.deliveries.last
-
-    assert_equal "You have been invited by me@example.com", invite_email.subject
-    assert_equal 'friend@example.com', invite_email.to[0]
-    assert_match(/Hi friend@example\.com/, invite_email.body.to_s)
   end
 end
 ```
+
+```ruby
+# System Test
+require 'test_helper'
+
+class UsersTest < ActionDispatch::SystemTestCase
+  driven_by :selenium, using: :headless_chrome
+  include ActionMailer::TestHelper
+
+  test "inviting a friend" do
+    visit invite_users_url
+    fill_in 'Email', with: 'friend@example.com'
+    assert_emails 1 do
+      click_on 'Invite'
+    end
+  end
+end
+```
+
+NOTE: These examples take advantage of the `ActionMailer::TestHelper`. For emails we expect to be delivered immediately with the `deliver_now` method, we can use the `assert_emails` method. For emails we expect to be delivered as an ActiveJob with the `deliver_later` method, we can use the `assert_enqueued_emails` method. More information can be found in the  [documentation here](https://api.rubyonrails.org/classes/ActionMailer/TestHelper.html).
 
 Testing Jobs
 ------------

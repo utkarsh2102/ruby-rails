@@ -33,6 +33,10 @@ class ActiveStorage::Blob < ActiveRecord::Base
 
   scope :unattached, -> { left_joins(:attachments).where(ActiveStorage::Attachment.table_name => { blob_id: nil }) }
 
+  before_destroy(prepend: true) do
+    raise ActiveRecord::InvalidForeignKey if attachments.exists?
+  end
+
   class << self
     # You can used the signed ID of a blob to refer to it on the client side without fear of tampering.
     # This is particularly helpful for direct uploads where the client-side needs to refer to the blob
@@ -120,8 +124,8 @@ class ActiveStorage::Blob < ActiveRecord::Base
   def service_url(expires_in: service.url_expires_in, disposition: :inline, filename: nil, **options)
     filename = ActiveStorage::Filename.wrap(filename || self.filename)
 
-    service.url key, expires_in: expires_in, filename: filename, content_type: content_type,
-      disposition: forcibly_serve_as_binary? ? :attachment : disposition, **options
+    service.url key, expires_in: expires_in, filename: filename, content_type: content_type_for_service_url,
+      disposition: forced_disposition_for_service_url || disposition, **options
   end
 
   # Returns a URL that can be used to directly upload a file for this blob on the service. This URL is intended to be
@@ -152,7 +156,7 @@ class ActiveStorage::Blob < ActiveRecord::Base
     self.byte_size    = io.size
     self.identified   = true
 
-    service.upload(key, io, checksum: checksum)
+    service.upload key, io, checksum: checksum, **service_metadata
   end
 
   # Downloads the file associated with this blob. If no block is given, the entire file is read into memory and returned.
@@ -174,8 +178,9 @@ class ActiveStorage::Blob < ActiveRecord::Base
   # blobs. Note, though, that deleting the file off the service will initiate a HTTP connection to the service, which may
   # be slow or prevented, so you should not use this method inside a transaction or in callbacks. Use +#purge_later+ instead.
   def purge
-    delete
     destroy
+    delete
+  rescue ActiveRecord::InvalidForeignKey
   end
 
   # Enqueues an ActiveStorage::PurgeJob job that'll call +purge+. This is the recommended way to purge blobs when the call
@@ -201,6 +206,30 @@ class ActiveStorage::Blob < ActiveRecord::Base
 
     def forcibly_serve_as_binary?
       ActiveStorage.content_types_to_serve_as_binary.include?(content_type)
+    end
+
+    def allowed_inline?
+      ActiveStorage.content_types_allowed_inline.include?(content_type)
+    end
+
+    def content_type_for_service_url
+      forcibly_serve_as_binary? ? ActiveStorage.binary_content_type : content_type
+    end
+
+    def forced_disposition_for_service_url
+      if forcibly_serve_as_binary? || !allowed_inline?
+        :attachment
+      end
+    end
+
+    def service_metadata
+      if forcibly_serve_as_binary?
+        { content_type: ActiveStorage.binary_content_type, disposition: :attachment, filename: filename }
+      elsif !allowed_inline?
+        { content_type: content_type, disposition: :attachment, filename: filename }
+      else
+        { content_type: content_type }
+      end
     end
 
     ActiveSupport.run_load_hooks(:active_storage_blob, self)

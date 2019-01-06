@@ -186,6 +186,12 @@ class ErrorsTest < ActiveModel::TestCase
     assert person.errors.added?(:name, :blank)
   end
 
+  test "added? returns true when string attribute is used with a symbol message" do
+    person = Person.new
+    person.errors.add(:name, :blank)
+    assert person.errors.added?("name", :blank)
+  end
+
   test "added? handles proc messages" do
     person = Person.new
     message = Proc.new { "cannot be blank" }
@@ -221,6 +227,16 @@ class ErrorsTest < ActiveModel::TestCase
     person = Person.new
     person.errors.add(:name, "cannot be blank")
     assert !person.errors.added?(:name)
+  end
+
+  test "added? returns false when checking for an error with an incorrect or missing option" do
+    person = Person.new
+    person.errors.add :name, :too_long, count: 25
+
+    assert person.errors.added? :name, :too_long, count: 25
+    assert_not person.errors.added? :name, :too_long, count: 24
+    assert_not person.errors.added? :name, :too_long
+    assert_not person.errors.added? :name, "is too long"
   end
 
   test "added? returns false when checking for an error by symbol and a different error with same message is present" do

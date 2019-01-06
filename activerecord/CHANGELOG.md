@@ -1,3 +1,175 @@
+## Rails 5.2.2 (December 04, 2018) ##
+
+*   Do not ignore the scoping with query methods in the scope block.
+
+    *Ryuta Kamizono*
+
+*   Allow aliased attributes to be used in `#update_columns` and `#update`.
+
+    *Gannon McGibbon*
+
+*   Allow spaces in postgres table names.
+
+    Fixes issue where "user post" is misinterpreted as "\"user\".\"post\"" when quoting table names with the postgres
+    adapter.
+
+    *Gannon McGibbon*
+
+*   Cached columns_hash fields should be excluded from ResultSet#column_types
+
+    PR #34528 addresses the inconsistent behaviour when attribute is defined for an ignored column. The following test
+    was passing for SQLite and MySQL, but failed for PostgreSQL:
+
+    ```ruby
+    class DeveloperName < ActiveRecord::Type::String
+      def deserialize(value)
+        "Developer: #{value}"
+      end
+    end
+
+    class AttributedDeveloper < ActiveRecord::Base
+      self.table_name = "developers"
+
+      attribute :name, DeveloperName.new
+
+      self.ignored_columns += ["name"]
+    end
+
+    developer = AttributedDeveloper.create
+    developer.update_column :name, "name"
+
+    loaded_developer = AttributedDeveloper.where(id: developer.id).select("*").first
+    puts loaded_developer.name # should be "Developer: name" but it's just "name"
+    ```
+
+    *Dmitry Tsepelev*
+
+*   Values of enum are frozen, raising an error when attempting to modify them.
+
+    *Emmanuel Byrd*
+
+*   `update_columns` now correctly raises `ActiveModel::MissingAttributeError`
+    if the attribute does not exist.
+
+    *Sean Griffin*
+
+*   Do not use prepared statement in queries that have a large number of binds.
+
+    *Ryuta Kamizono*
+
+*   Fix query cache to load before first request.
+
+    *Eileen M. Uchitelle*
+
+*   Fix collection cache key with limit and custom select to avoid ambiguous timestamp column error.
+
+    Fixes #33056.
+
+    *Federico Martinez*
+
+*   Fix duplicated record creation when using nested attributes with `create_with`.
+
+    *Darwin Wu*
+
+*   Fix regression setting children record in parent `before_save` callback.
+
+    *Guo Xiang Tan*
+
+*   Prevent leaking of user's DB credentials on `rails db:create` failure.
+
+    *bogdanvlviv*
+
+*   Clear mutation tracker before continuing the around callbacks.
+
+    *Yuya Tanaka*
+
+*   Prevent deadlocks when waiting for connection from pool.
+
+    *Brent Wheeldon*
+
+*   Avoid extra scoping when using `Relation#update` that was causing this method to change the current scope.
+
+    *Ryuta Kamizono*
+
+*   Fix numericality validator not to be affected by custom getter.
+
+    *Ryuta Kamizono*
+
+*   Fix bulk change table ignores comment option on PostgreSQL.
+
+    *Yoshiyuki Kinjo*
+
+
+## Rails 5.2.1.1 (November 27, 2018) ##
+
+*   No changes.
+
+
+## Rails 5.2.1 (August 07, 2018) ##
+
+*   PostgreSQL: Support new relkind for partitioned tables.
+
+    Fixes #33008.
+
+    *Yannick Schutz*
+
+*   Rollback parent transaction when children fails to update.
+
+    *Guillaume Malette*
+
+*   Fix default value for MySQL time types with specified precision.
+
+    *Nikolay Kondratyev*
+
+*   Fix `touch` option to behave consistently with `Persistence#touch` method.
+
+    *Ryuta Kamizono*
+
+*   Fix `save` in `after_create_commit` won't invoke extra `after_create_commit`.
+
+    Fixes #32831.
+
+    *Ryuta Kamizono*
+
+*   Fix logic on disabling commit callbacks so they are not called unexpectedly when errors occur.
+
+    *Brian Durand*
+
+*   Fix parent record should not get saved with duplicate children records.
+
+    Fixes #32940.
+
+    *Santosh Wadghule*
+
+*   Fix that association's after_touch is not called with counter cache.
+
+    Fixes #31559.
+
+    *Ryuta Kamizono*
+
+*   `becomes` should clear the mutation tracker which is created in `after_initialize`.
+
+    Fixes #32867.
+
+    *Ryuta Kamizono*
+
+*   Allow a belonging to parent object to be created from a new record.
+
+    *Jolyon Pawlyn*
+
+*   Fix that building record with assigning multiple has_one associations
+    wrongly persists through record.
+
+    Fixes #32511.
+
+    *Sam DeCesare*
+
+*   Fix relation merging when one of the relations is going to skip the
+    query cache.
+
+    *James Williams*
+
+
 ## Rails 5.2.0 (April 09, 2018) ##
 
 *   MySQL: Support mysql2 0.5.x.

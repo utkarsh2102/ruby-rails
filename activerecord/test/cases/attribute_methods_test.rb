@@ -323,6 +323,18 @@ class AttributeMethodsTest < ActiveRecord::TestCase
     assert_equal "New topic", topic.title
   end
 
+  test "write_attribute raises ActiveModel::MissingAttributeError when the attribute does not exist" do
+    topic = Topic.first
+    assert_raises(ActiveModel::MissingAttributeError) { topic.update_columns(no_column_exists: "Hello!") }
+    assert_raises(ActiveModel::UnknownAttributeError) { topic.update(no_column_exists: "Hello!") }
+  end
+
+  test "write_attribute allows writing to aliased attributes" do
+    topic = Topic.first
+    assert_nothing_raised { topic.update_columns(heading: "Hello!") }
+    assert_nothing_raised { topic.update(heading: "Hello!") }
+  end
+
   test "read_attribute" do
     topic = Topic.new
     topic.title = "Don't change the topic"
@@ -733,6 +745,16 @@ class AttributeMethodsTest < ActiveRecord::TestCase
 
       assert_equal time_before_save, record.bonus_time
       assert_equal ActiveSupport::TimeZone["Pacific Time (US & Canada)"], record.bonus_time.time_zone
+    end
+  end
+
+  test "setting invalid string to a zone-aware time attribute" do
+    in_time_zone "Pacific Time (US & Canada)" do
+      record = @target.new
+      time_string = "ABC"
+
+      record.bonus_time = time_string
+      assert_nil record.bonus_time
     end
   end
 
