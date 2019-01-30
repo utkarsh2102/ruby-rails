@@ -1,17 +1,26 @@
 #!/usr/bin/make -f
 
+export DH_RUBY = --gem-install
+
 %:
 	dh $@ --buildsystem=ruby --with ruby
 
-overrride_dh_auto_build:
+override_dh_auto_build:
 	racc -o actionpack/lib/action_dispatch/journey/parser.rb \
 		actionpack/lib/action_dispatch/journey/parser.y
-	webpack --config activestorage/webpack.config.js
+	cd activestorage; mkdir node_modules; \
+		ln -s rollup-plugin-commonjs node_modules; rollup -c; cd -
+	mkdir -p actionview/lib/assets/compiled
+	coffee -c actionview/app/assets/javascripts
+	cp debian/actionview.rollup.config.js actionview/app/assets/javascripts
+	cd actionview/app/assets/javascripts; \
+		rollup -c actionview.rollup.config.js; cd -
+	cp actionview/app/assets/javascripts/compiled-rails-ujs.js \
+		actionview/lib/assets/compiled/rails-ujs.js
 
 override_dh_clean:
 	dh_clean -X~ -X.bak
 	$(RM) -r railties/guides/output
-	$(RM) activestorage/app/assets/javascripts/activestorage.js
 
 override_dh_auto_install:
 	dh_auto_install
