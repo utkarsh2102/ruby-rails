@@ -10,13 +10,7 @@ override_dh_auto_build:
 		actionpack/lib/action_dispatch/journey/parser.y
 	cd activestorage; mkdir node_modules; \
 		ln -s rollup-plugin-commonjs node_modules; rollup -c; cd -
-	mkdir -p actionview/lib/assets/compiled
-	coffee -c actionview/app/assets/javascripts
-	cp debian/actionview.rollup.config.js actionview/app/assets/javascripts
-	cd actionview/app/assets/javascripts; \
-		rollup -c actionview.rollup.config.js; cd -
-	cp actionview/app/assets/javascripts/compiled-rails-ujs.js \
-		actionview/lib/assets/compiled/rails-ujs.js
+	cd actionview; blade build; cd -
 
 override_dh_clean:
 	dh_clean -X~ -X.bak
