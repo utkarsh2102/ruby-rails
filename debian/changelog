@@ -3,7 +3,7 @@ rails (2:5.2.2+dfsg-2) unstable; urgency=medium
   * Use --gem-install option to dh_ruby as many components now has javascript
     files targeted for asset pipeline.
   * Fix typo in rules to correctly override dh_auto_build (also switch to
-    rollup for building activestorage.js, like upstream)
+    rollup for building activestorage.js, like upstream) (Closes: #897641)
 
  -- Pirate Praveen <praveen@debian.org>  Wed, 30 Jan 2019 14:47:39 +0530
 
