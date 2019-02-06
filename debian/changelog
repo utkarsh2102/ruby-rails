@@ -1,3 +1,9 @@
+rails (2:5.2.2+dfsg-3) unstable; urgency=medium
+
+  * Build action_cable.js using blade build system for ruby-actioncable
+
+ -- Pirate Praveen <praveen@debian.org>  Wed, 06 Feb 2019 18:01:34 +0530
+
 rails (2:5.2.2+dfsg-2) unstable; urgency=medium
 
   * Use --gem-install option to dh_ruby as many components now has javascript
