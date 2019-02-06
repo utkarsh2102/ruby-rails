@@ -1,3 +1,2 @@
 0001-Be-careful-with-that-bundler.patch
 0002-disable-uglify-in-activestorage-rollup-config-js.patch
-0003-sprockets-syntax-to-commonjs.patch
