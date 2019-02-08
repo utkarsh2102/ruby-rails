@@ -1,3 +1,9 @@
+rails (2:5.2.2+dfsg-5) unstable; urgency=medium
+
+  * Recommend ruby-chromedriver-helper in ruby-rails
+
+ -- Pirate Praveen <praveen@debian.org>  Fri, 08 Feb 2019 16:22:07 +0530
+
 rails (2:5.2.2+dfsg-4) unstable; urgency=medium
 
   * Allow ruby-sprockets-rails >= 3
