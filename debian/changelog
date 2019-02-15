@@ -1,3 +1,11 @@
+rails (2:5.2.2+dfsg-6) UNRELEASED; urgency=medium
+
+  * Team upload.
+  * debian/tests/control: remove explicit call to gem2deb-test-runner, as it
+    will be added automatically by autodep8.
+
+ -- Antonio Terceiro <terceiro@debian.org>  Fri, 15 Feb 2019 12:29:44 -0200
+
 rails (2:5.2.2+dfsg-5) unstable; urgency=medium
 
   * Recommend ruby-chromedriver-helper in ruby-rails
