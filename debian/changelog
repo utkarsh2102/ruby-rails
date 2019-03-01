@@ -1,10 +1,16 @@
-rails (2:5.2.2+dfsg-6) UNRELEASED; urgency=medium
+rails (2:5.2.2+dfsg-6) unstable; urgency=medium
 
-  * Team upload.
+  [ Antonio Terceiro ]
   * debian/tests/control: remove explicit call to gem2deb-test-runner, as it
     will be added automatically by autodep8.
 
- -- Antonio Terceiro <terceiro@debian.org>  Fri, 15 Feb 2019 12:29:44 -0200
+  [ Pirate Praveen ]
+  * Move all Recommends from ruby-rails to rails as Depends (Closes: #923507)
+  * Drop obsolete Breaks + Replaces rails3
+  * Drop needs-recommends restriction in newapp autopkgtest
+  * Add debian/node_modules path in activestorage/rollup.config.js for spark-md5
+
+ -- Pirate Praveen <praveen@debian.org>  Fri, 01 Mar 2019 19:50:07 +0530
 
 rails (2:5.2.2+dfsg-5) unstable; urgency=medium
 
