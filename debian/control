@@ -300,8 +300,6 @@ Depends: ruby-rails (= ${source:Version}),
          ruby-uglifier (>= 1.3.0),
          ruby-web-console,
          ${misc:Depends}
-Replaces: rails3
-Breaks: rails3
 Description: MVC ruby based framework geared for web application development (metapackage)
  Rails is a full-stack, open-source web framework in Ruby for writing
  real-world applications.
