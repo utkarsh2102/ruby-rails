@@ -22,9 +22,16 @@ Description: rollup-plugin-uglify is not packaged, hence disabling it.
  
  export default {
    input: "app/javascript/activestorage/index.js",
-@@ -22,7 +22,7 @@
+@@ -20,9 +20,13 @@
+     name: "ActiveStorage"
+   },
    plugins: [
-     resolve(),
+-    resolve(),
++    resolve({
++    customResolveOptions: {
++      moduleDirectory: ['/usr/lib/nodejs','../debian/node_modules']
++    }
++  }),
      commonjs(),
 -    babel(),
 -    uglify(uglifyOptions)
