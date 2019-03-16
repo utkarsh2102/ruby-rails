@@ -1,3 +1,9 @@
+rails (2:5.2.2.1+dfsg-1) UNRELEASED; urgency=medium
+
+  * New upstream version 5.2.2.1+dfsg
+
+ -- Utkarsh Gupta <guptautkarsh2102@gmail.com>  Sat, 16 Mar 2019 23:28:46 +0530
+
 rails (2:5.2.2+dfsg-6) unstable; urgency=medium
 
   [ Antonio Terceiro ]
