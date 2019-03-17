@@ -1,3 +1,14 @@
+rails (2:5.2.2.1+dfsg-1) unstable; urgency=medium
+
+  * Team upload
+  * New upstream version 5.2.2.1+dfsg (Closes: #924520, #924521)
+    (Fixes: CVE-2019-5418 CVE-2019-5419, CVE-2019-5420)
+  * Drop unused override
+  * Remove duplicate Depends entry for rake
+  * Add d/upstream/metadata
+
+ -- Utkarsh Gupta <guptautkarsh2102@gmail.com>  Sun, 17 Mar 2019 17:44:07 +0530
+
 rails (2:5.2.2+dfsg-6) unstable; urgency=medium
 
   [ Antonio Terceiro ]
@@ -88,14 +99,14 @@ rails (2:4.2.9-4) unstable; urgency=medium
 rails (2:4.2.9-3) unstable; urgency=medium
 
   * Relax dependency on ruby-rack-test
-  * Add myself to uploaders 
+  * Add myself to uploaders
 
  -- Pirate Praveen <praveen@debian.org>  Wed, 06 Sep 2017 12:14:19 +0530
 
 rails (2:4.2.9-2) unstable; urgency=medium
 
   * Team upload
-  * Reupload to unstable 
+  * Reupload to unstable
 
  -- Pirate Praveen <praveen@debian.org>  Wed, 23 Aug 2017 18:39:08 +0530
 
@@ -428,7 +439,7 @@ rails-4.0 (4.0.0+dfsg-1) unstable; urgency=low
       build using racc
     + Fix copyright to include correct year: (c) 2004-2013 David
       Heinemeier Hansson
-    + Add MIT or CC-BY license for HTML selector by Assaf Arkin  
+    + Add MIT or CC-BY license for HTML selector by Assaf Arkin
     + PD-Art license is inconclusive, so we just remove the wikimedia Mona
       Lisa picture and patch out the tests that were using it.
       (http://commons.wikimedia.org/wiki/Commons:Reuse_of_PD-Art_photographs)
