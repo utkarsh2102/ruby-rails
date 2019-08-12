@@ -1,3 +1,14 @@
+## Rails 5.2.3 (March 27, 2019) ##
+
+*   Seed database with inline ActiveJob job adapter.
+
+    *Gannon McGibbon*
+
+*   Fix boolean interaction in scaffold system tests.
+
+    *Gannon McGibbon*
+
+
 ## Rails 5.2.2.1 (March 11, 2019) ##
 
 *   No changes.

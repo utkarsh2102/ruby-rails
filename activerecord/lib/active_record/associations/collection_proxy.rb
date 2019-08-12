@@ -366,34 +366,6 @@ module ActiveRecord
         @association.create!(attributes, &block)
       end
 
-      # Add one or more records to the collection by setting their foreign keys
-      # to the association's primary key. Since #<< flattens its argument list and
-      # inserts each record, +push+ and #concat behave identically. Returns +self+
-      # so method calls may be chained.
-      #
-      #   class Person < ActiveRecord::Base
-      #     has_many :pets
-      #   end
-      #
-      #   person.pets.size # => 0
-      #   person.pets.concat(Pet.new(name: 'Fancy-Fancy'))
-      #   person.pets.concat(Pet.new(name: 'Spook'), Pet.new(name: 'Choo-Choo'))
-      #   person.pets.size # => 3
-      #
-      #   person.id # => 1
-      #   person.pets
-      #   # => [
-      #   #       #<Pet id: 1, name: "Fancy-Fancy", person_id: 1>,
-      #   #       #<Pet id: 2, name: "Spook", person_id: 1>,
-      #   #       #<Pet id: 3, name: "Choo-Choo", person_id: 1>
-      #   #    ]
-      #
-      #   person.pets.concat([Pet.new(name: 'Brain'), Pet.new(name: 'Benny')])
-      #   person.pets.size # => 5
-      def concat(*records)
-        @association.concat(*records)
-      end
-
       # Replaces this collection with +other_array+. This will perform a diff
       # and delete/add only records that have changed.
       #
@@ -500,7 +472,7 @@ module ActiveRecord
       #   Pet.find(1, 2, 3)
       #   # => ActiveRecord::RecordNotFound: Couldn't find all Pets with 'id': (1, 2, 3)
       def delete_all(dependent = nil)
-        @association.delete_all(dependent)
+        @association.delete_all(dependent).tap { reset_scope }
       end
 
       # Deletes the records of the collection directly from the database
@@ -527,7 +499,7 @@ module ActiveRecord
       #
       #   Pet.find(1) # => Couldn't find Pet with id=1
       def destroy_all
-        @association.destroy_all
+        @association.destroy_all.tap { reset_scope }
       end
 
       # Deletes the +records+ supplied from the collection according to the strategy
@@ -646,7 +618,7 @@ module ActiveRecord
       #   #       #<Pet id: 3, name: "Choo-Choo", person_id: 1>
       #   #    ]
       def delete(*records)
-        @association.delete(*records)
+        @association.delete(*records).tap { reset_scope }
       end
 
       # Destroys the +records+ supplied and removes them from the collection.
@@ -718,7 +690,7 @@ module ActiveRecord
       #
       #   Pet.find(4, 5, 6) # => ActiveRecord::RecordNotFound: Couldn't find all Pets with 'id': (4, 5, 6)
       def destroy(*records)
-        @association.destroy(*records)
+        @association.destroy(*records).tap { reset_scope }
       end
 
       ##
@@ -1033,8 +1005,9 @@ module ActiveRecord
       end
 
       # Adds one or more +records+ to the collection by setting their foreign keys
-      # to the association's primary key. Returns +self+, so several appends may be
-      # chained together.
+      # to the association's primary key. Since +<<+ flattens its argument list and
+      # inserts each record, +push+ and +concat+ behave identically. Returns +self+
+      # so several appends may be chained together.
       #
       #   class Person < ActiveRecord::Base
       #     has_many :pets
@@ -1057,6 +1030,7 @@ module ActiveRecord
       end
       alias_method :push, :<<
       alias_method :append, :<<
+      alias_method :concat, :<<
 
       def prepend(*args)
         raise NoMethodError, "prepend on association is not defined. Please use <<, push or append"

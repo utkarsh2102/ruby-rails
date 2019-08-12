@@ -18,13 +18,15 @@ module ActiveRecord
       end
 
       def nil?
-        !value_before_type_cast.is_a?(StatementCache::Substitute) &&
-          (value_before_type_cast.nil? || value_for_database.nil?)
+        unless value_before_type_cast.is_a?(StatementCache::Substitute)
+          value_before_type_cast.nil? ||
+            type.respond_to?(:subtype, true) && value_for_database.nil?
+        end
       end
 
       def boundable?
         return @_boundable if defined?(@_boundable)
-        nil?
+        value_for_database unless value_before_type_cast.is_a?(StatementCache::Substitute)
         @_boundable = true
       rescue ::RangeError
         @_boundable = false

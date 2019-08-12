@@ -1,3 +1,28 @@
+## Rails 5.2.3 (March 27, 2019) ##
+
+*   Add `ActiveSupport::HashWithIndifferentAccess#assoc`.
+
+    `assoc` can now be called with either a string or a symbol.
+
+    *Stefan Schüßler*
+
+*   Fix `String#safe_constantize` throwing a `LoadError` for incorrectly cased constant references.
+
+    *Keenan Brock*
+
+*   Allow Range#=== and Range#cover? on Range
+
+    `Range#cover?` can now accept a range argument like `Range#include?` and
+    `Range#===`. `Range#===` works correctly on Ruby 2.6. `Range#include?` is moved
+    into a new file, with these two methods.
+
+    *utilum*
+
+*   If the same block is `included` multiple times for a Concern, an exception is no longer raised.
+
+    *Mark J. Titorenko*, *Vlad Bokov*
+
+
 ## Rails 5.2.2.1 (March 11, 2019) ##
 
 *   No changes.

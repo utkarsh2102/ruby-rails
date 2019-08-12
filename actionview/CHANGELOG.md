@@ -1,3 +1,18 @@
+## Rails 5.2.3 (March 27, 2019) ##
+
+*   Prevent non-primary mouse keys from triggering Rails UJS click handlers.
+    Firefox fires click events even if the click was triggered by non-primary mouse keys such as right- or scroll-wheel-clicks.
+    For example, right-clicking a link such as the one described below (with an underlying ajax request registered on click) should not cause that request to occur.
+
+    ```
+    <%= link_to 'Remote', remote_path, class: 'remote', remote: true, data: { type: :json } %>
+    ```
+
+    Fixes #34541
+
+    *Wolfgang Hobmaier*
+
+
 ## Rails 5.2.2.1 (March 11, 2019) ##
 
 *   No changes.

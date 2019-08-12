@@ -96,6 +96,11 @@ module ActiveRecord
         if @query_cache_enabled && !locked?(arel)
           arel = arel_from_relation(arel)
           sql, binds = to_sql_and_binds(arel, binds)
+
+          if preparable.nil?
+            preparable = prepared_statements ? visitor.preparable : false
+          end
+
           cache_sql(sql, name, binds) { super(sql, name, binds, preparable: preparable) }
         else
           super
