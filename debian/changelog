@@ -1,3 +1,13 @@
+rails (2:5.2.3+dfsg-1) unstable; urgency=medium
+
+  * New upstream version 5.2.3+dfsg
+  * Add salsa-ci.yml
+  * Bump Standards-Version to 4.4.0
+  * Bump debhelper-compat to 12
+  * Add myself as an uploader
+
+ -- Utkarsh Gupta <guptautkarsh2102@gmail.com>  Mon, 12 Aug 2019 10:35:32 +0530
+
 rails (2:5.2.2.1+dfsg-1) unstable; urgency=medium
 
   * Team upload
