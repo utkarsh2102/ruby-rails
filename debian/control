@@ -5,7 +5,7 @@ Maintainer: Debian Ruby Extras Maintainers <pkg-ruby-extras-maintainers@lists.al
 Uploaders: Pirate Praveen <praveen@debian.org>,
            Sruthi Chandran <srud@disroot.org>,
            Utkarsh Gupta <guptautkarsh2102@gmail.com>
-Build-Depends: debhelper (>= 11~),
+Build-Depends: debhelper-compat (= 12),
                gem2deb (>= 0.4.0~),
                racc,
                rollup,
@@ -59,7 +59,7 @@ Build-Depends: debhelper (>= 11~),
                ruby-tzinfo (<< 2.0) <!nocheck>,
                ruby-websocket-driver (>= 0.6.1) <!nocheck>,
                sqlite3 <!nocheck>
-Standards-Version: 4.3.0
+Standards-Version: 4.4.0
 Vcs-Git: https://salsa.debian.org/ruby-team/rails.git
 Vcs-Browser: https://salsa.debian.org/ruby-team/rails
 Homepage: http://www.rubyonrails.org
