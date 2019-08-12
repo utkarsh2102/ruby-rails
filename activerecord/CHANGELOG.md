@@ -1,3 +1,40 @@
+## Rails 5.2.3 (March 27, 2019) ##
+
+*   Fix different `count` calculation when using `size` with manual `select` with DISTINCT.
+
+    Fixes #35214.
+
+    *Juani Villarejo*
+
+*   Fix prepared statements caching to be enabled even when query caching is enabled.
+
+    *Ryuta Kamizono*
+
+*   Don't allow `where` with invalid value matches to nil values.
+
+    Fixes #33624.
+
+    *Ryuta Kamizono*
+
+*   Restore an ability that class level `update` without giving ids.
+
+    Fixes #34743.
+
+    *Ryuta Kamizono*
+
+*   Fix join table column quoting with SQLite.
+
+    *Gannon McGibbon*
+
+*   Ensure that `delete_all` on collection proxy returns affected count.
+
+    *Ryuta Kamizono*
+
+*   Reset scope after delete on collection association to clear stale offsets of removed records.
+
+    *Gannon McGibbon*
+
+
 ## Rails 5.2.2.1 (March 11, 2019) ##
 
 *   No changes.

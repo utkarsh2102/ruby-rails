@@ -190,11 +190,9 @@ module ActiveRecord
         relation = apply_join_dependency
         relation.pluck(*column_names)
       else
-        enforce_raw_sql_whitelist(column_names)
+        klass.enforce_raw_sql_whitelist(column_names)
         relation = spawn
-        relation.select_values = column_names.map { |cn|
-          @klass.has_attribute?(cn) || @klass.attribute_alias?(cn) ? arel_attribute(cn) : cn
-        }
+        relation.select_values = column_names
         result = skip_query_cache_if_necessary { klass.connection.select_all(relation.arel, nil) }
         result.cast_values(klass.attribute_types)
       end
@@ -209,7 +207,6 @@ module ActiveRecord
     end
 
     private
-
       def has_include?(column_name)
         eager_loading? || (includes_values.present? && column_name && column_name != :all)
       end
@@ -224,10 +221,12 @@ module ActiveRecord
         if operation == "count"
           column_name ||= select_for_count
           if column_name == :all
-            if distinct && (group_values.any? || select_values.empty? && order_values.empty?)
+            if !distinct
+              distinct = distinct_select?(select_for_count) if group_values.empty?
+            elsif group_values.any? || select_values.empty? && order_values.empty?
               column_name = primary_key
             end
-          elsif column_name =~ /\s*DISTINCT[\s(]+/i
+          elsif distinct_select?(column_name)
             distinct = nil
           end
         end
@@ -237,6 +236,10 @@ module ActiveRecord
         else
           execute_simple_calculation(operation, column_name, distinct)
         end
+      end
+
+      def distinct_select?(column_name)
+        column_name.is_a?(::String) && /\bDISTINCT[\s(]/i.match?(column_name)
       end
 
       def aggregate_column(column_name)
@@ -383,7 +386,7 @@ module ActiveRecord
         case operation
         when "count"   then value.to_i
         when "sum"     then type.deserialize(value || 0)
-        when "average" then value.respond_to?(:to_d) ? value.to_d : value
+        when "average" then value && value.respond_to?(:to_d) ? value.to_d : value
         else type.deserialize(value)
         end
       end

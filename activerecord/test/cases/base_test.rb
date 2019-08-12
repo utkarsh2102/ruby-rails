@@ -689,6 +689,9 @@ class BasicsTest < ActiveRecord::TestCase
       topic = Topic.find(1)
       topic.attributes = attributes
       assert_equal Time.local(2000, 1, 1, 5, 42, 0), topic.bonus_time
+
+      topic.save!
+      assert_equal topic, Topic.find_by(attributes)
     end
   end
 
@@ -1222,14 +1225,15 @@ class BasicsTest < ActiveRecord::TestCase
   end
 
   def test_attribute_names
-    assert_equal ["id", "type", "firm_id", "firm_name", "name", "client_of", "rating", "account_id", "description"],
-                 Company.attribute_names
+    expected = ["id", "type", "firm_id", "firm_name", "name", "client_of", "rating", "account_id", "description", "metadata"]
+    assert_equal expected, Company.attribute_names
   end
 
   def test_has_attribute
     assert Company.has_attribute?("id")
     assert Company.has_attribute?("type")
     assert Company.has_attribute?("name")
+    assert Company.has_attribute?("metadata")
     assert_not Company.has_attribute?("lastname")
     assert_not Company.has_attribute?("age")
   end

@@ -31,6 +31,7 @@ class Post < ActiveRecord::Base
 
   belongs_to :author_with_posts, -> { includes(:posts) }, class_name: "Author", foreign_key: :author_id
   belongs_to :author_with_address, -> { includes(:author_address) }, class_name: "Author", foreign_key: :author_id
+  belongs_to :author_with_select, -> { select(:id) }, class_name: "Author", foreign_key: :author_id
 
   def first_comment
     super.body
@@ -325,6 +326,10 @@ class FakeKlass
 
     def enforce_raw_sql_whitelist(*args)
       # noop
+    end
+
+    def columns_hash
+      { "name" => nil }
     end
 
     def arel_table
