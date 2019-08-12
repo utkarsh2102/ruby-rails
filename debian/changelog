@@ -6,7 +6,7 @@ rails (2:5.2.3+dfsg-1) unstable; urgency=medium
   * Bump debhelper-compat to 12
   * Add myself as an uploader
 
- -- Utkarsh Gupta <guptautkarsh2102@gmail.com>  Mon, 12 Aug 2019 10:35:32 +0530
+ -- Utkarsh Gupta <guptautkarsh2102@gmail.com>  Tue, 13 Aug 2019 03:18:06 +0530
 
 rails (2:5.2.2.1+dfsg-1) unstable; urgency=medium
 
