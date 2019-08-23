@@ -1,2 +1,3 @@
 0001-Be-careful-with-that-bundler.patch
 0002-disable-uglify-in-activestorage-rollup-config-js.patch
+relax-dependencies.patch
