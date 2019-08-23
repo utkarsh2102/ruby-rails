@@ -7,62 +7,100 @@ Uploaders: Pirate Praveen <praveen@debian.org>,
            Utkarsh Gupta <guptautkarsh2102@gmail.com>
 Build-Depends: debhelper-compat (= 12),
                gem2deb (>= 0.4.0~),
-               racc,
+# Node packages
                rollup,
                node-rollup-plugin-node-resolve,
                node-rollup-plugin-commonjs,
                node-rollup-plugin-babel,
                node-babel-preset-env,
                node-babel-plugin-external-helpers,
+               webpack,
+               yarnpkg,
+# Ruby packages - implicit dependencies
+               ruby-byebug,
+# Ruby packages - from Gemfile
+               puma,
+               qunit-selenium,
+               racc (>= 1.4.6),
+               rake (>= 11.1),
+               ruby-bcrypt (<< 3.2),
+               ruby-bcrypt (>= 3.1.11),
+               ruby-benchmark-ips,
                ruby-blade,
                ruby-blade-sauce-labs-plugin,
+               ruby-capybara (>= 2.15),
+               ruby-chromedriver-helper,
+               ruby-connection-pool,
+               ruby-dalli,
+               ruby-delayed-job,
+               ruby-delayed-job-active-record,
+               ruby-hiredis,
+               ruby-image-processing (<< 2.0),
+               ruby-image-processing (>= 1.2),
+               ruby-json (>= 2.0.0),
+               ruby-libxml,
+               ruby-listen (<< 3.2),
+               ruby-listen (>= 3.0.5),
+               ruby-minitest-reporters,
+               ruby-mysql2 (>= 0.4.10),
+               ruby-pg (>= 0.18.0),
+               ruby-rack-cache (<< 2.0),
+               ruby-rack-cache (>= 1.2),
+               ruby-redis (<< 5.0),
+               ruby-redis (>= 4.0),
+               ruby-redis-namespace,
+               ruby-sass-rails,
+               ruby-sdoc,
+               ruby-selenium-webdriver (>= 3.141.0),
+               ruby-sequel,
+               ruby-sidekiq,
                ruby-sprockets-export,
-               rake (>= 0.8.7) <!nocheck>,
-               ruby-arel (>= 9.0) <!nocheck>,
-               ruby-bcrypt <!nocheck>,
+               ruby-sqlite3 (<< 1.5.0),
+               ruby-sqlite3 (>= 1.4.0),
+               ruby-turbolinks (>= 5.0),
+               ruby-uglifier (>= 1.3.0),
+               ruby-webmock,
+#               ruby-webpacker,
+# Ruby packages - from each gemspecs
                ruby-builder (<< 4.0) <!nocheck>,
+               ruby-builder (>= 3.1) <!nocheck>,
                ruby-bundler (>= 1.3.0) <!nocheck>,
-               ruby-bundler (<< 2.0) <!nocheck>,
                ruby-concurrent (<< 2.0) <!nocheck>,
                ruby-concurrent (>= 1.0.2) <!nocheck>,
-               ruby-dalli <!nocheck>,
-               ruby-delayed-job <!nocheck>,
                ruby-erubi (<< 2.0) <!nocheck>,
                ruby-erubi (>= 1.4) <!nocheck>,
                ruby-globalid (>= 0.3.6) <!nocheck>,
-               ruby-i18n (>= 0.7) <!nocheck>,
                ruby-i18n (<< 2.0) <!nocheck>,
-               ruby-mail (>= 2.5.4) <!nocheck>,
+               ruby-i18n (>= 0.7) <!nocheck>,
                ruby-mail (<< 3.0) <!nocheck>,
+               ruby-mail (>= 2.7.1) <!nocheck>,
                ruby-marcel (<< 0.4) <!nocheck>,
                ruby-marcel (>= 0.3.1) <!nocheck>,
-               ruby-minitest (>= 5.1) <!nocheck>,
+               ruby-method-source <!nocheck>,
                ruby-minitest (<< 6.0) <!nocheck>,
-               ruby-mocha <!nocheck>,
-               ruby-mysql2 <!nocheck>,
-               ruby-nio4r (>= 2.0) <!nocheck>,
+               ruby-minitest (>= 5.1) <!nocheck>,
                ruby-nio4r (<< 3.0) <!nocheck>,
-               ruby-rack (>= 2.0) <!nocheck>,
+               ruby-nio4r (>= 2.0) <!nocheck>,
+               ruby-nokogiri (>= 1.8.5) <!nocheck>,
                ruby-rack (<< 3.0) <!nocheck>,
-               ruby-rack-cache <!nocheck>,
+               ruby-rack (>= 2.0) <!nocheck>,
                ruby-rack-test (>= 0.6.3) <!nocheck>,
-               ruby-rails-dom-testing (>= 2.0) <!nocheck>,
                ruby-rails-dom-testing (<< 3.0) <!nocheck>,
-               ruby-rails-html-sanitizer (>= 1.0.3) <!nocheck>,
+               ruby-rails-dom-testing (>= 2.0) <!nocheck>,
                ruby-rails-html-sanitizer (<< 2.0) <!nocheck>,
+               ruby-rails-html-sanitizer (>= 1.0.3) <!nocheck>,
                ruby-sprockets-rails (>= 2.3.2~) <!nocheck>,
-               ruby-sqlite3 <!nocheck>,
-               ruby-thor (>= 0.18.1) <!nocheck>,
                ruby-thor (<< 2.0) <!nocheck>,
-               ruby-treetop <!nocheck>,
-               ruby-tzinfo (>= 1.1) <!nocheck>,
+               ruby-thor (>= 0.20.3) <!nocheck>,
                ruby-tzinfo (<< 2.0) <!nocheck>,
+               ruby-tzinfo (>= 1.1) <!nocheck>,
                ruby-websocket-driver (>= 0.6.1) <!nocheck>,
-               sqlite3 <!nocheck>
+               ruby-zeitwerk (<< 3.0) <!nocheck>,
+               ruby-zeitwerk (>= 2.1.4) <!nocheck>
 Standards-Version: 4.4.0
 Vcs-Git: https://salsa.debian.org/ruby-team/rails.git
 Vcs-Browser: https://salsa.debian.org/ruby-team/rails
-Homepage: http://www.rubyonrails.org
+Homepage: http://rubyonrails.org/
 XS-Ruby-Versions: all
 Testsuite: autopkgtest-pkg-ruby
 
@@ -70,7 +108,7 @@ Package: ruby-activesupport
 Architecture: all
 X-DhRuby-Root: activesupport/
 XB-Ruby-Versions: ${ruby:Versions}
-Depends: ruby | ruby-interpreter,
+Depends: ruby (>= 1:2.5.0) | ruby-interpreter,
 	 ruby-concurrent (<< 2.0),
          ruby-concurrent (>= 1.0.2),
          ruby-i18n (<< 2.0),
@@ -79,24 +117,26 @@ Depends: ruby | ruby-interpreter,
          ruby-minitest (>= 5.1),
          ruby-tzinfo (<< 2.0),
          ruby-tzinfo (>= 1.1),
-         ${misc:Depends},
-         ${shlibs:Depends}
-Description: Support and utility classes used by the Rails 4.1 framework
- ActiveSupport consists of utility classes and extensions to the Ruby
- standard library that were required for Rails but found to be
- generally useful.
+         ruby-zeitwerk (<< 3.0),
+         ruby-zeitwerk (>= 2.1.4),
+         ${misc:Depends}
+Description: collection of utility classes used by the Rails framework
+ Active Support is a collection of utility classes and standard library
+ extensions that were found useful for the Rails framework.
+ .
+ The classes reside in this package so they can be loaded as needed in
+ Ruby projects outside of Rails.
 
 Package: ruby-activerecord
 Architecture: all
 X-DhRuby-Root: activerecord/
 XB-Ruby-Versions: ${ruby:Versions}
-Depends: ruby | ruby-interpreter,
+Depends: ruby (>= 1:2.5.0) | ruby-interpreter,
          ruby-activemodel (= ${source:Version}),
          ruby-activesupport (= ${source:Version}),
-         ruby-arel (>= 9.0),
          ${misc:Depends}
 Description: object-relational mapper framework (part of Rails)
- Active Records is a framework to work with databases on Rails.  Build
+ Active Records is a framework to work with databases on Rails. Build
  a persistent domain model by mapping database tables to Ruby classes.
  Strong conventions for associations, validations, aggregations,
  migrations, and testing come baked-in.
@@ -105,12 +145,12 @@ Package: ruby-activemodel
 Architecture: all
 X-DhRuby-Root: activemodel/
 XB-Ruby-Versions: ${ruby:Versions}
-Depends: ruby | ruby-interpreter,
+Depends: ruby (>= 1:2.5.0) | ruby-interpreter,
          ruby-activesupport (= ${source:Version}),
          ${misc:Depends}
 Description: toolkit for building modeling frameworks (part of Rails)
  Active Model is a toolkit for building modeling frameworks like
- Active Record and Active Resource.  This includes a rich support for
+ Active Record and Active Resource. This includes a rich support for
  attributes, callbacks, validations, observers, serialization,
  internationalization, and testing.
 
@@ -118,21 +158,21 @@ Package: ruby-activejob
 Architecture: all
 X-DhRuby-Root: activejob/
 XB-Ruby-Versions: ${ruby:Versions}
-Depends: ruby | ruby-interpreter,
+Depends: ruby (>= 1:2.5.0) | ruby-interpreter,
          ruby-activesupport (= ${source:Version}),
          ruby-globalid (>= 0.3.6),
          ${misc:Depends}
-Description: job framework with pluggable queues
+Description: job framework with pluggable queues (part of Rails)
  Active Job is a framework for declaring jobs and making them run on a variety
  of queueing backends. These jobs can be everything from regularly scheduled
  clean-ups, to billing charges, to mailings. Anything that can be chopped up
- into small units of work and run in parallel, really.
+ into small units of work and run in parallel.
 
 Package: ruby-actionview
 Architecture: all
 X-DhRuby-Root: actionview/
 XB-Ruby-Versions: ${ruby:Versions}
-Depends: ruby | ruby-interpreter,
+Depends: ruby (>= 1:2.5.0) | ruby-interpreter,
          ruby-activesupport (= ${source:Version}),
 	 ruby-builder (<< 4.0),
          ruby-builder (>= 3.1),
@@ -154,7 +194,7 @@ Package: ruby-actionpack
 Architecture: all
 X-DhRuby-Root: actionpack/
 XB-Ruby-Versions: ${ruby:Versions}
-Depends: ruby | ruby-interpreter,
+Depends: ruby (>= 1:2.5.0) | ruby-interpreter,
          ruby-actionview (= ${source:Version}),
          ruby-activesupport (= ${source:Version}),
          ruby-rack (<< 3.0),
@@ -192,7 +232,7 @@ Package: ruby-actionmailer
 Architecture: all
 X-DhRuby-Root: actionmailer/
 XB-Ruby-Versions: ${ruby:Versions}
-Depends: ruby | ruby-interpreter,
+Depends: ruby (>= 1:2.5.0) | ruby-interpreter,
          ruby-actionpack (= ${source:Version}),
          ruby-actionview (= ${source:Version}),
          ruby-activejob (= ${source:Version}),
@@ -200,24 +240,22 @@ Depends: ruby | ruby-interpreter,
          ruby-mail (>= 2.5.4),
 	 ruby-rails-dom-testing (<< 3.0),
          ruby-rails-dom-testing (>= 2.0),
-	 ${misc:Depends},
-         ${shlibs:Depends}
-Description: email composition, delivery, and receiving framework (part of Rails)
+	 ${misc:Depends}
+Description: email composition, delivery framework (part of Rails)
  Action Mailer is a framework for working with email on Rails.
- Compose, deliver, receive, and test emails using the familiar
- controller/view pattern.  First-class support for multipart email
- and attachments.
+ Compose, deliver, and test emails using the familiar controller/view
+ pattern. First-class support for multipart email and attachments.
 
 Package: ruby-actioncable
 Architecture: all
 X-DhRuby-Root: actioncable/
 XB-Ruby-Versions: ${ruby:Versions}
-Depends: ruby | ruby-interpreter,
+Depends: ruby (>= 1:2.5.0) | ruby-interpreter,
          ruby-actionpack (= ${source:Version}),
          ruby-nio4r (<< 3.0),
 	 ruby-nio4r (>= 2.0),
          ruby-websocket-driver (>= 0.6.1),
-         ${misc:Depends},
+         ${misc:Depends}
 Description: WebSocket framework for Rails (part of Rails)
  Action Cable seamlessly integrates WebSockets with the rest of your Rails
  application. It allows for real-time features to be written in Ruby in the same
@@ -231,13 +269,14 @@ Package: ruby-activestorage
 Architecture: all
 X-DhRuby-Root: activestorage/
 XB-Ruby-Versions: ${ruby:Versions}
-Depends: ruby | ruby-interpreter,
+Depends: ruby (>= 1:2.5.0) | ruby-interpreter,
          ruby-actionpack (= ${source:Version}),
+         ruby-activejob (= ${source:Version}),
          ruby-activerecord (= ${source:Version}),
          ruby-marcel (<< 0.4),
          ruby-marcel (>= 0.3.1),
-         ${misc:Depends},
-Description: Local and cloud file storage framework (part of Rails)
+         ${misc:Depends}
+Description: local and cloud file storage framework (part of Rails)
  Active Storage makes it simple to upload and reference files in cloud services
  like Amazon S3 and Microsoft Azure Storage, and attach those files to Active
  Records. Supports having one main service and mirrors in other services for
@@ -271,12 +310,13 @@ Architecture: all
 X-DhRuby-Root: railties/
 XB-Ruby-Versions: ${ruby:Versions}
 Depends: rake (>= 0.8.7),
-         ruby | ruby-interpreter,
+         ruby (>= 1:2.5.0) | ruby-interpreter,
          ruby-actionpack (= ${source:Version}),
          ruby-activesupport (= ${source:Version}),
-         ruby-thor (<< 2.0),
-         ruby-thor (>= 0.18.1),
          ruby-method-source,
+         ruby-thor (<< 2.0),
+         ruby-thor (>= 0.20.3),
+         yarnpkg,
          ${misc:Depends}
 Description: tools for creating, working with, and running Rails applications
  This package contains the Rails internals, i.e. components that implement
@@ -286,20 +326,21 @@ Package: ruby-rails
 Architecture: all
 X-DhRuby-Root: ./
 XB-Ruby-Versions: ${ruby:Versions}
-Depends: ruby-actionmailer (= ${source:Version}),
+Depends: ruby-actioncable (= ${source:Version}),
+         ruby-actionmailbox (= ${source:Version}),
+         ruby-actionmailer (= ${source:Version}),
          ruby-actionpack (= ${source:Version}),
+         ruby-actiontext (= ${source:Version}),
          ruby-actionview (= ${source:Version}),
+	 ruby-activejob (= ${source:Version}),
          ruby-activemodel (= ${source:Version}),
          ruby-activerecord (= ${source:Version}),
-         ruby-activesupport (= ${source:Version}),
 	 ruby-activestorage (= ${source:Version}),
-	 ruby-actioncable (= ${source:Version}),
-	 ruby-activejob (= ${source:Version}),
+         ruby-activesupport (= ${source:Version}),
          ruby-bundler (>= 1.3.0),
          ruby-railties (= ${source:Version}),
          ruby-sprockets-rails (>= 2.3.2~),
-         ${misc:Depends},
-         ${shlibs:Depends}
+         ${misc:Depends}
 Description: MVC ruby based framework geared for web application development
  Rails is a full-stack, open-source web framework in Ruby for writing
  real-world applications.
@@ -312,27 +353,51 @@ Description: MVC ruby based framework geared for web application development
 Package: rails
 Architecture: all
 Depends: ruby-rails (= ${source:Version}),
-         puma (>= 3.11),
-         ruby-bootsnap (>= 1.1.0),
+         puma,
+         qunit-selenium,
+         racc (>= 1.4.6),
+         rake (>= 11.1),
+         ruby-bcrypt (<< 3.2),
+         ruby-bcrypt (>= 3.1.11),
+         ruby-benchmark-ips,
+         ruby-blade,
+         ruby-blade-sauce-labs-plugin,
          ruby-byebug,
-         ruby-chromedriver-helper,
-         ruby-coffee-rails (>= 4.2),
          ruby-capybara (>= 2.15),
-         ruby-capybara (<< 4.0),
-         ruby-jbuilder (>= 2.5),
-         ruby-jbuilder (<< 3.0),
-         ruby-jquery-rails,
-         ruby-listen (>= 3.0.5),
+         ruby-chromedriver-helper,
+         ruby-connection-pool,
+         ruby-dalli,
+         ruby-delayed-job,
+         ruby-delayed-job-active-record,
+         ruby-hiredis,
+         ruby-image-processing (<< 2.0),
+         ruby-image-processing (>= 1.2),
+         ruby-json (>= 2.0.0),
+         ruby-libxml,
          ruby-listen (<< 3.2),
-         ruby-sass-rails (>= 5.0),
+         ruby-listen (>= 3.0.5),
+         ruby-minitest-reporters,
+         ruby-mysql2 (>= 0.4.10),
+         ruby-pg (>= 0.18.0),
+         ruby-rack-cache (<< 2.0),
+         ruby-rack-cache (>= 1.2),
+         ruby-redis (<< 5.0),
+         ruby-redis (>= 4.0),
+         ruby-redis-namespace,
+         ruby-sass-rails,
          ruby-sdoc,
-         ruby-selenium-webdriver,
-         ruby-spring,
-         ruby-spring-watcher-listen,
-         ruby-sqlite3,
+         ruby-selenium-webdriver (>= 3.141.0),
+         ruby-sequel,
+         ruby-sidekiq,
+         ruby-sprockets-export,
+         ruby-sqlite3 (<< 1.5.0),
+         ruby-sqlite3 (>= 1.4.0),
          ruby-turbolinks (>= 5.0),
          ruby-uglifier (>= 1.3.0),
-         ruby-web-console,
+         ruby-webmock,
+#         ruby-webpacker,
+         webpack,
+         yarnpkg,
          ${misc:Depends}
 Description: MVC ruby based framework geared for web application development (metapackage)
  Rails is a full-stack, open-source web framework in Ruby for writing
