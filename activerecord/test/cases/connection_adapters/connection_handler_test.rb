@@ -28,13 +28,16 @@ module ActiveRecord
       end
 
       def test_establish_connection_uses_spec_name
-        config = { "readonly" => { "adapter" => "sqlite3" } }
-        resolver = ConnectionAdapters::ConnectionSpecification::Resolver.new(config)
+        old_config = ActiveRecord::Base.configurations
+        config = { "readonly" => { "adapter" => "sqlite3", "pool" => "5" } }
+        ActiveRecord::Base.configurations = config
+        resolver = ConnectionAdapters::ConnectionSpecification::Resolver.new(ActiveRecord::Base.configurations)
         spec =   resolver.spec(:readonly)
         @handler.establish_connection(spec.to_hash)
 
         assert_not_nil @handler.retrieve_connection_pool("readonly")
       ensure
+        ActiveRecord::Base.configurations = old_config
         @handler.remove_connection("readonly")
       end
 
@@ -71,6 +74,56 @@ module ActiveRecord
         ENV["RAILS_ENV"] = previous_env
       end
 
+      unless in_memory_db?
+        def test_establish_connection_using_3_level_config_defaults_to_default_env_primary_db
+          previous_env, ENV["RAILS_ENV"] = ENV["RAILS_ENV"], "default_env"
+
+          config = {
+            "default_env" => {
+              "primary"  => { "adapter" => "sqlite3", "database" => "db/primary.sqlite3" },
+              "readonly" => { "adapter" => "sqlite3", "database" => "db/readonly.sqlite3" }
+            },
+            "another_env" => {
+              "primary"  => { "adapter" => "sqlite3", "database" => "db/another-primary.sqlite3" },
+              "readonly" => { "adapter" => "sqlite3", "database" => "db/another-readonly.sqlite3" }
+            }
+          }
+          @prev_configs, ActiveRecord::Base.configurations = ActiveRecord::Base.configurations, config
+
+          ActiveRecord::Base.establish_connection
+
+          assert_match "db/primary.sqlite3", ActiveRecord::Base.connection.pool.spec.config[:database]
+        ensure
+          ActiveRecord::Base.configurations = @prev_configs
+          ENV["RAILS_ENV"] = previous_env
+          ActiveRecord::Base.establish_connection(:arunit)
+          FileUtils.rm_rf "db"
+        end
+
+        def test_establish_connection_using_2_level_config_defaults_to_default_env_primary_db
+          previous_env, ENV["RAILS_ENV"] = ENV["RAILS_ENV"], "default_env"
+
+          config = {
+            "default_env" => {
+              "adapter" => "sqlite3", "database" => "db/primary.sqlite3"
+            },
+            "another_env" => {
+              "adapter" => "sqlite3", "database" => "db/bad-primary.sqlite3"
+            }
+          }
+          @prev_configs, ActiveRecord::Base.configurations = ActiveRecord::Base.configurations, config
+
+          ActiveRecord::Base.establish_connection
+
+          assert_match "db/primary.sqlite3", ActiveRecord::Base.connection.pool.spec.config[:database]
+        ensure
+          ActiveRecord::Base.configurations = @prev_configs
+          ENV["RAILS_ENV"] = previous_env
+          ActiveRecord::Base.establish_connection(:arunit)
+          FileUtils.rm_rf "db"
+        end
+      end
+
       def test_establish_connection_using_two_level_configurations
         config = { "development" => { "adapter" => "sqlite3", "database" => "db/primary.sqlite3" } }
         @prev_configs, ActiveRecord::Base.configurations = ActiveRecord::Base.configurations, config
@@ -94,6 +147,35 @@ module ActiveRecord
 
         assert_not_nil pool = @handler.retrieve_connection_pool("development_readonly")
         assert_equal "db/readonly.sqlite3", pool.spec.config[:database]
+      ensure
+        ActiveRecord::Base.configurations = @prev_configs
+      end
+
+      def test_symbolized_configurations_assignment
+        @prev_configs = ActiveRecord::Base.configurations
+        config = {
+          development: {
+            primary: {
+              adapter: "sqlite3",
+              database: "db/development.sqlite3",
+            },
+          },
+          test: {
+            primary: {
+              adapter: "sqlite3",
+              database: "db/test.sqlite3",
+            },
+          },
+        }
+        ActiveRecord::Base.configurations = config
+        ActiveRecord::Base.configurations.configs_for.each do |db_config|
+          assert_instance_of ActiveRecord::DatabaseConfigurations::HashConfig, db_config
+          assert_instance_of String, db_config.env_name
+          assert_instance_of String, db_config.spec_name
+          db_config.config.keys.each do |key|
+            assert_instance_of String, key
+          end
+        end
       ensure
         ActiveRecord::Base.configurations = @prev_configs
       end
@@ -278,18 +360,31 @@ module ActiveRecord
 
           pool = klass2.establish_connection(ActiveRecord::Base.connection_pool.spec.config)
           assert_same klass2.connection, pool.connection
-          refute_same klass2.connection, ActiveRecord::Base.connection
+          assert_not_same klass2.connection, ActiveRecord::Base.connection
 
           klass2.remove_connection
 
           assert_same klass2.connection, ActiveRecord::Base.connection
         end
 
+        class ApplicationRecord < ActiveRecord::Base
+          self.abstract_class = true
+        end
+
+        class MyClass < ApplicationRecord
+        end
+
         def test_connection_specification_name_should_fallback_to_parent
           klassA = Class.new(Base)
           klassB = Class.new(klassA)
+          klassC = Class.new(MyClass)
 
           assert_equal klassB.connection_specification_name, klassA.connection_specification_name
+          assert_equal klassC.connection_specification_name, klassA.connection_specification_name
+
+          assert_equal "primary", klassA.connection_specification_name
+          assert_equal "primary", klassC.connection_specification_name
+
           klassA.connection_specification_name = "readonly"
           assert_equal "readonly", klassB.connection_specification_name
         end
@@ -297,8 +392,13 @@ module ActiveRecord
         def test_remove_connection_should_not_remove_parent
           klass2 = Class.new(Base) { def self.name; "klass2"; end }
           klass2.remove_connection
-          refute_nil ActiveRecord::Base.connection
+          assert_not_nil ActiveRecord::Base.connection
           assert_same klass2.connection, ActiveRecord::Base.connection
+        end
+
+        def test_default_handlers_are_writing_and_reading
+          assert_equal :writing, ActiveRecord::Base.writing_role
+          assert_equal :reading, ActiveRecord::Base.reading_role
         end
       end
     end

@@ -7,11 +7,15 @@ module ActiveRecord
     class ConnectionSpecification
       class ResolverTest < ActiveRecord::TestCase
         def resolve(spec, config = {})
-          Resolver.new(config).resolve(spec)
+          configs = ActiveRecord::DatabaseConfigurations.new(config)
+          resolver = ConnectionAdapters::ConnectionSpecification::Resolver.new(configs)
+          resolver.resolve(spec, spec)
         end
 
         def spec(spec, config = {})
-          Resolver.new(config).spec(spec)
+          configs = ActiveRecord::DatabaseConfigurations.new(config)
+          resolver = ConnectionAdapters::ConnectionSpecification::Resolver.new(configs)
+          resolver.spec(spec)
         end
 
         def test_url_invalid_adapter
@@ -130,6 +134,12 @@ module ActiveRecord
         def test_spec_name_with_inline_config
           spec = spec("adapter" => "sqlite3")
           assert_equal "primary", spec.name, "should default to primary id"
+        end
+
+        def test_spec_with_invalid_type
+          assert_raises TypeError do
+            spec(Object.new)
+          end
         end
       end
     end

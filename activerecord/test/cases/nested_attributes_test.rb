@@ -83,7 +83,7 @@ class TestNestedAttributesInGeneral < ActiveRecord::TestCase
 
   def test_a_model_should_respond_to_underscore_destroy_and_return_if_it_is_marked_for_destruction
     ship = Ship.create!(name: "Nights Dirty Lightning")
-    assert !ship._destroy
+    assert_not ship._destroy
     ship.mark_for_destruction
     assert ship._destroy
   end
@@ -681,7 +681,6 @@ module NestedAttributesOnACollectionAssociationTests
   def test_should_take_a_hash_with_composite_id_keys_and_assign_the_attributes_to_the_associated_models
     @child_1.stub(:id, "ABC1X") do
       @child_2.stub(:id, "ABC2X") do
-
         @pirate.attributes = {
           association_getter => [
             { id: @child_1.id, name: "Grace OMalley" },
@@ -847,7 +846,7 @@ module NestedAttributesOnACollectionAssociationTests
       man = Man.create(name: "John")
       interest = man.interests.create(topic: "bar", zine_id: 0)
       assert interest.save
-      assert !man.update(interests_attributes: { id: interest.id, zine_id: "foo" })
+      assert_not man.update(interests_attributes: { id: interest.id, zine_id: "foo" })
     end
   end
 
@@ -1105,5 +1104,17 @@ class TestHasManyAutosaveAssociationWhichItselfHasAutosaveAssociations < ActiveR
 
     assert_not_predicate part, :valid?
     assert_equal ["Ship name can't be blank"], part.errors.full_messages
+  end
+end
+
+class TestNestedAttributesWithExtend < ActiveRecord::TestCase
+  setup do
+    Pirate.accepts_nested_attributes_for :treasures
+  end
+
+  def test_extend_affects_nested_attributes
+    pirate = Pirate.create!(catchphrase: "Don' botharrr talkin' like one, savvy?")
+    pirate.treasures_attributes = [{ id: nil }]
+    assert_equal "from extension", pirate.treasures[0].name
   end
 end

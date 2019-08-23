@@ -4,6 +4,11 @@ require "abstract_unit"
 require "controller/fake_models"
 
 class TestControllerWithExtraEtags < ActionController::Base
+  self.view_paths = [ActionView::FixtureResolver.new(
+    "test/with_implicit_template.erb" => "Hello explicitly!",
+    "test/hello_world.erb" => "Hello world!"
+  )]
+
   def self.controller_name; "test"; end
   def self.controller_path; "test"; end
 
@@ -37,6 +42,11 @@ class TestControllerWithExtraEtags < ActionController::Base
 end
 
 class ImplicitRenderTestController < ActionController::Base
+  self.view_paths = [ActionView::FixtureResolver.new(
+    "implicit_render_test/hello_world.erb" => "Hello world!",
+    "implicit_render_test/empty_action_with_template.html.erb" => "<h1>Empty action rendered this implicitly.</h1>\n"
+  )]
+
   def empty_action
   end
 
@@ -46,6 +56,10 @@ end
 
 module Namespaced
   class ImplicitRenderTestController < ActionController::Base
+    self.view_paths = [ActionView::FixtureResolver.new(
+      "namespaced/implicit_render_test/hello_world.erb" => "Hello world!"
+    )]
+
     def hello_world
       fresh_when(etag: "abc")
     end
@@ -138,6 +152,16 @@ class TestController < ActionController::Base
 
   def conditional_hello_with_expires_in_with_public_and_must_revalidate
     expires_in 1.minute, public: true, must_revalidate: true
+    render action: "hello_world"
+  end
+
+  def conditional_hello_with_expires_in_with_stale_while_revalidate
+    expires_in 1.minute, public: true, stale_while_revalidate: 5.minutes
+    render action: "hello_world"
+  end
+
+  def conditional_hello_with_expires_in_with_stale_if_error
+    expires_in 1.minute, public: true, stale_if_error: 5.minutes
     render action: "hello_world"
   end
 
@@ -245,6 +269,15 @@ class TestController < ActionController::Base
     head 204
   end
 
+  def head_default_content_type
+    # simulating path like "/1.foobar"
+    request.formats = []
+
+    respond_to do |format|
+      format.any { head 200 }
+    end
+  end
+
   private
 
     def set_variable_for_layout
@@ -275,13 +308,15 @@ end
 module TemplateModificationHelper
   private
     def modify_template(name)
-      path = File.expand_path("../fixtures/#{name}.erb", __dir__)
-      original = File.read(path)
-      File.write(path, "#{original} Modified!")
+      hash = @controller.view_paths.first.instance_variable_get(:@hash)
+      key = name + ".erb"
+      original = hash[key]
+      hash[key] = "#{original} Modified!"
       ActionView::LookupContext::DetailsKey.clear
       yield
     ensure
-      File.write(path, original)
+      hash[key] = original
+      ActionView::LookupContext::DetailsKey.clear
     end
 end
 
@@ -304,11 +339,12 @@ class ExpiresInRenderTest < ActionController::TestCase
   end
 
   def test_dynamic_render_with_file
-    # This is extremely bad, but should be possible to do.
     assert File.exist?(File.expand_path("../../test/abstract_unit.rb", __dir__))
-    response = get :dynamic_render_with_file, params: { id: '../\\../test/abstract_unit.rb' }
-    assert_equal File.read(File.expand_path("../../test/abstract_unit.rb", __dir__)),
-      response.body
+    assert_deprecated do
+      assert_raises ActionView::MissingTemplate do
+        get :dynamic_render_with_file, params: { id: '../\\../test/abstract_unit.rb' }
+      end
+    end
   end
 
   def test_dynamic_render_with_absolute_path
@@ -332,9 +368,11 @@ class ExpiresInRenderTest < ActionController::TestCase
 
   def test_permitted_dynamic_render_file_hash
     assert File.exist?(File.expand_path("../../test/abstract_unit.rb", __dir__))
-    response = get :dynamic_render_permit, params: { id: { file: '../\\../test/abstract_unit.rb' } }
-    assert_equal File.read(File.expand_path("../../test/abstract_unit.rb", __dir__)),
-      response.body
+    assert_deprecated do
+      assert_raises ActionView::MissingTemplate do
+        get :dynamic_render_permit, params: { id: { file: '../\\../test/abstract_unit.rb' } }
+      end
+    end
   end
 
   def test_dynamic_render_file_hash
@@ -361,6 +399,16 @@ class ExpiresInRenderTest < ActionController::TestCase
   def test_expires_in_header_with_public_and_must_revalidate
     get :conditional_hello_with_expires_in_with_public_and_must_revalidate
     assert_equal "max-age=60, public, must-revalidate", @response.headers["Cache-Control"]
+  end
+
+  def test_expires_in_header_with_stale_while_revalidate
+    get :conditional_hello_with_expires_in_with_stale_while_revalidate
+    assert_equal "max-age=60, public, stale-while-revalidate=300", @response.headers["Cache-Control"]
+  end
+
+  def test_expires_in_header_with_stale_if_error
+    get :conditional_hello_with_expires_in_with_stale_if_error
+    assert_equal "max-age=60, public, stale-if-error=300", @response.headers["Cache-Control"]
   end
 
   def test_expires_in_header_with_additional_headers
@@ -660,7 +708,7 @@ class ImplicitRenderTest < ActionController::TestCase
   tests ImplicitRenderTestController
 
   def test_implicit_no_content_response_as_browser
-    assert_raises(ActionController::UnknownFormat) do
+    assert_raises(ActionController::MissingExactTemplate) do
       get :empty_action
     end
   end
@@ -803,6 +851,11 @@ class HeadRenderTest < ActionController::TestCase
     assert_nothing_raised do
       get :head_and_return
     end
+  end
+
+  def test_head_default_content_type
+    post :head_default_content_type
+    assert_equal "text/html", @response.header["Content-Type"]
   end
 end
 
