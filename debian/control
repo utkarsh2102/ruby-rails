@@ -4,7 +4,8 @@ Priority: optional
 Maintainer: Debian Ruby Extras Maintainers <pkg-ruby-extras-maintainers@lists.alioth.debian.org>
 Uploaders: Pirate Praveen <praveen@debian.org>,
            Sruthi Chandran <srud@disroot.org>,
-           Utkarsh Gupta <guptautkarsh2102@gmail.com>
+           Utkarsh Gupta <guptautkarsh2102@gmail.com>,
+           Jongmin Kim <jmkim@pukyong.ac.kr>
 Build-Depends: debhelper-compat (= 12),
                gem2deb (>= 0.4.0~),
 # Node packages
