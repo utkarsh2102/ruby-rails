@@ -26,7 +26,7 @@ module ActionController
     end
   end
 
-  # ActionController::TestCase will be deprecated and moved to a gem in Rails 5.1.
+  # ActionController::TestCase will be deprecated and moved to a gem in the future.
   # Please use ActionDispatch::IntegrationTest going forward.
   class TestRequest < ActionDispatch::TestRequest #:nodoc:
     DEFAULT_ENV = ActionDispatch::TestRequest::DEFAULT_ENV.dup
@@ -275,9 +275,6 @@ module ActionController
   #      of the last HTTP response. In the above example, <tt>@response</tt> becomes valid
   #      after calling +post+. If the various assert methods are not sufficient, then you
   #      may use this object to inspect the HTTP response in detail.
-  #
-  # (Earlier versions of \Rails required each functional test to subclass
-  # Test::Unit::TestCase and define @controller, @request, @response in +setup+.)
   #
   # == Controller is automatically inferred
   #

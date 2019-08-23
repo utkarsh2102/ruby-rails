@@ -78,14 +78,15 @@ module ActionDispatch # :nodoc:
       x
     end
 
-    CONTENT_TYPE = "Content-Type".freeze
-    SET_COOKIE   = "Set-Cookie".freeze
-    LOCATION     = "Location".freeze
+    CONTENT_TYPE = "Content-Type"
+    SET_COOKIE   = "Set-Cookie"
+    LOCATION     = "Location"
     NO_CONTENT_CODES = [100, 101, 102, 204, 205, 304]
     CONTENT_TYPE_PARSER = /\A(?<type>[^;\s]+)?(?:.*;\s*charset=(?<quote>"?)(?<charset>[^;\s]+)\k<quote>)?/ # :nodoc:
 
     cattr_accessor :default_charset, default: "utf-8"
     cattr_accessor :default_headers
+    cattr_accessor :return_only_media_type_on_content_type, default: false
 
     include Rack::Response::Helpers
     # Aliasing these off because AD::Http::Cache::Response defines them.
@@ -106,7 +107,7 @@ module ActionDispatch # :nodoc:
 
       def body
         @str_body ||= begin
-          buf = "".dup
+          buf = +""
           each { |chunk| buf << chunk }
           buf
         end
@@ -225,7 +226,14 @@ module ActionDispatch # :nodoc:
       @status = Rack::Utils.status_code(status)
     end
 
-    # Sets the HTTP content type.
+    # Sets the HTTP response's content MIME type. For example, in the controller
+    # you could write this:
+    #
+    #  response.content_type = "text/plain"
+    #
+    # If a character set has been defined for this response (see charset=) then
+    # the character set information will also be included in the content type
+    # information.
     def content_type=(content_type)
       return unless content_type
       new_header_info = parse_content_type(content_type.to_s)
@@ -235,16 +243,23 @@ module ActionDispatch # :nodoc:
       set_content_type new_header_info.mime_type, charset
     end
 
-    # Sets the HTTP response's content MIME type. For example, in the controller
-    # you could write this:
-    #
-    #  response.content_type = "text/plain"
-    #
-    # If a character set has been defined for this response (see charset=) then
-    # the character set information will also be included in the content type
-    # information.
-
+    # Content type of response.
     def content_type
+      if self.class.return_only_media_type_on_content_type
+        ActiveSupport::Deprecation.warn(
+          "Rails 6.1 will return Content-Type header without modification." \
+          " If you want just the MIME type, please use `#media_type` instead."
+        )
+
+        content_type = super
+        content_type ? content_type.split(/;\s*charset=/)[0].presence : content_type
+      else
+        super.presence
+      end
+    end
+
+    # Media type of response.
+    def media_type
       parsed_content_type_header.mime_type
     end
 
@@ -458,7 +473,7 @@ module ActionDispatch # :nodoc:
     end
 
     def assign_default_content_type_and_charset!
-      return if content_type
+      return if media_type
 
       ct = parsed_content_type_header
       set_content_type(ct.mime_type || Mime[:html].to_s,

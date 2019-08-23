@@ -5,26 +5,22 @@ module ActiveRecord
     module DetermineIfPreparableVisitor
       attr_accessor :preparable
 
-      def accept(*)
+      def accept(object, collector)
         @preparable = true
         super
       end
 
       def visit_Arel_Nodes_In(o, collector)
         @preparable = false
-
-        if Array === o.right && !o.right.empty?
-          o.right.delete_if do |bind|
-            if Arel::Nodes::BindParam === bind && Relation::QueryAttribute === bind.value
-              !bind.value.boundable?
-            end
-          end
-        end
-
         super
       end
 
-      def visit_Arel_Nodes_SqlLiteral(*)
+      def visit_Arel_Nodes_NotIn(o, collector)
+        @preparable = false
+        super
+      end
+
+      def visit_Arel_Nodes_SqlLiteral(o, collector)
         @preparable = false
         super
       end

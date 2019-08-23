@@ -13,7 +13,77 @@ module ActiveRecord
         const_get(name)
       end
 
-      V5_2 = Current
+      V6_0 = Current
+
+      class V5_2 < V6_0
+        module TableDefinition
+          def timestamps(**options)
+            options[:precision] ||= nil
+            super
+          end
+        end
+
+        module CommandRecorder
+          def invert_transaction(args, &block)
+            [:transaction, args, block]
+          end
+
+          def invert_change_column_comment(args)
+            table_name, column_name, comment = args
+            [:change_column_comment, [table_name, column_name, from: comment, to: comment]]
+          end
+
+          def invert_change_table_comment(args)
+            table_name, comment = args
+            [:change_table_comment, [table_name, from: comment, to: comment]]
+          end
+        end
+
+        def create_table(table_name, **options)
+          if block_given?
+            super { |t| yield compatible_table_definition(t) }
+          else
+            super
+          end
+        end
+
+        def change_table(table_name, **options)
+          if block_given?
+            super { |t| yield compatible_table_definition(t) }
+          else
+            super
+          end
+        end
+
+        def create_join_table(table_1, table_2, **options)
+          if block_given?
+            super { |t| yield compatible_table_definition(t) }
+          else
+            super
+          end
+        end
+
+        def add_timestamps(table_name, **options)
+          options[:precision] ||= nil
+          super
+        end
+
+        private
+          def compatible_table_definition(t)
+            class << t
+              prepend TableDefinition
+            end
+            t
+          end
+
+          def command_recorder
+            recorder = super
+            class << recorder
+              prepend CommandRecorder
+            end
+            recorder
+          end
+      end
 
       class V5_1 < V5_2
         def change_column(table_name, column_name, type, options = {})
@@ -69,35 +139,12 @@ module ActiveRecord
             options[:id] = :integer
           end
 
-          if block_given?
-            super do |t|
-              yield compatible_table_definition(t)
-            end
-          else
-            super
-          end
-        end
-
-        def change_table(table_name, options = {})
-          if block_given?
-            super do |t|
-              yield compatible_table_definition(t)
-            end
-          else
-            super
-          end
+          super
         end
 
         def create_join_table(table_1, table_2, column_options: {}, **options)
           column_options.reverse_merge!(type: :integer)
-
-          if block_given?
-            super do |t|
-              yield compatible_table_definition(t)
-            end
-          else
-            super
-          end
+          super
         end
 
         def add_column(table_name, column_name, type, options = {})
@@ -118,7 +165,7 @@ module ActiveRecord
             class << t
               prepend TableDefinition
             end
-            t
+            super
           end
       end
 
@@ -136,33 +183,13 @@ module ActiveRecord
           end
         end
 
-        def create_table(table_name, options = {})
-          if block_given?
-            super do |t|
-              yield compatible_table_definition(t)
-            end
-          else
-            super
-          end
-        end
-
-        def change_table(table_name, options = {})
-          if block_given?
-            super do |t|
-              yield compatible_table_definition(t)
-            end
-          else
-            super
-          end
-        end
-
-        def add_reference(*, **options)
+        def add_reference(table_name, ref_name, **options)
           options[:index] ||= false
           super
         end
         alias :add_belongs_to :add_reference
 
-        def add_timestamps(_, **options)
+        def add_timestamps(table_name, **options)
           options[:null] = true if options[:null].nil?
           super
         end

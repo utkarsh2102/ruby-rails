@@ -33,6 +33,9 @@ require "models/organization"
 require "models/user"
 require "models/family"
 require "models/family_tree"
+require "models/section"
+require "models/seminar"
+require "models/session"
 
 class HasManyThroughAssociationsTest < ActiveRecord::TestCase
   fixtures :posts, :readers, :people, :comments, :authors, :categories, :taggings, :tags,
@@ -46,10 +49,30 @@ class HasManyThroughAssociationsTest < ActiveRecord::TestCase
     Reader.create person_id: 0, post_id: 0
   end
 
+  def test_has_many_through_create_record
+    assert books(:awdr).subscribers.create!(nick: "bob")
+  end
+
   def test_marshal_dump
-    post = posts :welcome
-    preloaded = Post.includes(:first_blue_tags).find(post.id)
+    preloaded = Post.includes(:first_blue_tags).first
     assert_equal preloaded, Marshal.load(Marshal.dump(preloaded))
+  end
+
+  def test_through_association_with_joins
+    assert_equal [comments(:eager_other_comment1)], authors(:mary).comments.merge(Post.joins(:comments))
+  end
+
+  def test_through_association_with_left_joins
+    assert_equal [comments(:eager_other_comment1)], authors(:mary).comments.merge(Post.left_joins(:comments))
+  end
+
+  def test_preload_with_nested_association
+    posts = Post.preload(:author, :author_favorites_with_scope).to_a
+
+    assert_no_queries do
+      posts.each(&:author)
+      posts.each(&:author_favorites_with_scope)
+    end
   end
 
   def test_preload_sti_rhs_class
@@ -70,6 +93,15 @@ class HasManyThroughAssociationsTest < ActiveRecord::TestCase
     club1 = Club.includes(:members).find_by_id club.id
     assert_equal [member1, member2].sort_by(&:id),
                  club1.members.sort_by(&:id)
+  end
+
+  def test_preload_multiple_instances_of_the_same_record
+    club = Club.create!(name: "Aaron cool banana club")
+    Membership.create! club: club, member: Member.create!(name: "Aaron")
+    Membership.create! club: club, member: Member.create!(name: "Bob")
+
+    preloaded_clubs = Club.joins(:memberships).preload(:membership).to_a
+    assert_no_queries { preloaded_clubs.each(&:membership) }
   end
 
   def test_ordered_has_many_through
@@ -361,7 +393,7 @@ class HasManyThroughAssociationsTest < ActiveRecord::TestCase
   end
 
   def test_delete_association
-    assert_queries(2) { posts(:welcome);people(:michael); }
+    assert_queries(2) { posts(:welcome); people(:michael); }
 
     assert_queries(1) do
       posts(:welcome).people.delete(people(:michael))
@@ -588,7 +620,7 @@ class HasManyThroughAssociationsTest < ActiveRecord::TestCase
   end
 
   def test_replace_association
-    assert_queries(4) { posts(:welcome);people(:david);people(:michael); posts(:welcome).people.reload }
+    assert_queries(4) { posts(:welcome); people(:david); people(:michael); posts(:welcome).people.reload }
 
     # 1 query to delete the existing reader (michael)
     # 1 query to associate the new reader (david)
@@ -596,10 +628,10 @@ class HasManyThroughAssociationsTest < ActiveRecord::TestCase
       posts(:welcome).people = [people(:david)]
     end
 
-    assert_queries(0) {
+    assert_no_queries do
       assert_includes posts(:welcome).people, people(:david)
       assert_not_includes posts(:welcome).people, people(:michael)
-    }
+    end
 
     assert_includes posts(:welcome).reload.people.reload, people(:david)
     assert_not_includes posts(:welcome).reload.people.reload, people(:michael)
@@ -727,13 +759,13 @@ class HasManyThroughAssociationsTest < ActiveRecord::TestCase
   end
 
   def test_clear_associations
-    assert_queries(2) { posts(:welcome);posts(:welcome).people.reload }
+    assert_queries(2) { posts(:welcome); posts(:welcome).people.reload }
 
     assert_queries(1) do
       posts(:welcome).people.clear
     end
 
-    assert_queries(0) do
+    assert_no_queries do
       assert_empty posts(:welcome).people
     end
 
@@ -823,7 +855,7 @@ class HasManyThroughAssociationsTest < ActiveRecord::TestCase
   def test_get_ids_for_loaded_associations
     person = people(:michael)
     person.posts.reload
-    assert_queries(0) do
+    assert_no_queries do
       person.post_ids
       person.post_ids
     end
@@ -922,7 +954,7 @@ class HasManyThroughAssociationsTest < ActiveRecord::TestCase
     author   = authors(:mary)
     category = author.named_categories.create(name: "Primary")
     author.named_categories.delete(category)
-    assert !Categorization.exists?(author_id: author.id, named_category_name: category.name)
+    assert_not Categorization.exists?(author_id: author.id, named_category_name: category.name)
     assert_empty author.named_categories.reload
   end
 
@@ -1233,7 +1265,7 @@ class HasManyThroughAssociationsTest < ActiveRecord::TestCase
   def test_has_many_through_associations_on_new_records_use_null_relations
     person = Person.new
 
-    assert_no_queries(ignore_none: false) do
+    assert_no_queries do
       assert_equal [], person.posts
       assert_equal [], person.posts.where(body: "omg")
       assert_equal [], person.posts.pluck(:body)
@@ -1445,6 +1477,37 @@ class HasManyThroughAssociationsTest < ActiveRecord::TestCase
     subscription2 = Subscription.second
     book2.subscriptions << subscription2
     assert_equal [subscription2], post.subscriptions.to_a
+  end
+
+  def test_child_is_visible_to_join_model_in_add_association_callbacks
+    [:before_add, :after_add].each do |callback_name|
+      sentient_treasure = Class.new(Treasure) do
+        def self.name; "SentientTreasure"; end
+
+        has_many :pet_treasures, foreign_key: :treasure_id, callback_name => :check_pet!
+        has_many :pets, through: :pet_treasures
+
+        def check_pet!(added)
+          raise "No pet!" if added.pet.nil?
+        end
+      end
+
+      treasure = sentient_treasure.new
+      assert_nothing_raised { treasure.pets << pets(:mochi) }
+    end
+  end
+
+  def test_circular_autosave_association_correctly_saves_multiple_records
+    cs180 = Seminar.new(name: "CS180")
+    fall = Session.new(name: "Fall")
+    sections = [
+      cs180.sections.build(short_name: "A"),
+      cs180.sections.build(short_name: "B"),
+    ]
+    fall.sections << sections
+    fall.save!
+    fall.reload
+    assert_equal sections, fall.sections.sort_by(&:id)
   end
 
   private
