@@ -170,6 +170,24 @@ Description: web-flow and rendering framework putting the VC in MVC (part of Rai
  battle-tested conventions for building and testing MVC web
  applications. Works with any Rack-compatible server.
 
+Package: ruby-actionmailbox
+Architecture: all
+X-DhRuby-Root: actionmailbox/
+XB-Ruby-Versions: ${ruby:Versions}
+Depends: ruby (>= 1:2.5.0) | ruby-interpreter,
+         ruby-actionpack (= ${source:Version}),
+         ruby-activejob (= ${source:Version}),
+         ruby-activerecord (= ${source:Version}),
+         ruby-activestorage (= ${source:Version}),
+         ruby-activesupport (= ${source:Version}),
+         ruby-mail (>= 2.7.1),
+	 ${misc:Depends}
+Description: receive and process incoming emails (part of Rails)
+ Action Mailbox routes incoming emails to controller-like mailboxes for
+ processing in Rails. It ships with ingresses for Mailgun, Mandrill,
+ Postmark, and SendGrid. It provides the way for handling inbound mails
+ directly via the built-in Exim, Postfix, and Qmail ingresses.
+
 Package: ruby-actionmailer
 Architecture: all
 X-DhRuby-Root: actionmailer/
@@ -231,6 +249,22 @@ Description: Local and cloud file storage framework (part of Rails)
  .
  Image files can furthermore be transformed using on-demand variants for
  quality, aspect ratio, size, or any other MiniMagick supported transformation.
+
+Package: ruby-actiontext
+Architecture: all
+X-DhRuby-Root: actiontext/
+XB-Ruby-Versions: ${ruby:Versions}
+Depends: ruby (>= 1:2.5.0) | ruby-interpreter,
+         ruby-actionpack (= ${source:Version}),
+         ruby-activerecord (= ${source:Version}),
+         ruby-activestorage (= ${source:Version}),
+         ruby-activesupport (= ${source:Version}),
+         ruby-nokogiri (>= 1.8.5),
+	 ${misc:Depends}
+Description: edit and display rich text (part of Rails)
+ Action Text brings rich text content and editing to Rails. It includes
+ the Trix editor that handles everything from formatting to links to
+ quotes to lists to embedded images and galleries.
 
 Package: ruby-railties
 Architecture: all
