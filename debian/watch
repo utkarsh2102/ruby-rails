@@ -1,7 +1,7 @@
-version=3
+version=4
 opts=\
 repacksuffix=+dfsg,\
 repack,compression=xz,\
 dversionmangle=s/\+(debian|dfsg|ds|deb)(\.\d+)?$//,\
 filenamemangle=s/.*\/v?([\d\.-]+)\.tar\.gz/rails-$1.tar.gz/ \
- https://github.com/rails/rails/tags .*/v(5\.[0-9.]+).tar.gz
+ https://github.com/rails/rails/tags .*/v(6\.[0-9.]+).tar.gz
