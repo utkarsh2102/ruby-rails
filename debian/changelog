@@ -1,3 +1,10 @@
+rails (2:6.0.0+dfsg-1) UNRELEASED; urgency=medium
+
+  * Team upload
+  * New upstream version 6.0.0+dfsg
+
+ -- Jongmin Kim <jmkim@pukyong.ac.kr>  Fri, 23 Aug 2019 17:46:24 +0900
+
 rails (2:5.2.3+dfsg-1) unstable; urgency=medium
 
   * New upstream version 5.2.3+dfsg
