@@ -5,3 +5,4 @@ relax-dependency-sqlite3.patch
 remove-ignored-dependencies.patch
 skip-test-unpackaged-dependencies.patch
 use-system-yarnpkg.patch
+ignore-test-stuck.patch
