@@ -14,14 +14,18 @@ puts '========================================================================'
 
 results = {}
 {
+  'actioncable'   => 'test',
+  'actionmailbox' => 'test',
   'actionmailer'  => 'test',
   'actionpack'    => 'test',
-  'actionview'    => 'test',
-  #'activejob'     => 'test', # FIXME MISSING DEPENDENCIES
+  'actiontext'    => 'test',
+  'actionview'    => 'test', # this includes ujs tests
+  'activejob'     => 'test', # FIXME MISSING DEPENDENCIES
   'activemodel'   => 'test',
   'activerecord'  => 'sqlite3:test', # FIXME SEVERAL TESTS BEING SKIPPING
-  #'activesupport' => 'test', # FIXME BROKEN
-  #'railties'      => 'test', # FIXME BROKEN
+  'activestorage' => 'test',
+  'activesupport' => 'test', # FIXME BROKEN
+#  'railties'      => 'test', # FIXME BROKEN
 }.each do |component,tasks|
   Array(tasks).each do |task|
     Dir.chdir component do
