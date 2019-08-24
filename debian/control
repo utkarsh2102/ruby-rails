@@ -100,7 +100,7 @@ Build-Depends: debhelper-compat (= 12),
 Standards-Version: 4.4.0
 Vcs-Git: https://salsa.debian.org/ruby-team/rails.git
 Vcs-Browser: https://salsa.debian.org/ruby-team/rails
-Homepage: http://rubyonrails.org/
+Homepage: https://rubyonrails.org/
 XS-Ruby-Versions: all
 Testsuite: autopkgtest-pkg-ruby
 
