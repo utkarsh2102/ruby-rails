@@ -2,3 +2,4 @@
 0002-disable-uglify-in-activestorage-rollup-config-js.patch
 relax-dependencies.patch
 relax-dependency-sqlite3.patch
+remove-ignored-dependencies.patch
