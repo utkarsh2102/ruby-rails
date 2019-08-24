@@ -36,7 +36,7 @@ results = {}
       puts
 
       puts "cd #{component}"
-      results["#{component}:#{task}"] = run("TESTOPTS='--seed=0' #{ruby} -S rake #{task}")
+      results["#{component}:#{task}"] = run("TESTOPTS='--seed=0' #{ruby} -S rake --trace #{task}")
       puts 'cd -'
     end
   end
