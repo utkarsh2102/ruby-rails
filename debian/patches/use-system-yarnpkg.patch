@@ -122,7 +122,7 @@ Last-Update: 2019-06-21
        assert_no_match(/node_modules/, content)
 --- a/railties/test/isolation/abstract_unit.rb
 +++ b/railties/test/isolation/abstract_unit.rb
-@@ -507,12 +507,12 @@
+@@ -512,12 +512,12 @@
    end
  
    unless File.exist?("#{RAILS_FRAMEWORK_ROOT}/actionview/lib/assets/compiled/rails-ujs.js")
