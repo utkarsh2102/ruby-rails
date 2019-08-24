@@ -34,3 +34,14 @@ Subject: Be careful with that bundler
        end
  
        def run_webpack
+--- a/railties/test/generators/app_generator_test.rb
++++ b/railties/test/generators/app_generator_test.rb
+@@ -1052,7 +1052,7 @@
+       template
+     end
+ 
+-    sequence = ["git init", "install", "binstubs bundler", "exec spring binstub --all", "webpacker:install", "echo ran after_bundle"]
++    sequence = ["git init", "install --local", "binstubs bundler", "exec spring binstub --all", "webpacker:install", "echo ran after_bundle"]
+     @sequence_step ||= 0
+     ensure_bundler_first = -> command, options = nil do
+       assert_equal sequence[@sequence_step], command, "commands should be called in sequence #{sequence}"
