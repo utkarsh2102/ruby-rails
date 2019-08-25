@@ -14,16 +14,16 @@ puts '========================================================================'
 
 results = {}
 {
-  'actioncable'   => 'test',
-  'actionmailbox' => 'test',
-  'actionmailer'  => 'test',
-  'actionpack'    => 'test',
-  'actiontext'    => 'test',
-  'actionview'    => 'test', # this includes ujs tests
+#  'actioncable'   => 'test',
+#  'actionmailbox' => 'test',
+#  'actionmailer'  => 'test',
+#  'actionpack'    => 'test',
+#  'actiontext'    => 'test',
+#  'actionview'    => 'test', # this includes ujs tests
   'activejob'     => 'test', # FIXME MISSING DEPENDENCIES
-  'activemodel'   => 'test',
-  'activerecord'  => 'sqlite3:test', # FIXME SEVERAL TESTS BEING SKIPPING
-  'activestorage' => 'test',
+#  'activemodel'   => 'test',
+#  'activerecord'  => 'sqlite3:test', # FIXME SEVERAL TESTS BEING SKIPPING
+#  'activestorage' => 'test',
   'activesupport' => 'test', # FIXME BROKEN
 #  'railties'      => 'test', # FIXME BROKEN
 }.each do |component,tasks|
