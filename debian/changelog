@@ -1,9 +1,22 @@
-rails (2:6.0.0+dfsg-1) UNRELEASED; urgency=medium
+rails (2:6.0.0+dfsg-1) experimental; urgency=medium
 
-  * Team upload
   * New upstream version 6.0.0+dfsg
+  * d/control:
+    + Add myself as Uploaders
+    + Refresh the dependencies for 6.0.0
+    + Add new packages: ruby-actionmailbox and ruby-actiontext
+    + Fix lintian P: insecure-copyright-format-uri
+  * d/copyright:
+    + Refresh the copyrights for 6.0.0
+    + Fix lintian P: insecure-copyright-format-uri
+  * d/patches: Refresh the patches for 6.0.0
+  * d/ruby-tests.rb:
+    + Refresh the tests for 6.0.0
+    + Disable the lib/ renaming
+    + Disable the failing tests
+  * d/*.docs: Refresh the docs for 6.0.0
 
- -- Jongmin Kim <jmkim@pukyong.ac.kr>  Fri, 23 Aug 2019 17:46:24 +0900
+ -- Jongmin Kim <jmkim@pukyong.ac.kr>  Sun, 25 Aug 2019 14:50:21 +0900
 
 rails (2:5.2.3+dfsg-1) unstable; urgency=medium
 
