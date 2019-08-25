@@ -1,8 +1,8 @@
 def run(cmd)
   puts cmd
-  system 'mv lib lib.off'
+#  system 'mv lib lib.off'
   res = system(cmd)
-  system 'mv lib.off lib'
+#  system 'mv lib.off lib'
   res
 end
 
