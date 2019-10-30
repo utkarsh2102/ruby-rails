@@ -1,3 +1,9 @@
+rails (2:5.2.3+dfsg-2) UNRELEASED; urgency=medium
+
+  * Use secure copyright file specification URI.
+
+ -- Debian Janitor <janitor@jelmer.uk>  Wed, 30 Oct 2019 18:12:31 +0000
+
 rails (2:5.2.3+dfsg-1) unstable; urgency=medium
 
   * New upstream version 5.2.3+dfsg
