@@ -59,7 +59,7 @@ Build-Depends: debhelper-compat (= 12),
                ruby-tzinfo (<< 2.0) <!nocheck>,
                ruby-websocket-driver (>= 0.6.1) <!nocheck>,
                sqlite3 <!nocheck>
-Standards-Version: 4.4.0
+Standards-Version: 4.4.1
 Vcs-Git: https://salsa.debian.org/ruby-team/rails.git
 Vcs-Browser: https://salsa.debian.org/ruby-team/rails
 Homepage: http://www.rubyonrails.org
