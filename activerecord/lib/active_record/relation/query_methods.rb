@@ -52,7 +52,15 @@ module ActiveRecord
           ActiveSupport::Deprecation.warn(<<~MSG.squish)
             NOT conditions will no longer behave as NOR in Rails 6.1.
             To continue using NOR conditions, NOT each conditions manually
-            (`#{ opts.keys.map { |key| ".where.not(#{key.inspect} => ...)" }.join }`).
+            (`#{
+              opts.flat_map { |key, value|
+                if value.is_a?(Hash) && value.size > 1
+                  value.map { |k, v| ".where.not(#{key.inspect} => { #{k.inspect} => ... })" }
+                else
+                  ".where.not(#{key.inspect} => ...)"
+                end
+              }.join
+            }`).
           MSG
           @scope.where_clause += where_clause.invert(:nor)
         else
@@ -64,7 +72,10 @@ module ActiveRecord
 
       private
         def not_behaves_as_nor?(opts)
-          opts.is_a?(Hash) && opts.size > 1
+          return false unless opts.is_a?(Hash)
+
+          opts.any? { |k, v| v.is_a?(Hash) && v.size > 1 } ||
+            opts.size > 1
         end
     end
 
@@ -1083,14 +1094,22 @@ module ActiveRecord
         end
       end
 
-      def valid_association_list(associations)
+      def select_association_list(associations)
+        result = []
         associations.each do |association|
           case association
           when Hash, Symbol, Array
-            # valid
+            result << association
           else
-            raise ArgumentError, "only Hash, Symbol and Array are allowed"
+            yield if block_given?
           end
+        end
+        result
+      end
+
+      def valid_association_list(associations)
+        select_association_list(associations) do
+          raise ArgumentError, "only Hash, Symbol and Array are allowed"
         end
       end
 
@@ -1106,6 +1125,10 @@ module ActiveRecord
         unless left_outer_joins_values.empty?
           left_joins = valid_association_list(left_outer_joins_values.flatten)
           buckets[:stashed_join] << construct_join_dependency(left_joins, Arel::Nodes::OuterJoin)
+        end
+
+        if joins.last.is_a?(ActiveRecord::Associations::JoinDependency)
+          buckets[:stashed_join] << joins.pop if joins.last.base_klass == klass
         end
 
         joins.map! do |join|

@@ -1,3 +1,63 @@
+## Rails 6.0.2.1 (December 18, 2019) ##
+
+*   No changes.
+
+
+## Rails 6.0.2 (December 13, 2019) ##
+
+*   Eager load translations during initialization.
+
+    *Diego Plentz*
+
+*   Use per-thread CPU time clock on `ActiveSupport::Notifications`.
+
+    *George Claghorn*
+
+
+## Rails 6.0.1 (November 5, 2019) ##
+
+*   `ActiveSupport::SafeBuffer` supports `Enumerator` methods.
+
+    *Shugo Maeda*
+
+*   The Redis cache store fails gracefully when the server returns a "max number
+    of clients reached" error.
+
+    *Brandon Medenwald*
+
+*   Fixed that mutating a value returned by a memory cache store would
+    unexpectedly change the cached value.
+
+    *Jonathan Hyman*
+
+*   The default inflectors in `zeitwerk` mode support overrides:
+
+    ```ruby
+    # config/initializers/zeitwerk.rb
+    Rails.autoloaders.each do |autoloader|
+      autoloader.inflector.inflect(
+        "html_parser" => "HTMLParser",
+        "ssl_error"   => "SSLError"
+      )
+    end
+    ```
+
+    That way, you can tweak how individual basenames are inflected without touching Active Support inflection rules, which are global. These inflectors fallback to `String#camelize`, so existing inflection rules are still taken into account for non-overridden basenames.
+
+    Please, check the [autoloading guide for `zeitwerk` mode](https://guides.rubyonrails.org/v6.0/autoloading_and_reloading_constants.html#customizing-inflections) if you prefer not to depend on `String#camelize` at all.
+
+    *Xavier Noria*
+
+*   Improve `Range#===`, `Range#include?`, and `Range#cover?` to work with beginless (startless)
+    and endless range targets.
+
+    *Allen Hsu*, *Andrew Hodgkinson*
+
+*   Don't use `Process#clock_gettime(CLOCK_THREAD_CPUTIME_ID)` on Solaris.
+
+    *Iain Beeston*
+
+
 ## Rails 6.0.0 (August 16, 2019) ##
 
 *   Let `require_dependency` in `zeitwerk` mode look the autoload paths up for
@@ -48,6 +108,7 @@
     `object` be a method which would otherwise add them. Fixes #36522.
 
     *Aaron Lipman*
+
 
 ## Rails 6.0.0.rc2 (July 22, 2019) ##
 
@@ -287,7 +348,7 @@
 
     *Jan Habermann*, *Xavier Noria*
 
-*   Deprecate `ActiveSupport::Multibyte::Unicode#pack_graphemes(array)` and `ActiveSuppport::Multibyte::Unicode#unpack_graphemes(string)`
+*   Deprecate `ActiveSupport::Multibyte::Unicode#pack_graphemes(array)` and `ActiveSupport::Multibyte::Unicode#unpack_graphemes(string)`
     in favor of `array.flatten.pack("U*")` and `string.scan(/\X/).map(&:codepoints)`, respectively.
 
     *Francesco Rodríguez*
@@ -305,7 +366,7 @@
 
     *Edouard Chin*
 
-*   Deprecate `ActiveSupport::Multibyte::Unicode#normalize` and `ActiveSuppport::Multibyte::Chars#normalize`
+*   Deprecate `ActiveSupport::Multibyte::Unicode#normalize` and `ActiveSupport::Multibyte::Chars#normalize`
     in favor of `String#unicode_normalize`
 
     *Francesco Rodríguez*

@@ -11,7 +11,6 @@ require "action_dispatch/system_testing/browser"
 require "action_dispatch/system_testing/server"
 require "action_dispatch/system_testing/test_helpers/screenshot_helper"
 require "action_dispatch/system_testing/test_helpers/setup_and_teardown"
-require "action_dispatch/system_testing/test_helpers/undef_methods"
 
 module ActionDispatch
   # = System Testing
@@ -111,16 +110,27 @@ module ActionDispatch
   # Because <tt>ActionDispatch::SystemTestCase</tt> is a shim between Capybara
   # and Rails, any driver that is supported by Capybara is supported by system
   # tests as long as you include the required gems and files.
-  class SystemTestCase < IntegrationTest
+  class SystemTestCase < ActiveSupport::TestCase
     include Capybara::DSL
     include Capybara::Minitest::Assertions
     include SystemTesting::TestHelpers::SetupAndTeardown
     include SystemTesting::TestHelpers::ScreenshotHelper
-    include SystemTesting::TestHelpers::UndefMethods
 
     def initialize(*) # :nodoc:
       super
       self.class.driver.use
+      @proxy_route = if ActionDispatch.test_app
+        Class.new do
+          include ActionDispatch.test_app.routes.url_helpers
+          include ActionDispatch.test_app.routes.mounted_helpers
+
+          def url_options
+            default_url_options.merge(host: Capybara.app_host)
+          end
+        end.new
+      else
+        nil
+      end
     end
 
     def self.start_application # :nodoc:
@@ -160,6 +170,14 @@ module ActionDispatch
     end
 
     driven_by :selenium
+
+    def method_missing(method, *args, &block)
+      if @proxy_route.respond_to?(method)
+        @proxy_route.send(method, *args, &block)
+      else
+        super
+      end
+    end
 
     ActiveSupport.run_load_hooks(:action_dispatch_system_test_case, self)
   end
