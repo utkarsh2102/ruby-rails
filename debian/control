@@ -95,7 +95,7 @@ Build-Depends: debhelper-compat (= 12),
                ruby-tzinfo (<< 2.0) <!nocheck>,
                ruby-tzinfo (>= 1.1) <!nocheck>,
                ruby-websocket-driver (>= 0.6.1) <!nocheck>,
-               sqlite3 <!nocheck>
+               sqlite3 <!nocheck>,
                ruby-zeitwerk (<< 3.0) <!nocheck>,
                ruby-zeitwerk (>= 2.1.4) <!nocheck>
 Standards-Version: 4.4.0
