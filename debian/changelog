@@ -1,10 +1,16 @@
-rails (2:6.0.0+dfsg-2) UNRELEASED; urgency=medium
+rails (2:6.0.2.1+dfsg-1) experimental; urgency=medium
 
+  [ Debian Janitor ]
   * Use secure copyright file specification URI.
   * Update standards version to 4.4.1, no changes needed.
   * Remove obsolete fields Name, Contact from debian/upstream/metadata.
 
- -- Debian Janitor <janitor@jelmer.uk>  Wed, 30 Oct 2019 18:12:31 +0000
+  [ Sruthi Chandran ]
+  * New upstream version 6.0.2.1+dfsg
+  * Refresh patches
+  * Bump Standards-Version to 4.5.0 (no changes needed)
+
+ -- Sruthi Chandran <srud@debian.org>  Tue, 04 Feb 2020 13:49:14 +0100
 
 rails (2:6.0.0+dfsg-1) experimental; urgency=medium
 
