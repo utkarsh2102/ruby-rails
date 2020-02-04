@@ -80,7 +80,7 @@ Last-Update: 2019-06-21
  platforms :ruby, :mswin, :mswin64, :mingw, :x64_mingw do
 --- a/rails.gemspec
 +++ b/rails.gemspec
-@@ -33,6 +33,5 @@
+@@ -41,6 +41,5 @@
    s.add_dependency "actiontext",    version
    s.add_dependency "railties",      version
  

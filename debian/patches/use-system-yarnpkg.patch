@@ -27,7 +27,7 @@ Last-Update: 2019-06-21
        end
      end
  
-@@ -473,7 +473,7 @@
+@@ -474,7 +474,7 @@
        end
  
        def delete_bin_yarn
@@ -122,18 +122,20 @@ Last-Update: 2019-06-21
        assert_no_match(/node_modules/, content)
 --- a/railties/test/isolation/abstract_unit.rb
 +++ b/railties/test/isolation/abstract_unit.rb
-@@ -512,12 +512,12 @@
-   end
+@@ -518,14 +518,14 @@
  
    unless File.exist?("#{RAILS_FRAMEWORK_ROOT}/actionview/lib/assets/compiled/rails-ujs.js")
--    Dir.chdir("#{RAILS_FRAMEWORK_ROOT}/actionview") { `yarn build` }
-+    Dir.chdir("#{RAILS_FRAMEWORK_ROOT}/actionview") { `yarnpkg build` }
+     Dir.chdir("#{RAILS_FRAMEWORK_ROOT}/actionview") do
+-      sh "yarn build"
++      sh "yarnpkg build"
+     end
    end
  
    assets_path = "#{RAILS_FRAMEWORK_ROOT}/railties/test/isolation/assets"
    unless Dir.exist?("#{assets_path}/node_modules")
--    Dir.chdir(assets_path) { `yarn install` }
-+    Dir.chdir(assets_path) { `yarnpkg install` }
+     Dir.chdir(assets_path) do
+-      sh "yarn install"
++      sh "yarnpkg install"
+     end
    end
-   FileUtils.cp("#{assets_path}/package.json", "#{app_template_path}/package.json")
-   FileUtils.cp("#{assets_path}/config/webpacker.yml", "#{app_template_path}/config/webpacker.yml")
+ 

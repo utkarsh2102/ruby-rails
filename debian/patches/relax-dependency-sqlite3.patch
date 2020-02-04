@@ -25,7 +25,7 @@ Last-Update: 2019-06-12
      gem "pg", ">= 0.18.0"
 --- a/activerecord/lib/active_record/connection_adapters/sqlite3/database_statements.rb
 +++ b/activerecord/lib/active_record/connection_adapters/sqlite3/database_statements.rb
-@@ -90,7 +90,7 @@
+@@ -92,7 +92,7 @@
  
              log(sql, name) do
                ActiveSupport::Dependencies.interlock.permit_concurrent_loads do
