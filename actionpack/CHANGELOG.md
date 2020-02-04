@@ -1,3 +1,37 @@
+## Rails 6.0.2.1 (December 18, 2019) ##
+
+*   Fix possible information leak / session hijacking vulnerability.
+
+    The `ActionDispatch::Session::MemcacheStore` is still vulnerable given it requires the
+    gem dalli to be updated as well.
+
+    CVE-2019-16782.
+
+
+## Rails 6.0.2 (December 13, 2019) ##
+
+*   Allow using mountable engine route helpers in System Tests.
+
+    *Chalo Fernandez*
+
+
+## Rails 6.0.1 (November 5, 2019) ##
+
+*   `ActionDispatch::SystemTestCase` now inherits from `ActiveSupport::TestCase`
+    rather than `ActionDispatch::IntegrationTest`. This permits running jobs in
+    system tests.
+
+    *George Claghorn*, *Edouard Chin*
+
+*   Registered MIME types may contain extra flags:
+
+    ```ruby
+    Mime::Type.register "text/html; fragment", :html_fragment
+    ```
+
+    *Aaron Patterson*
+
+
 ## Rails 6.0.0 (August 16, 2019) ##
 
 *   No changes.

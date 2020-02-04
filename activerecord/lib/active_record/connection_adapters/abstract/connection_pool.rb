@@ -317,14 +317,15 @@ module ActiveRecord
 
         @mutex = Mutex.new
         @pools = {}
+        @threads = {}
 
         class << self
           def register_pool(pool, frequency) # :nodoc:
             @mutex.synchronize do
-              unless @pools.key?(frequency)
-                @pools[frequency] = []
-                spawn_thread(frequency)
+              unless @threads[frequency]&.alive?
+                @threads[frequency] = spawn_thread(frequency)
               end
+              @pools[frequency] ||= []
               @pools[frequency] << WeakRef.new(pool)
             end
           end
@@ -333,7 +334,8 @@ module ActiveRecord
 
             def spawn_thread(frequency)
               Thread.new(frequency) do |t|
-                loop do
+                running = true
+                while running
                   sleep t
                   @mutex.synchronize do
                     @pools[frequency].select!(&:weakref_alive?)
@@ -341,6 +343,12 @@ module ActiveRecord
                       p.reap
                       p.flush
                     rescue WeakRef::RefError
+                    end
+
+                    if @pools[frequency].empty?
+                      @pools.delete(frequency)
+                      @threads.delete(frequency)
+                      running = false
                     end
                   end
                 end
@@ -642,6 +650,7 @@ module ActiveRecord
       # or a thread dies unexpectedly.
       def reap
         stale_connections = synchronize do
+          return unless @connections
           @connections.select do |conn|
             conn.in_use? && !conn.owner.alive?
           end.each do |conn|
@@ -666,6 +675,7 @@ module ActiveRecord
         return if minimum_idle.nil?
 
         idle_connections = synchronize do
+          return unless @connections
           @connections.select do |conn|
             !conn.in_use? && conn.seconds_idle >= minimum_idle
           end.each do |conn|

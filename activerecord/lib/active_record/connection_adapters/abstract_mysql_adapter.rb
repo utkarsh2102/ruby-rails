@@ -110,6 +110,14 @@ module ActiveRecord
         !mariadb? && database_version >= "5.7.7"
       end
 
+      def supports_common_table_expressions?
+        if mariadb?
+          database_version >= "10.2.1"
+        else
+          database_version >= "8.0.1"
+        end
+      end
+
       def supports_advisory_locks?
         true
       end
@@ -440,11 +448,11 @@ module ActiveRecord
 
         query_values(<<~SQL, "SCHEMA")
           SELECT column_name
-          FROM information_schema.key_column_usage
-          WHERE constraint_name = 'PRIMARY'
+          FROM information_schema.statistics
+          WHERE index_name = 'PRIMARY'
             AND table_schema = #{scope[:schema]}
             AND table_name = #{scope[:name]}
-          ORDER BY ordinal_position
+          ORDER BY seq_in_index
         SQL
       end
 
@@ -581,6 +589,7 @@ module ActiveRecord
         end
 
         # See https://dev.mysql.com/doc/refman/5.7/en/error-messages-server.html
+        ER_FILSORT_ABORT        = 1028
         ER_DUP_ENTRY            = 1062
         ER_NOT_NULL_VIOLATION   = 1048
         ER_NO_REFERENCED_ROW    = 1216
@@ -622,7 +631,7 @@ module ActiveRecord
             Deadlocked.new(message, sql: sql, binds: binds)
           when ER_LOCK_WAIT_TIMEOUT
             LockWaitTimeout.new(message, sql: sql, binds: binds)
-          when ER_QUERY_TIMEOUT
+          when ER_QUERY_TIMEOUT, ER_FILSORT_ABORT
             StatementTimeout.new(message, sql: sql, binds: binds)
           when ER_QUERY_INTERRUPTED
             QueryCanceled.new(message, sql: sql, binds: binds)

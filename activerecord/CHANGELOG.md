@@ -1,3 +1,121 @@
+## Rails 6.0.2.1 (December 18, 2019) ##
+
+*   No changes.
+
+
+## Rails 6.0.2 (December 13, 2019) ##
+
+*   Share the same connection pool for primary and replica databases in the
+    transactional tests for the same database.
+
+    *Edouard Chin*
+
+*   Fix the preloader when one record is fetched using `after_initialize`
+    but not the entire collection.
+
+    *Bradley Price*
+
+*   Fix collection callbacks not terminating when `:abort` is thrown.
+
+    *Edouard Chin*, *Ryuta Kamizono*
+
+*   Correctly deprecate `where.not` working as NOR for relations.
+
+    12a9664 deprecated where.not working as NOR, however
+    doing a relation query like `where.not(relation: { ... })`
+    wouldn't be properly deprecated and `where.not` would work as
+    NAND instead.
+
+    *Edouard Chin*
+
+*   Fix `db:migrate` task with multiple databases to restore the connection
+    to the previous database.
+
+    The migrate task iterates and establish a connection over each db
+    resulting in the last one to be used by subsequent rake tasks.
+    We should reestablish a connection to the connection that was
+    established before the migrate tasks was run
+
+    *Edouard Chin*
+
+*   Fix multi-threaded issue for `AcceptanceValidator`.
+
+    *Ryuta Kamizono*
+
+
+## Rails 6.0.1 (November 5, 2019) ##
+
+*    Common Table Expressions are allowed on read-only connections.
+
+     *Chris Morris*
+
+*    New record instantiation respects `unscope`.
+
+     *Ryuta Kamizono*
+
+*    Fixed a case where `find_in_batches` could halt too early.
+
+     *Takayuki Nakata*
+
+*    Autosaved associations always perform validations when a custom validation
+     context is used.
+
+     *Tekin Suleyman*
+
+*    `sql.active_record` notifications now include the `:connection` in
+     their payloads.
+
+     *Eugene Kenny*
+
+*    A rollback encountered in an `after_commit` callback does not reset
+     previously-committed record state.
+
+     *Ryuta Kamizono*
+
+*    Fixed that join order was lost when eager-loading.
+
+     *Ryuta Kamizono*
+
+*   `DESCRIBE` queries are allowed on read-only connections.
+
+    *Dylan Thacker-Smith*
+
+*   Fixed that records that had been `inspect`ed could not be marshaled.
+
+    *Eugene Kenny*
+
+*   The connection pool reaper thread is respawned in forked processes. This
+    fixes that idle connections in forked processes wouldn't be reaped.
+
+    *John Hawthorn*
+
+*   The memoized result of `ActiveRecord::Relation#take` is properly cleared
+    when `ActiveRecord::Relation#reset` or `ActiveRecord::Relation#reload`
+    is called.
+
+    *Anmol Arora*
+
+*   Fixed the performance regression for `primary_keys` introduced MySQL 8.0.
+
+    *Hiroyuki Ishii*
+
+*   `insert`, `insert_all`, `upsert`, and `upsert_all` now clear the query cache.
+
+    *Eugene Kenny*
+
+*   Call `while_preventing_writes` directly from `connected_to`.
+
+    In some cases application authors want to use the database switching middleware and make explicit calls with `connected_to`. It's possible for an app to turn off writes and not turn them back on by the time we call `connected_to(role: :writing)`.
+
+    This change allows apps to fix this by assuming if a role is writing we want to allow writes, except in the case it's explicitly turned off.
+
+    *Eileen M. Uchitelle*
+
+*   Improve detection of ActiveRecord::StatementTimeout with mysql2 adapter in the edge case when the query is terminated during filesort.
+
+    *Kir Shatrov*
+
+
 ## Rails 6.0.0 (August 16, 2019) ##
 
 *   Preserve user supplied joins order as much as possible.
@@ -478,7 +596,7 @@
 
     *Rafael Mendonça França*
 
-*   Deprecate `config.activerecord.sqlite3.represent_boolean_as_integer`.
+*   Deprecate `config.active_record.sqlite3.represent_boolean_as_integer`.
 
     *Rafael Mendonça França*
 

@@ -1,3 +1,20 @@
+## Rails 6.0.2.1 (December 18, 2019) ##
+
+*   No changes.
+
+
+## Rails 6.0.2 (December 13, 2019) ##
+
+*   No changes.
+
+
+## Rails 6.0.1 (November 5, 2019) ##
+
+*   UJS avoids `Element.closest()` for IE 9 compatibility.
+
+    *George Claghorn*
+
+
 ## Rails 6.0.0 (August 16, 2019) ##
 
 *   ActionView::Helpers::SanitizeHelper: support rails-html-sanitizer 1.1.0.
@@ -37,6 +54,11 @@
 
     *Edward Rudd*
 
+*   `ActionView::TemplateRender.render(file: )` now renders the file directly,
+    without using any handlers, using the new `Template::RawFile` class.
+
+    *John Hawthorn*, *Cliff Pruitt*
+
 
 ## Rails 6.0.0.beta3 (March 11, 2019) ##
 
@@ -69,6 +91,11 @@
     Fixes #34974.
 
     *Mark Edmondson*
+
+*   Single arity template handlers are deprecated.  Template handlers must
+    now accept two parameters, the view object and the source for the view object.
+
+    *tenderlove*
 
 
 ## Rails 6.0.0.beta1 (January 18, 2019) ##

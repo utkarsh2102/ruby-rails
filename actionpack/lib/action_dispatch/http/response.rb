@@ -82,7 +82,6 @@ module ActionDispatch # :nodoc:
     SET_COOKIE   = "Set-Cookie"
     LOCATION     = "Location"
     NO_CONTENT_CODES = [100, 101, 102, 204, 205, 304]
-    CONTENT_TYPE_PARSER = /\A(?<type>[^;\s]+)?(?:.*;\s*charset=(?<quote>"?)(?<charset>[^;\s]+)\k<quote>)?/ # :nodoc:
 
     cattr_accessor :default_charset, default: "utf-8"
     cattr_accessor :default_headers
@@ -420,13 +419,18 @@ module ActionDispatch # :nodoc:
     end
 
   private
-
     ContentTypeHeader = Struct.new :mime_type, :charset
     NullContentTypeHeader = ContentTypeHeader.new nil, nil
 
+    CONTENT_TYPE_PARSER = /
+      \A
+      (?<mime_type>[^;\s]+\s*(?:;\s*(?:(?!charset)[^;\s])+)*)?
+      (?:;\s*charset=(?<quote>"?)(?<charset>[^;\s]+)\k<quote>)?
+    /x # :nodoc:
+
     def parse_content_type(content_type)
       if content_type && match = CONTENT_TYPE_PARSER.match(content_type)
-        ContentTypeHeader.new(match[:type], match[:charset])
+        ContentTypeHeader.new(match[:mime_type], match[:charset])
       else
         NullContentTypeHeader
       end
@@ -531,4 +535,6 @@ module ActionDispatch # :nodoc:
       end
     end
   end
+
+  ActiveSupport.run_load_hooks(:action_dispatch_response, Response)
 end

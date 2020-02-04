@@ -9,8 +9,8 @@ module ActiveRecord
   module VERSION
     MAJOR = 6
     MINOR = 0
-    TINY  = 0
-    PRE   = nil
+    TINY  = 2
+    PRE   = "1"
 
     STRING = [MAJOR, MINOR, TINY, PRE].compact.join(".")
   end
