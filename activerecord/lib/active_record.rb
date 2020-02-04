@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 #--
-# Copyright (c) 2004-2018 David Heinemeier Hansson
+# Copyright (c) 2004-2019 David Heinemeier Hansson
 #
 # Permission is hereby granted, free of charge, to any person obtaining
 # a copy of this software and associated documentation files (the
@@ -55,7 +55,6 @@ module ActiveRecord
   autoload :Persistence
   autoload :QueryCache
   autoload :Querying
-  autoload :CollectionCacheKey
   autoload :ReadonlyAttributes
   autoload :RecordInvalid, "active_record/validations"
   autoload :Reflection
@@ -74,6 +73,7 @@ module ActiveRecord
   autoload :Translation
   autoload :Validations
   autoload :SecureToken
+  autoload :DatabaseSelector, "active_record/middleware/database_selector"
 
   eager_autoload do
     autoload :ActiveRecordError, "active_record/errors"
@@ -153,6 +153,12 @@ module ActiveRecord
     end
   end
 
+  module Middleware
+    extend ActiveSupport::Autoload
+
+    autoload :DatabaseSelector, "active_record/middleware/database_selector"
+  end
+
   module Tasks
     extend ActiveSupport::Autoload
 
@@ -163,6 +169,7 @@ module ActiveRecord
       "active_record/tasks/postgresql_database_tasks"
   end
 
+  autoload :TestDatabases, "active_record/test_databases"
   autoload :TestFixtures, "active_record/fixtures"
 
   def self.eager_load!

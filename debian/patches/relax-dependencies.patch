@@ -1,0 +1,40 @@
+Description: Relax dependencies
+ This patch will relax the dependencies version, remove useless
+ dependencies, or replace the gems to which is already in Debian.
+ .
+ Relax dependencies version:
+  * selenium-webdriver
+ .
+ Remove/replace dependencies:
+  * minitest-bisect
+    + Not packaged in Debian
+    + Not used (minitest is used)
+  * minitest-retry
+    + Not packaged in Debian
+    + Used only when running on Buildkite CI
+  * webdrivers
+    + Not packaged in Debian
+    + Could be replaced by chromedriver-helper (ruby-chromedriver-helper)
+Author: Jongmin Kim <jmkim@pukyong.ac.kr>
+Forwarded: not-needed
+Last-Update: 2019-06-03
+--- a/Gemfile
++++ b/Gemfile
+@@ -93,7 +93,7 @@
+ 
+ group :ujs do
+   gem "qunit-selenium"
+-  gem "webdrivers"
++  gem "chromedriver-helper"
+ end
+ 
+ # Add your own local bundler stuff.
+@@ -101,8 +101,6 @@
+ instance_eval File.read local_gemfile if File.exist? local_gemfile
+ 
+ group :test do
+-  gem "minitest-bisect"
+-  gem "minitest-retry"
+   gem "minitest-reporters"
+ 
+   platforms :mri do

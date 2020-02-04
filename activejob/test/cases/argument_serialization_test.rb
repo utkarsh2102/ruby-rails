@@ -14,6 +14,9 @@ class ArgumentSerializationTest < ActiveSupport::TestCase
 
   [ nil, 1, 1.0, 1_000_000_000_000_000_000_000,
     "a", true, false, BigDecimal(5),
+    :a, 1.day, Date.new(2001, 2, 3), Time.new(2002, 10, 31, 2, 2, 2, "+02:00"),
+    DateTime.new(2001, 2, 3, 4, 5, 6, "+03:00"),
+    ActiveSupport::TimeWithZone.new(Time.utc(1999, 12, 31, 23, 59, 59), ActiveSupport::TimeZone["UTC"]),
     [ 1, "a" ],
     { "a" => 1 }
   ].each do |arg|
@@ -22,7 +25,7 @@ class ArgumentSerializationTest < ActiveSupport::TestCase
     end
   end
 
-  [ :a, Object.new, self, Person.find("5").to_gid ].each do |arg|
+  [ Object.new, self, Person.find("5").to_gid ].each do |arg|
     test "does not serialize #{arg.class}" do
       assert_raises ActiveJob::SerializationError do
         ActiveJob::Arguments.serialize [ arg ]
@@ -118,6 +121,14 @@ class ArgumentSerializationTest < ActiveSupport::TestCase
     assert_instance_of ActiveSupport::HashWithIndifferentAccess, perform_round_trip([indifferent_access]).first
   end
 
+  test "should maintain time with zone" do
+    Time.use_zone "Alaska" do
+      time_with_zone = Time.new(2002, 10, 31, 2, 2, 2).in_time_zone
+      assert_instance_of ActiveSupport::TimeWithZone, perform_round_trip([time_with_zone]).first
+      assert_arguments_unchanged time_with_zone
+    end
+  end
+
   test "should disallow non-string/symbol hash keys" do
     assert_raises ActiveJob::SerializationError do
       ActiveJob::Arguments.serialize [ { 1 => 2 } ]
@@ -129,8 +140,10 @@ class ArgumentSerializationTest < ActiveSupport::TestCase
   end
 
   test "should not allow reserved hash keys" do
-    ["_aj_globalid", :_aj_globalid, "_aj_symbol_keys", :_aj_symbol_keys,
-     "_aj_hash_with_indifferent_access", :_aj_hash_with_indifferent_access].each do |key|
+    ["_aj_globalid", :_aj_globalid,
+     "_aj_symbol_keys", :_aj_symbol_keys,
+     "_aj_hash_with_indifferent_access", :_aj_hash_with_indifferent_access,
+     "_aj_serialized", :_aj_serialized].each do |key|
       assert_raises ActiveJob::SerializationError do
         ActiveJob::Arguments.serialize [key => 1]
       end

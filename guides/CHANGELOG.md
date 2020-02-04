@@ -1,37 +1,49 @@
-## Rails 5.2.3 (March 27, 2019) ##
+## Rails 6.0.0 (August 16, 2019) ##
 
 *   No changes.
 
 
-## Rails 5.2.2.1 (March 11, 2019) ##
+## Rails 6.0.0.rc2 (July 22, 2019) ##
+
+*   Add "Multiple Databases with Active Record" Guide.
+
+    *Eileen M. Uchitelle*
+
+
+## Rails 6.0.0.rc1 (April 24, 2019) ##
+
+*   Added documentation about the `variants` option to `render`
+
+    *Edward Rudd*
+
+
+## Rails 6.0.0.beta3 (March 11, 2019) ##
 
 *   No changes.
 
 
-## Rails 5.2.2 (December 04, 2018) ##
+## Rails 6.0.0.beta2 (February 25, 2019) ##
 
 *   No changes.
 
 
-## Rails 5.2.1.1 (November 27, 2018) ##
+## Rails 6.0.0.beta1 (January 18, 2019) ##
 
-*   No changes.
+*   Add "Action Text Overview" Guide.
 
+    *DHH*
 
-## Rails 5.2.1 (August 07, 2018) ##
+*   Add "Action Mailbox Basics" Guide.
 
-*   No changes.
+    *DHH*
 
+*   New section _Troubleshooting_ in the _Autoloading and Reloading Constants_ guide.
 
-## Rails 5.2.0 (April 09, 2018) ##
+    *Xavier Noria*
 
-*   Add "Active Storage Overview" Guide.
+*   Rails 6 requires Ruby 2.5.0 or newer.
 
-    *Jeffrey Guenther*, *George Claghorn*
-
-*   Add "Threading and Code Execution in Rails" Guide.
-
-    *Matthew Draper*
+    *Jeremy Daer*, *Kasper Timm Hansen*
 
 
-Please check [5-1-stable](https://github.com/rails/rails/blob/5-1-stable/guides/CHANGELOG.md) for previous changes.
+Please check [5-2-stable](https://github.com/rails/rails/blob/5-2-stable/guides/CHANGELOG.md) for previous changes.

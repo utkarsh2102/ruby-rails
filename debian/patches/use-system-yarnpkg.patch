@@ -1,0 +1,139 @@
+Description: Use system yarnpkg instead of yarn
+ In Debian, yarn is packaged as "yarnpkg".
+ .
+ This patch will replace all the "bin/yarn" usages to "bin/yarnpkg".
+Author: Jongmin Kim <jmkim@pukyong.ac.kr>
+Forwarded: no
+Last-Update: 2019-06-21
+--- a/railties/lib/rails/app_updater.rb
++++ b/railties/lib/rails/app_updater.rb
+@@ -21,7 +21,7 @@
+       private
+         def generator_options
+           options = { api: !!Rails.application.config.api_only, update: true }
+-          options[:skip_javascript] = !File.exist?(Rails.root.join("bin", "yarn"))
++          options[:skip_javascript] = !File.exist?(Rails.root.join("bin", "yarnpkg"))
+           options[:skip_active_record]  = !defined?(ActiveRecord::Railtie)
+           options[:skip_active_storage] = !defined?(ActiveStorage::Engine) || !defined?(ActiveRecord::Railtie)
+           options[:skip_action_mailer]  = !defined?(ActionMailer::Railtie)
+--- a/railties/lib/rails/generators/rails/app/app_generator.rb
++++ b/railties/lib/rails/generators/rails/app/app_generator.rb
+@@ -96,7 +96,7 @@
+       bin
+ 
+       if options[:skip_javascript]
+-        remove_file "bin/yarn"
++        remove_file "bin/yarnpkg"
+       end
+     end
+ 
+@@ -473,7 +473,7 @@
+       end
+ 
+       def delete_bin_yarn
+-        remove_file "bin/yarn" if options[:skip_javascript]
++        remove_file "bin/yarnpkg" if options[:skip_javascript]
+       end
+ 
+       def finish_template
+--- a/railties/lib/rails/generators/rails/app/templates/bin/setup.tt
++++ b/railties/lib/rails/generators/rails/app/templates/bin/setup.tt
+@@ -18,7 +18,7 @@
+ <% unless options.skip_javascript? -%>
+ 
+   # Install JavaScript dependencies
+-  # system('bin/yarn')
++  # system('bin/yarnpkg')
+ <% end -%>
+ <% unless options.skip_active_record? -%>
+ 
+--- a/railties/lib/rails/tasks/yarn.rake
++++ b/railties/lib/rails/tasks/yarn.rake
+@@ -8,7 +8,7 @@
+     node_env = ENV.fetch("NODE_ENV") do
+       valid_node_envs.include?(Rails.env) ? Rails.env : "production"
+     end
+-    system({ "NODE_ENV" => node_env }, "#{Rails.root}/bin/yarn install --no-progress --frozen-lockfile")
++    system({ "NODE_ENV" => node_env }, "#{Rails.root}/bin/yarnpkg install --no-progress --frozen-lockfile")
+   end
+ end
+ 
+--- a/railties/test/generators/api_app_generator_test.rb
++++ b/railties/test/generators/api_app_generator_test.rb
+@@ -105,7 +105,7 @@
+       { api: true, update: true }, { destination_root: destination_root, shell: @shell }
+     quietly { generator.send(:update_bin_files) }
+ 
+-    assert_no_file "bin/yarn"
++    assert_no_file "bin/yarnpkg"
+   end
+ 
+   private
+@@ -168,7 +168,7 @@
+       %w(app/assets
+          app/helpers
+          app/views/layouts/application.html.erb
+-         bin/yarn
++         bin/yarnpkg
+          config/initializers/assets.rb
+          config/initializers/cookies_serializer.rb
+          config/initializers/content_security_policy.rb
+--- a/railties/test/generators/app_generator_test.rb
++++ b/railties/test/generators/app_generator_test.rb
+@@ -41,7 +41,7 @@
+   bin/rails
+   bin/rake
+   bin/setup
+-  bin/yarn
++  /bin/yarnpkg
+   config/application.rb
+   config/boot.rb
+   config/cable.yml
+@@ -315,10 +315,10 @@
+       generator.send(:app_const)
+       quietly { generator.send(:update_bin_files) }
+ 
+-      assert_no_file "#{app_root}/bin/yarn"
++      assert_no_file "#{app_root}/bin/yarnpkg"
+ 
+       assert_file "#{app_root}/bin/setup" do |content|
+-        assert_no_match(/system\('bin\/yarn'\)/, content)
++        assert_no_match(/system\('bin\/yarnpkg'\)/, content)
+       end
+     end
+   end
+--- a/railties/test/generators/shared_generator_tests.rb
++++ b/railties/test/generators/shared_generator_tests.rb
+@@ -342,14 +342,13 @@
+     skip "#34009 disabled JS by default for plugins" if generator_class.name == "Rails::Generators::PluginGenerator"
+     run_generator
+     assert_file "#{application_path}/package.json", /dependencies/
+-    assert_file "#{application_path}/bin/yarn"
++    assert_file "/bin/yarnpkg"
+     assert_file "#{application_path}/config/initializers/assets.rb", /node_modules/
+   end
+ 
+   def test_generator_for_yarn_skipped
+     run_generator([destination_root, "--skip-javascript"])
+     assert_no_file "#{application_path}/package.json"
+-    assert_no_file "#{application_path}/bin/yarn"
+ 
+     assert_file "#{application_path}/config/initializers/assets.rb" do |content|
+       assert_no_match(/node_modules/, content)
+--- a/railties/test/isolation/abstract_unit.rb
++++ b/railties/test/isolation/abstract_unit.rb
+@@ -512,12 +512,12 @@
+   end
+ 
+   unless File.exist?("#{RAILS_FRAMEWORK_ROOT}/actionview/lib/assets/compiled/rails-ujs.js")
+-    Dir.chdir("#{RAILS_FRAMEWORK_ROOT}/actionview") { `yarn build` }
++    Dir.chdir("#{RAILS_FRAMEWORK_ROOT}/actionview") { `yarnpkg build` }
+   end
+ 
+   assets_path = "#{RAILS_FRAMEWORK_ROOT}/railties/test/isolation/assets"
+   unless Dir.exist?("#{assets_path}/node_modules")
+-    Dir.chdir(assets_path) { `yarn install` }
++    Dir.chdir(assets_path) { `yarnpkg install` }
+   end
+   FileUtils.cp("#{assets_path}/package.json", "#{app_template_path}/package.json")
+   FileUtils.cp("#{assets_path}/config/webpacker.yml", "#{app_template_path}/config/webpacker.yml")

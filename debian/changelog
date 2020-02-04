@@ -1,10 +1,30 @@
-rails (2:5.2.3+dfsg-2) UNRELEASED; urgency=medium
+rails (2:6.0.0+dfsg-2) UNRELEASED; urgency=medium
 
   * Use secure copyright file specification URI.
   * Update standards version to 4.4.1, no changes needed.
   * Remove obsolete fields Name, Contact from debian/upstream/metadata.
 
  -- Debian Janitor <janitor@jelmer.uk>  Wed, 30 Oct 2019 18:12:31 +0000
+
+rails (2:6.0.0+dfsg-1) experimental; urgency=medium
+
+  * New upstream version 6.0.0+dfsg
+  * d/control:
+    + Add myself as Uploaders
+    + Refresh the dependencies for 6.0.0
+    + Add new packages: ruby-actionmailbox and ruby-actiontext
+    + Fix lintian P: insecure-copyright-format-uri
+  * d/copyright:
+    + Refresh the copyrights for 6.0.0
+    + Fix lintian P: insecure-copyright-format-uri
+  * d/patches: Refresh the patches for 6.0.0
+  * d/ruby-tests.rb:
+    + Refresh the tests for 6.0.0
+    + Disable the lib/ renaming
+    + Disable the failing tests
+  * d/*.docs: Refresh the docs for 6.0.0
+
+ -- Jongmin Kim <jmkim@pukyong.ac.kr>  Sun, 25 Aug 2019 14:50:21 +0900
 
 rails (2:5.2.3+dfsg-1) unstable; urgency=medium
 

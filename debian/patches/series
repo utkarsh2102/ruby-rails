@@ -1,2 +1,11 @@
 0001-Be-careful-with-that-bundler.patch
 0002-disable-uglify-in-activestorage-rollup-config-js.patch
+use-system-yarnpkg.patch
+use-system-webpacker.patch
+relax-dependencies.patch
+relax-dependency-sqlite3.patch
+remove-ignored-dependencies.patch
+skip-test-internet-access.patch
+skip-test-unpackaged-dependencies.patch
+skip-test-railties-postgresql.patch
+ignore-test-stuck.patch
