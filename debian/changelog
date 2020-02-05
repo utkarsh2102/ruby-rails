@@ -1,3 +1,9 @@
+rails (2:6.0.2.1+dfsg-2) experimental; urgency=medium
+
+  * Tighten dependency on ruby-rack
+
+ -- Sruthi Chandran <srud@debian.org>  Wed, 05 Feb 2020 15:02:04 +0100
+
 rails (2:6.0.2.1+dfsg-1) experimental; urgency=medium
 
   [ Debian Janitor ]
