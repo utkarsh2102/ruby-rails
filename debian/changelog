@@ -1,3 +1,16 @@
+rails (2:6.0.2.1+dfsg-3) UNRELEASED; urgency=medium
+
+  * 
+
+ -- Sruthi Chandran <srud@debian.org>  Fri, 07 Feb 2020 12:17:31 +0100
+
+rails (2:5.2.3+dfsg-2) unstable; urgency=medium
+
+  * Relax dependency on bundler
+  * Bump Standards-Version to 4.5.0 (no changes needed)
+
+ -- Sruthi Chandran <srud@debian.org>  Fri, 07 Feb 2020 11:55:23 +0100
+
 rails (2:6.0.2.1+dfsg-2) experimental; urgency=medium
 
   * Tighten dependency on ruby-rack
