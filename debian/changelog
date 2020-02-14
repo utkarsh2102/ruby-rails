@@ -4,6 +4,14 @@ rails (2:6.0.2.1+dfsg-3) UNRELEASED; urgency=medium
 
  -- Sruthi Chandran <srud@debian.org>  Fri, 07 Feb 2020 12:17:31 +0100
 
+rails (2:5.2.3+dfsg-3) unstable; urgency=medium
+
+  * Tighten dependency on bundler
+  * Add patch to fix autopkgtest
+  * Use @d.o address
+
+ -- Utkarsh Gupta <utkarsh@debian.org>  Fri, 14 Feb 2020 05:31:36 +0530
+
 rails (2:5.2.3+dfsg-2) unstable; urgency=medium
 
   * Relax dependency on bundler
