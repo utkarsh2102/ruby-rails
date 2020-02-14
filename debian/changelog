@@ -1,3 +1,11 @@
+rails (2:5.2.3+dfsg-3) unstable; urgency=medium
+
+  * Tighten dependency on bundler
+  * Add patch to fix autopkgtest
+  * Use @d.o address
+
+ -- Utkarsh Gupta <utkarsh@debian.org>  Fri, 14 Feb 2020 05:31:36 +0530
+
 rails (2:5.2.3+dfsg-2) unstable; urgency=medium
 
   * Team upload
