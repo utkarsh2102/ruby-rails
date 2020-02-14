@@ -1,0 +1,12 @@
+Description: This patch fixes autopkgtest with bundler 2.1.4.
+Author: Utkarsh Gupta <utkarsh@debian.org>
+Last-Update: 2020-02-13
+
+--- a/Gemfile.lock
++++ b/Gemfile.lock
+@@ -561,4 +561,4 @@
+   websocket-client-simple!
+ 
+ BUNDLED WITH
+-   1.17.2
++   2.1.4
