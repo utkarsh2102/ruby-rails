@@ -55,7 +55,8 @@ Copyright: 2006-2013, Paul Battley, Michael Neumann, Tim Fletcher.
 License: Expat
 
 Files: debian/*
-Copyright: 2011 Ondřej Surý <ondrej@debian.org>
+Copyright: 2011 Ondřej Surý <ondrej@debian.org>,
+           2019-2020, Utkarsh Gupta <utkarsh@debian.org>
 License: Expat
 
 Files: debian/missing-sources/jquery.js
