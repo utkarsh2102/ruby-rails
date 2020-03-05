@@ -1,3 +1,17 @@
+rails (2:5.2.4.1+dfsg-1) UNRELEASED; urgency=medium
+
+  [ Jongmin Kim ]
+  * New upstream version 6.0.0+dfsg
+
+  [ Sruthi Chandran ]
+  * New upstream version 6.0.2.1+dfsg
+  * New upstream version 6.0.2.1+dfsg
+
+  [ Lucas Kanashiro ]
+  * New upstream version 5.2.4.1+dfsg
+
+ -- Lucas Kanashiro <kanashiro@debian.org>  Thu, 05 Mar 2020 19:38:55 -0300
+
 rails (2:5.2.3+dfsg-3) unstable; urgency=medium
 
   * Tighten dependency on bundler
