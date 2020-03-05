@@ -17,12 +17,7 @@ export class BlobRecord {
     this.xhr.setRequestHeader("Content-Type", "application/json")
     this.xhr.setRequestHeader("Accept", "application/json")
     this.xhr.setRequestHeader("X-Requested-With", "XMLHttpRequest")
-
-    const csrfToken = getMetaValue("csrf-token")
-    if (csrfToken != undefined) {
-      this.xhr.setRequestHeader("X-CSRF-Token", csrfToken)
-    }
-
+    this.xhr.setRequestHeader("X-CSRF-Token", getMetaValue("csrf-token"))
     this.xhr.addEventListener("load", event => this.requestDidLoad(event))
     this.xhr.addEventListener("error", event => this.requestDidError(event))
   }

@@ -40,7 +40,7 @@ module ActiveModel
         alias_method :to_str, :to_s
 
         def hex
-          @value.unpack1("H*")
+          @value.unpack("H*")[0]
         end
 
         def ==(other)

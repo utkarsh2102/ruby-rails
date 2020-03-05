@@ -22,9 +22,7 @@ module ActionView
       mattr_accessor :embed_authenticity_token_in_remote_forms
       self.embed_authenticity_token_in_remote_forms = nil
 
-      mattr_accessor :default_enforce_utf8, default: true
-
-      # Starts a form tag that points the action to a URL configured with <tt>url_for_options</tt> just like
+      # Starts a form tag that points the action to a url configured with <tt>url_for_options</tt> just like
       # ActionController::Base#url_for. The method for the form defaults to POST.
       #
       # ==== Options
@@ -137,8 +135,7 @@ module ActionView
         html_name = (options[:multiple] == true && !name.to_s.ends_with?("[]")) ? "#{name}[]" : name
 
         if options.include?(:include_blank)
-          include_blank = options[:include_blank]
-          options = options.except(:include_blank)
+          include_blank = options.delete(:include_blank)
           options_for_blank_options_tag = { value: "" }
 
           if include_blank == true
@@ -147,15 +144,15 @@ module ActionView
           end
 
           if include_blank
-            option_tags = content_tag("option", include_blank, options_for_blank_options_tag).safe_concat(option_tags)
+            option_tags = content_tag("option".freeze, include_blank, options_for_blank_options_tag).safe_concat(option_tags)
           end
         end
 
         if prompt = options.delete(:prompt)
-          option_tags = content_tag("option", prompt, value: "").safe_concat(option_tags)
+          option_tags = content_tag("option".freeze, prompt, value: "").safe_concat(option_tags)
         end
 
-        content_tag "select", option_tags, { "name" => html_name, "id" => sanitize_to_id(name) }.update(options.stringify_keys)
+        content_tag "select".freeze, option_tags, { "name" => html_name, "id" => sanitize_to_id(name) }.update(options.stringify_keys)
       end
 
       # Creates a standard text field; use these text fields to input smaller chunks of text like a username
@@ -392,8 +389,8 @@ module ActionView
       # * Any other key creates standard HTML options for the tag.
       #
       # ==== Examples
-      #   radio_button_tag 'favorite_color', 'maroon'
-      #   # => <input id="favorite_color_maroon" name="favorite_color" type="radio" value="maroon" />
+      #   radio_button_tag 'gender', 'male'
+      #   # => <input id="gender_male" name="gender" type="radio" value="male" />
       #
       #   radio_button_tag 'receive_updates', 'no', true
       #   # => <input checked="checked" id="receive_updates_no" name="receive_updates" type="radio" value="no" />
@@ -580,7 +577,7 @@ module ActionView
       #   # => <fieldset class="format"><p><input id="name" name="name" type="text" /></p></fieldset>
       def field_set_tag(legend = nil, options = nil, &block)
         output = tag(:fieldset, options, true)
-        output.safe_concat(content_tag("legend", legend)) unless legend.blank?
+        output.safe_concat(content_tag("legend".freeze, legend)) unless legend.blank?
         output.concat(capture(&block)) if block_given?
         output.safe_concat("</fieldset>")
       end
@@ -872,7 +869,7 @@ module ActionView
               })
             end
 
-          if html_options.delete("enforce_utf8") { default_enforce_utf8 }
+          if html_options.delete("enforce_utf8") { true }
             utf8_enforcer_tag + method_tag
           else
             method_tag

@@ -51,15 +51,9 @@ module ActionController
         assert_equal ["omg"], @response.body_parts
       end
 
-      def test_cache_control_is_set_by_default
+      def test_cache_control_is_set
         @response.stream.write "omg"
         assert_equal "no-cache", @response.headers["Cache-Control"]
-      end
-
-      def test_cache_control_is_set_manually
-        @response.set_header("Cache-Control", "public")
-        @response.stream.write "omg"
-        assert_equal "public", @response.headers["Cache-Control"]
       end
 
       def test_content_length_is_removed
@@ -68,7 +62,7 @@ module ActionController
         assert_nil @response.headers["Content-Length"]
       end
 
-      def test_headers_cannot_be_written_after_web_server_reads
+      def test_headers_cannot_be_written_after_webserver_reads
         @response.stream.write "omg"
         latch = Concurrent::CountDownLatch.new
 

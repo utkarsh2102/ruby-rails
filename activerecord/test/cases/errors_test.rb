@@ -8,9 +8,11 @@ class ErrorsTest < ActiveRecord::TestCase
     error_klasses = ObjectSpace.each_object(Class).select { |klass| klass < base }
 
     (error_klasses - [ActiveRecord::AmbiguousSourceReflectionForThroughAssociation]).each do |error_klass|
-      error_klass.new.inspect
-    rescue ArgumentError
-      raise "Instance of #{error_klass} can't be initialized with no arguments"
+      begin
+        error_klass.new.inspect
+      rescue ArgumentError
+        raise "Instance of #{error_klass} can't be initialized with no arguments"
+      end
     end
   end
 end

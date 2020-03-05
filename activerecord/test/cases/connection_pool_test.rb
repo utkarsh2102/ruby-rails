@@ -91,9 +91,7 @@ module ActiveRecord
       end
 
       def test_full_pool_exception
-        @pool.checkout_timeout = 0.001 # no need to delay test suite by waiting the whole full default timeout
         @pool.size.times { assert @pool.checkout }
-
         assert_raises(ConnectionTimeoutError) do
           @pool.checkout
         end
@@ -196,48 +194,6 @@ module ActiveRecord
         @pool.connections.each { |conn| conn.close if conn.in_use? }
       end
 
-      def test_idle_timeout_configuration
-        @pool.disconnect!
-        spec = ActiveRecord::Base.connection_pool.spec
-        spec.config.merge!(idle_timeout: "0.02")
-        @pool = ConnectionPool.new(spec)
-        idle_conn = @pool.checkout
-        @pool.checkin(idle_conn)
-
-        idle_conn.instance_variable_set(
-          :@idle_since,
-          Concurrent.monotonic_time - 0.01
-        )
-
-        @pool.flush
-        assert_equal 1, @pool.connections.length
-
-        idle_conn.instance_variable_set(
-          :@idle_since,
-          Concurrent.monotonic_time - 0.02
-        )
-
-        @pool.flush
-        assert_equal 0, @pool.connections.length
-      end
-
-      def test_disable_flush
-        @pool.disconnect!
-        spec = ActiveRecord::Base.connection_pool.spec
-        spec.config.merge!(idle_timeout: -5)
-        @pool = ConnectionPool.new(spec)
-        idle_conn = @pool.checkout
-        @pool.checkin(idle_conn)
-
-        idle_conn.instance_variable_set(
-          :@idle_since,
-          Concurrent.monotonic_time - 1
-        )
-
-        @pool.flush
-        assert_equal 1, @pool.connections.length
-      end
-
       def test_flush
         idle_conn = @pool.checkout
         recent_conn = @pool.checkout
@@ -248,10 +204,9 @@ module ActiveRecord
 
         assert_equal 3, @pool.connections.length
 
-        idle_conn.instance_variable_set(
-          :@idle_since,
-          Concurrent.monotonic_time - 1000
-        )
+        def idle_conn.seconds_idle
+          1000
+        end
 
         @pool.flush(30)
 
@@ -507,6 +462,7 @@ module ActiveRecord
         pool.schema_cache = schema_cache
 
         pool.with_connection do |conn|
+          assert_not_same pool.schema_cache, conn.schema_cache
           assert_equal pool.schema_cache.size, conn.schema_cache.size
           assert_same pool.schema_cache.columns(:posts), conn.schema_cache.columns(:posts)
         end
@@ -551,7 +507,7 @@ module ActiveRecord
       end
 
       def test_non_bang_disconnect_and_clear_reloadable_connections_throw_exception_if_threads_dont_return_their_conns
-        Thread.report_on_exception, original_report_on_exception = false, Thread.report_on_exception
+        Thread.report_on_exception, original_report_on_exception = false, Thread.report_on_exception if Thread.respond_to?(:report_on_exception)
         @pool.checkout_timeout = 0.001 # no need to delay test suite by waiting the whole full default timeout
         [:disconnect, :clear_reloadable_connections].each do |group_action_method|
           @pool.with_connection do |connection|
@@ -561,26 +517,28 @@ module ActiveRecord
           end
         end
       ensure
-        Thread.report_on_exception = original_report_on_exception
+        Thread.report_on_exception = original_report_on_exception if Thread.respond_to?(:report_on_exception)
       end
 
       def test_disconnect_and_clear_reloadable_connections_attempt_to_wait_for_threads_to_return_their_conns
         [:disconnect, :disconnect!, :clear_reloadable_connections, :clear_reloadable_connections!].each do |group_action_method|
-          thread = timed_join_result = nil
-          @pool.with_connection do |connection|
-            thread = Thread.new { @pool.send(group_action_method) }
+          begin
+            thread = timed_join_result = nil
+            @pool.with_connection do |connection|
+              thread = Thread.new { @pool.send(group_action_method) }
 
-            # give the other `thread` some time to get stuck in `group_action_method`
-            timed_join_result = thread.join(0.3)
-            # thread.join # => `nil` means the other thread hasn't finished running and is still waiting for us to
-            # release our connection
-            assert_nil timed_join_result
+              # give the other `thread` some time to get stuck in `group_action_method`
+              timed_join_result = thread.join(0.3)
+              # thread.join # => `nil` means the other thread hasn't finished running and is still waiting for us to
+              # release our connection
+              assert_nil timed_join_result
 
-            # assert that since this is within default timeout our connection hasn't been forcefully taken away from us
-            assert_predicate @pool, :active_connection?
+              # assert that since this is within default timeout our connection hasn't been forcefully taken away from us
+              assert_predicate @pool, :active_connection?
+            end
+          ensure
+            thread.join if thread && !timed_join_result # clean up the other thread
           end
-        ensure
-          thread.join if thread && !timed_join_result # clean up the other thread
         end
       end
 
@@ -658,7 +616,7 @@ module ActiveRecord
           end
 
           stuck_thread = Thread.new do
-            pool.with_connection { }
+            pool.with_connection {}
           end
 
           # wait for stuck_thread to get in queue

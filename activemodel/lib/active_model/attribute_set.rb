@@ -37,8 +37,16 @@ module ActiveModel
       attributes.each_key.select { |name| self[name].initialized? }
     end
 
-    def fetch_value(name, &block)
-      self[name].value(&block)
+    if defined?(JRUBY_VERSION)
+      # This form is significantly faster on JRuby, and this is one of our biggest hotspots.
+      # https://github.com/jruby/jruby/pull/2562
+      def fetch_value(name, &block)
+        self[name].value(&block)
+      end
+    else
+      def fetch_value(name)
+        self[name].value { |n| yield n if block_given? }
+      end
     end
 
     def write_from_database(name, value)

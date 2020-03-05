@@ -79,7 +79,13 @@ module Rails
       end
 
       protected
-        attr_reader :operations, :delete_operations
+        def operations
+          @operations
+        end
+
+        def delete_operations
+          @delete_operations
+        end
     end
 
     class Generators #:nodoc:

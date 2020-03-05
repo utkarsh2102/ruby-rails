@@ -14,8 +14,10 @@ module ActiveRecord
               i[column.name] = column.alias
             }
           }
-          @columns_cache = tables.each_with_object({}) { |table, h|
-            h[table.node] = table.columns
+          @name_and_alias_cache = tables.each_with_object({}) { |table, h|
+            h[table.node] = table.columns.map { |column|
+              [column.name, column.alias]
+            }
           }
         end
 
@@ -23,8 +25,9 @@ module ActiveRecord
           @tables.flat_map(&:column_aliases)
         end
 
+        # An array of [column_name, alias] pairs for the table
         def column_aliases(node)
-          @columns_cache[node]
+          @name_and_alias_cache[node]
         end
 
         def column_alias(node, column)
@@ -64,21 +67,16 @@ module ActiveRecord
         end
       end
 
-      def initialize(base, table, associations, join_type)
+      def initialize(base, table, associations)
         tree = self.class.make_tree associations
         @join_root = JoinBase.new(base, table, build(tree, base))
-        @join_type = join_type
-      end
-
-      def base_klass
-        join_root.base_klass
       end
 
       def reflections
         join_root.drop(1).map!(&:reflection)
       end
 
-      def join_constraints(joins_to_add, alias_tracker)
+      def join_constraints(joins_to_add, join_type, alias_tracker)
         @alias_tracker = alias_tracker
 
         construct_tables!(join_root)
@@ -87,9 +85,9 @@ module ActiveRecord
         joins.concat joins_to_add.flat_map { |oj|
           construct_tables!(oj.join_root)
           if join_root.match? oj.join_root
-            walk(join_root, oj.join_root, oj.join_type)
+            walk join_root, oj.join_root
           else
-            make_join_constraints(oj.join_root, oj.join_type)
+            make_join_constraints(oj.join_root, join_type)
           end
         }
       end
@@ -118,7 +116,7 @@ module ActiveRecord
           result_set.each { |row_hash|
             parent_key = primary_key ? row_hash[primary_key] : row_hash
             parent = parents[parent_key] ||= join_root.instantiate(row_hash, column_aliases, &block)
-            construct(parent, join_root, row_hash, seen, model_cache)
+            construct(parent, join_root, row_hash, result_set, seen, model_cache, aliases)
           }
         end
 
@@ -130,11 +128,9 @@ module ActiveRecord
       end
 
       protected
-        attr_reader :join_root, :join_type
+        attr_reader :alias_tracker, :join_root
 
       private
-        attr_reader :alias_tracker
-
         def aliases
           @aliases ||= Aliases.new join_root.each_with_index.map { |join_part, i|
             columns = join_part.column_names.each_with_index.map { |column_name, j|
@@ -156,7 +152,7 @@ module ActiveRecord
           end
         end
 
-        def make_constraints(parent, child, join_type)
+        def make_constraints(parent, child, join_type = Arel::Nodes::OuterJoin)
           foreign_table = parent.table
           foreign_klass = parent.base_klass
           joins = child.join_constraints(foreign_table, foreign_klass, join_type, alias_tracker)
@@ -174,17 +170,17 @@ module ActiveRecord
         end
 
         def table_alias_for(reflection, parent, join)
-          name = reflection.alias_candidate(parent.table_name)
+          name = "#{reflection.plural_name}_#{parent.table_name}"
           join ? "#{name}_join" : name
         end
 
-        def walk(left, right, join_type)
+        def walk(left, right)
           intersection, missing = right.children.map { |node1|
             [left.children.find { |node2| node1.match? node2 }, node1]
           }.partition(&:first)
 
-          joins = intersection.flat_map { |l, r| r.table = l.table; walk(l, r, join_type) }
-          joins.concat missing.flat_map { |_, n| make_constraints(left, n, join_type) }
+          joins = intersection.flat_map { |l, r| r.table = l.table; walk(l, r) }
+          joins.concat missing.flat_map { |_, n| make_constraints(left, n) }
         end
 
         def find_reflection(klass, name)
@@ -206,7 +202,7 @@ module ActiveRecord
           end
         end
 
-        def construct(ar_parent, parent, row, seen, model_cache)
+        def construct(ar_parent, parent, row, rs, seen, model_cache, aliases)
           return if ar_parent.nil?
 
           parent.children.each do |node|
@@ -215,7 +211,7 @@ module ActiveRecord
               other.loaded!
             elsif ar_parent.association_cached?(node.reflection.name)
               model = ar_parent.association(node.reflection.name).target
-              construct(model, node, row, seen, model_cache)
+              construct(model, node, row, rs, seen, model_cache, aliases)
               next
             end
 
@@ -230,17 +226,22 @@ module ActiveRecord
             model = seen[ar_parent.object_id][node][id]
 
             if model
-              construct(model, node, row, seen, model_cache)
+              construct(model, node, row, rs, seen, model_cache, aliases)
             else
-              model = construct_model(ar_parent, node, row, model_cache, id)
+              model = construct_model(ar_parent, node, row, model_cache, id, aliases)
+
+              if node.reflection.scope &&
+                  node.reflection.scope_for(node.base_klass.unscoped).readonly_value
+                model.readonly!
+              end
 
               seen[ar_parent.object_id][node][id] = model
-              construct(model, node, row, seen, model_cache)
+              construct(model, node, row, rs, seen, model_cache, aliases)
             end
           end
         end
 
-        def construct_model(record, node, row, model_cache, id)
+        def construct_model(record, node, row, model_cache, id, aliases)
           other = record.association(node.reflection.name)
 
           model = model_cache[node][id] ||=
@@ -254,7 +255,6 @@ module ActiveRecord
             other.target = model
           end
 
-          model.readonly! if node.readonly?
           model
         end
     end

@@ -8,18 +8,18 @@ class ReloaderTest < ActiveSupport::TestCase
     reloader.to_prepare { prepared = true }
     reloader.to_complete { completed = true }
 
-    assert_not prepared
-    assert_not completed
+    assert !prepared
+    assert !completed
     reloader.prepare!
     assert prepared
-    assert_not completed
+    assert !completed
 
     prepared = false
     reloader.wrap do
       assert prepared
       prepared = false
     end
-    assert_not prepared
+    assert !prepared
   end
 
   def test_prepend_prepare_callback
@@ -35,14 +35,14 @@ class ReloaderTest < ActiveSupport::TestCase
     r = new_reloader { true }
     invoked = false
     r.to_run { invoked = true }
-    r.wrap { }
+    r.wrap {}
     assert invoked
 
     r = new_reloader { false }
     invoked = false
     r.to_run { invoked = true }
-    r.wrap { }
-    assert_not invoked
+    r.wrap {}
+    assert !invoked
   end
 
   def test_full_reload_sequence
@@ -53,7 +53,7 @@ class ReloaderTest < ActiveSupport::TestCase
     reloader.executor.to_run { called << :executor_run }
     reloader.executor.to_complete { called << :executor_complete }
 
-    reloader.wrap { }
+    reloader.wrap {}
     assert_equal [:executor_run, :reloader_run, :prepare, :reloader_complete, :executor_complete], called
 
     called = []
@@ -63,7 +63,7 @@ class ReloaderTest < ActiveSupport::TestCase
     reloader.check = lambda { false }
 
     called = []
-    reloader.wrap { }
+    reloader.wrap {}
     assert_equal [:executor_run, :executor_complete], called
 
     called = []

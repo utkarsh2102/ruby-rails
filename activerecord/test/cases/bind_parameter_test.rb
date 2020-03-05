@@ -41,10 +41,6 @@ if ActiveRecord::Base.connection.prepared_statements
         topics = Topic.where(id: 1)
         assert_equal [1], topics.map(&:id)
         assert_includes statement_cache, to_sql_key(topics.arel)
-
-        @connection.clear_cache!
-
-        assert_not_includes statement_cache, to_sql_key(topics.arel)
       end
 
       def test_statement_cache_with_query_cache
@@ -58,42 +54,23 @@ if ActiveRecord::Base.connection.prepared_statements
         @connection.disable_query_cache!
       end
 
-      def test_statement_cache_with_find
-        @connection.clear_cache!
-
-        assert_equal 1, Topic.find(1).id
-        assert_raises(RecordNotFound) { SillyReply.find(2) }
-
-        topic_sql = cached_statement(Topic, Topic.primary_key)
-        assert_includes statement_cache, to_sql_key(topic_sql)
-
-        e = assert_raise { cached_statement(SillyReply, SillyReply.primary_key) }
-        assert_equal "SillyReply has no cached statement by \"id\"", e.message
-
-        replies = SillyReply.where(id: 2).limit(1)
-        assert_includes statement_cache, to_sql_key(replies.arel)
-      end
-
       def test_statement_cache_with_find_by
         @connection.clear_cache!
 
         assert_equal 1, Topic.find_by!(id: 1).id
-        assert_raises(RecordNotFound) { SillyReply.find_by!(id: 2) }
+        assert_equal 2, Reply.find_by!(id: 2).id
 
         topic_sql = cached_statement(Topic, [:id])
         assert_includes statement_cache, to_sql_key(topic_sql)
 
-        e = assert_raise { cached_statement(SillyReply, [:id]) }
-        assert_equal "SillyReply has no cached statement by [:id]", e.message
-
-        replies = SillyReply.where(id: 2).limit(1)
-        assert_includes statement_cache, to_sql_key(replies.arel)
+        e = assert_raise { cached_statement(Reply, [:id]) }
+        assert_equal "Reply has no cached statement by [:id]", e.message
       end
 
       def test_statement_cache_with_in_clause
         @connection.clear_cache!
 
-        topics = Topic.where(id: [1, 3])
+        topics = Topic.where(id: [1, 3]).order(:id)
         assert_equal [1, 3], topics.map(&:id)
         assert_not_includes statement_cache, to_sql_key(topics.arel)
       end
@@ -108,12 +85,8 @@ if ActiveRecord::Base.connection.prepared_statements
 
       def test_too_many_binds
         bind_params_length = @connection.send(:bind_params_length)
-
         topics = Topic.where(id: (1 .. bind_params_length).to_a << 2**63)
         assert_equal Topic.count, topics.count
-
-        topics = Topic.where.not(id: (1 .. bind_params_length).to_a << 2**63)
-        assert_equal 0, topics.count
       end
 
       def test_too_many_binds_with_query_cache
@@ -162,6 +135,10 @@ if ActiveRecord::Base.connection.prepared_statements
         assert_logs_binds(binds)
       end
 
+      def test_deprecate_supports_statement_cache
+        assert_deprecated { ActiveRecord::Base.connection.supports_statement_cache? }
+      end
+
       private
         def to_sql_key(arel)
           sql = @connection.to_sql(arel)
@@ -184,7 +161,7 @@ if ActiveRecord::Base.connection.prepared_statements
             name: "SQL",
             sql: "select * from topics where id = ?",
             binds: binds,
-            type_casted_binds: @connection.send(:type_casted_binds, binds)
+            type_casted_binds: @connection.type_casted_binds(binds)
           }
 
           event = ActiveSupport::Notifications::Event.new(

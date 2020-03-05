@@ -35,13 +35,15 @@ class Rails::SecretsTest < ActiveSupport::TestCase
 
   test "reading with ENV variable" do
     run_secrets_generator do
-      old_key = ENV["RAILS_MASTER_KEY"]
-      ENV["RAILS_MASTER_KEY"] = IO.binread("config/secrets.yml.key").strip
-      FileUtils.rm("config/secrets.yml.key")
+      begin
+        old_key = ENV["RAILS_MASTER_KEY"]
+        ENV["RAILS_MASTER_KEY"] = IO.binread("config/secrets.yml.key").strip
+        FileUtils.rm("config/secrets.yml.key")
 
-      assert_match "# production:\n#   external_api_key:", Rails::Secrets.read
-    ensure
-      ENV["RAILS_MASTER_KEY"] = old_key
+        assert_match "# production:\n#   external_api_key:", Rails::Secrets.read
+      ensure
+        ENV["RAILS_MASTER_KEY"] = old_key
+      end
     end
   end
 

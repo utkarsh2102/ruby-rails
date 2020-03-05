@@ -50,4 +50,9 @@ class ActiveStorage::Analyzer::VideoAnalyzerTest < ActiveSupport::TestCase
     metadata = extract_metadata_from(blob)
     assert_equal({ "analyzed" => true, "identified" => true }, metadata)
   end
+
+  private
+    def extract_metadata_from(blob)
+      blob.tap(&:analyze).metadata
+    end
 end

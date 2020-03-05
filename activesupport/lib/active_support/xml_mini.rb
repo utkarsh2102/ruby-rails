@@ -3,7 +3,6 @@
 require "time"
 require "base64"
 require "bigdecimal"
-require "bigdecimal/util"
 require "active_support/core_ext/module/delegation"
 require "active_support/core_ext/string/inflections"
 require "active_support/core_ext/date_time/calculations"
@@ -49,6 +48,10 @@ module ActiveSupport
         "Array"      => "array",
         "Hash"       => "hash"
       }
+
+      # No need to map these on Ruby 2.4+
+      TYPE_NAMES["Fixnum"] = "integer" unless 0.class == Integer
+      TYPE_NAMES["Bignum"] = "integer" unless 0.class == Integer
     end
 
     FORMATTING = {
@@ -69,7 +72,11 @@ module ActiveSupport
         "float"        => Proc.new { |float|   float.to_f },
         "decimal"      => Proc.new do |number|
           if String === number
-            number.to_d
+            begin
+              BigDecimal(number)
+            rescue ArgumentError
+              BigDecimal(number.to_f.to_s)
+            end
           else
             BigDecimal(number)
           end

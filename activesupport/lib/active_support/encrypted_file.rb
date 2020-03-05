@@ -1,7 +1,6 @@
 # frozen_string_literal: true
 
 require "pathname"
-require "tmpdir"
 require "active_support/message_encryptor"
 
 module ActiveSupport
@@ -68,7 +67,7 @@ module ActiveSupport
 
         write(updated_contents) if updated_contents != contents
       ensure
-        FileUtils.rm(tmp_path) if tmp_path&.exist?
+        FileUtils.rm(tmp_path) if tmp_path.exist?
       end
 
 

@@ -17,8 +17,4 @@ class ActiveStorage::Service::DiskServiceTest < ActiveSupport::TestCase
       Rails.application.routes.default_url_options = original_url_options
     end
   end
-
-  test "headers_for_direct_upload generation" do
-    assert_equal({ "Content-Type" => "application/json" }, @service.headers_for_direct_upload(@key, content_type: "application/json"))
-  end
 end

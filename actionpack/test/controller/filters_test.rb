@@ -457,7 +457,6 @@ class FilterTest < ActionController::TestCase
     prepend_before_action :before_all
     prepend_after_action :after_all
     before_action :between_before_all_and_after_all
-    after_action :between_before_all_and_after_all
 
     def before_all
       @ran_filter ||= []
@@ -473,7 +472,6 @@ class FilterTest < ActionController::TestCase
       @ran_filter ||= []
       @ran_filter << "between_before_all_and_after_all"
     end
-
     def show
       render plain: "hello"
     end
@@ -767,7 +765,7 @@ class FilterTest < ActionController::TestCase
 
   def test_running_prepended_before_and_after_action
     test_process(PrependingBeforeAndAfterController)
-    assert_equal %w( before_all between_before_all_and_after_all between_before_all_and_after_all after_all ), @controller.instance_variable_get(:@ran_filter)
+    assert_equal %w( before_all between_before_all_and_after_all after_all ), @controller.instance_variable_get(:@ran_filter)
   end
 
   def test_skipping_and_limiting_controller
@@ -789,7 +787,7 @@ class FilterTest < ActionController::TestCase
     assert_equal %w( ensure_login find_user ), @controller.instance_variable_get(:@ran_filter)
 
     test_process(ConditionalSkippingController, "login")
-    assert_not @controller.instance_variable_defined?("@ran_after_action")
+    assert !@controller.instance_variable_defined?("@ran_after_action")
     test_process(ConditionalSkippingController, "change_password")
     assert_equal %w( clean_up ), @controller.instance_variable_get("@ran_after_action")
   end
@@ -888,7 +886,7 @@ class ControllerWithSymbolAsFilter < PostsController
       yield
 
       # Do stuff...
-      wtf + 1
+      wtf += 1
     end
 end
 
@@ -1000,12 +998,16 @@ class YieldingAroundFiltersTest < ActionController::TestCase
   def test_nested_actions
     controller = ControllerWithNestedFilters
     assert_nothing_raised do
-      test_process(controller, "raises_both")
-    rescue Before, After
+      begin
+        test_process(controller, "raises_both")
+      rescue Before, After
+      end
     end
     assert_raise Before do
-      test_process(controller, "raises_both")
-    rescue After
+      begin
+        test_process(controller, "raises_both")
+      rescue After
+      end
     end
   end
 

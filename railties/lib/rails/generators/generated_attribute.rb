@@ -1,7 +1,6 @@
 # frozen_string_literal: true
 
 require "active_support/time"
-require "active_support/deprecation"
 
 module Rails
   module Generators
@@ -40,29 +39,23 @@ module Rails
 
         private
 
-          # parse possible attribute options like :limit for string/text/binary/integer, :precision/:scale for decimals or :polymorphic for references/belongs_to
-          # when declaring options curly brackets should be used
-          def parse_type_and_options(type)
-            case type
-            when /(string|text|binary|integer)\{(\d+)\}/
-              return $1, limit: $2.to_i
-            when /decimal\{(\d+)[,.-](\d+)\}/
-              return :decimal, precision: $1.to_i, scale: $2.to_i
-            when /(references|belongs_to)\{(.+)\}/
-              type = $1
-              provided_options = $2.split(/[,.-]/)
-              options = Hash[provided_options.map { |opt| [opt.to_sym, true] }]
-
-              if options[:required]
-                ActiveSupport::Deprecation.warn("Passing {required} option has no effect on the model generator. It will be removed in Rails 6.1.\n")
-                options.delete(:required)
-              end
-
-              return type, options
-            else
-              return type, {}
-            end
+        # parse possible attribute options like :limit for string/text/binary/integer, :precision/:scale for decimals or :polymorphic for references/belongs_to
+        # when declaring options curly brackets should be used
+        def parse_type_and_options(type)
+          case type
+          when /(string|text|binary|integer)\{(\d+)\}/
+            return $1, limit: $2.to_i
+          when /decimal\{(\d+)[,.-](\d+)\}/
+            return :decimal, precision: $1.to_i, scale: $2.to_i
+          when /(references|belongs_to)\{(.+)\}/
+            type = $1
+            provided_options = $2.split(/[,.-]/)
+            options = Hash[provided_options.map { |opt| [opt.to_sym, true] }]
+            return type, options
+          else
+            return type, {}
           end
+        end
       end
 
       def initialize(name, type = nil, index_type = false, attr_options = {})
@@ -75,15 +68,13 @@ module Rails
 
       def field_type
         @field_type ||= case type
-                        when :integer                  then :number_field
-                        when :float, :decimal          then :text_field
-                        when :time                     then :time_select
-                        when :datetime, :timestamp     then :datetime_select
-                        when :date                     then :date_select
-                        when :text                     then :text_area
-                        when :rich_text                then :rich_text_area
-                        when :boolean                  then :check_box
-                        when :attachment, :attachments then :file_field
+                        when :integer              then :number_field
+                        when :float, :decimal      then :text_field
+                        when :time                 then :time_select
+                        when :datetime, :timestamp then :datetime_select
+                        when :date                 then :date_select
+                        when :text                 then :text_area
+                        when :boolean              then :check_box
                         else
                           :text_field
         end
@@ -99,9 +90,7 @@ module Rails
                      when :string                      then name == "type" ? "" : "MyString"
                      when :text                        then "MyText"
                      when :boolean                     then false
-                     when :references, :belongs_to,
-                          :attachment, :attachments,
-                          :rich_text                   then nil
+                     when :references, :belongs_to     then nil
                      else
                        ""
         end
@@ -144,7 +133,7 @@ module Rails
       end
 
       def required?
-        reference? && Rails.application.config.active_record.belongs_to_required_by_default
+        attr_options[:required]
       end
 
       def has_index?
@@ -163,24 +152,8 @@ module Rails
         type == :token
       end
 
-      def rich_text?
-        type == :rich_text
-      end
-
-      def attachment?
-        type == :attachment
-      end
-
-      def attachments?
-        type == :attachments
-      end
-
-      def virtual?
-        rich_text? || attachment? || attachments?
-      end
-
       def inject_options
-        (+"").tap { |s| options_for_migration.each { |k, v| s << ", #{k}: #{v.inspect}" } }
+        "".dup.tap { |s| options_for_migration.each { |k, v| s << ", #{k}: #{v.inspect}" } }
       end
 
       def inject_index_options
@@ -190,6 +163,7 @@ module Rails
       def options_for_migration
         @attr_options.dup.tap do |options|
           if required?
+            options.delete(:required)
             options[:null] = false
           end
 

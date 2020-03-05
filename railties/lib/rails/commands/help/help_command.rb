@@ -6,7 +6,7 @@ module Rails
       hide_command!
 
       def help(*)
-        say self.class.desc
+        puts self.class.desc
 
         Rails::Command.print_commands
       end

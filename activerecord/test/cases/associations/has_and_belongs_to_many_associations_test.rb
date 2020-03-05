@@ -25,8 +25,6 @@ require "models/user"
 require "models/member"
 require "models/membership"
 require "models/sponsor"
-require "models/lesson"
-require "models/student"
 require "models/country"
 require "models/treaty"
 require "models/vertex"
@@ -277,7 +275,7 @@ class HasAndBelongsToManyAssociationsTest < ActiveRecord::TestCase
   def test_habtm_saving_multiple_relationships
     new_project = Project.new("name" => "Grimetime")
     amount_of_developers = 4
-    developers = (0...amount_of_developers).reverse_each.map { |i| Developer.create(name: "JME #{i}") }
+    developers = (0...amount_of_developers).collect { |i| Developer.create(name: "JME #{i}") }.reverse
 
     new_project.developer_ids = [developers[0].id, developers[1].id]
     new_project.developers_with_callback_ids = [developers[2].id, developers[3].id]
@@ -312,8 +310,7 @@ class HasAndBelongsToManyAssociationsTest < ActiveRecord::TestCase
 
   def test_build
     devel = Developer.find(1)
-
-    proj = assert_queries(0) { devel.projects.build("name" => "Projekt") }
+    proj = assert_no_queries(ignore_none: false) { devel.projects.build("name" => "Projekt") }
     assert_not_predicate devel.projects, :loaded?
 
     assert_equal devel.projects.last, proj
@@ -328,8 +325,7 @@ class HasAndBelongsToManyAssociationsTest < ActiveRecord::TestCase
 
   def test_new_aliased_to_build
     devel = Developer.find(1)
-
-    proj = assert_queries(0) { devel.projects.new("name" => "Projekt") }
+    proj = assert_no_queries(ignore_none: false) { devel.projects.new("name" => "Projekt") }
     assert_not_predicate devel.projects, :loaded?
 
     assert_equal devel.projects.last, proj
@@ -550,7 +546,7 @@ class HasAndBelongsToManyAssociationsTest < ActiveRecord::TestCase
 
     developer = project.developers.first
 
-    assert_queries(0) do
+    assert_no_queries(ignore_none: false) do
       assert_predicate project.developers, :loaded?
       assert_includes project.developers, developer
     end
@@ -573,7 +569,7 @@ class HasAndBelongsToManyAssociationsTest < ActiveRecord::TestCase
     developer = Developer.create name: "Bryan", salary: 50_000
 
     assert_not_predicate project.developers, :loaded?
-    assert_not project.developers.include?(developer)
+    assert ! project.developers.include?(developer)
   end
 
   def test_find_with_merged_options
@@ -666,7 +662,7 @@ class HasAndBelongsToManyAssociationsTest < ActiveRecord::TestCase
     assert_includes developer.sym_special_projects, sp
   end
 
-  def test_update_columns_after_push_without_duplicate_join_table_rows
+  def test_update_attributes_after_push_without_duplicate_join_table_rows
     developer = Developer.new("name" => "Kano")
     project = SpecialProject.create("name" => "Special Project")
     assert developer.save
@@ -700,21 +696,25 @@ class HasAndBelongsToManyAssociationsTest < ActiveRecord::TestCase
     assert_equal ["id"], developers(:david).projects.select(:id).first.attributes.keys
   end
 
-  def test_join_middle_table_alias
-    assert_equal(
-      2,
-      Project.includes(:developers_projects).where.not("developers_projects.joined_on": nil).to_a.size
-    )
-  end
-
   def test_join_table_alias
+    # FIXME: `references` has no impact on the aliases generated for the join
+    # query.  The fact that we pass `:developers_projects_join` to `references`
+    # and that the SQL string contains `developers_projects_join` is merely a
+    # coincidence.
     assert_equal(
       3,
-      Developer.includes(projects: :developers).where.not("developers_projects_projects_join.joined_on": nil).to_a.size
+      Developer.references(:developers_projects_join).merge(
+        includes: { projects: :developers },
+        where: "projects_developers_projects_join.joined_on IS NOT NULL"
+      ).to_a.size
     )
   end
 
   def test_join_with_group
+    # FIXME: `references` has no impact on the aliases generated for the join
+    # query.  The fact that we pass `:developers_projects_join` to `references`
+    # and that the SQL string contains `developers_projects_join` is merely a
+    # coincidence.
     group = Developer.columns.inject([]) do |g, c|
       g << "developers.#{c.name}"
       g << "developers_projects_2.#{c.name}"
@@ -723,7 +723,10 @@ class HasAndBelongsToManyAssociationsTest < ActiveRecord::TestCase
 
     assert_equal(
       3,
-      Developer.includes(projects: :developers).where.not("developers_projects_projects_join.joined_on": nil).group(group.join(",")).to_a.size
+      Developer.references(:developers_projects_join).merge(
+        includes: { projects: :developers }, where: "projects_developers_projects_join.joined_on IS NOT NULL",
+        group: group.join(",")
+      ).to_a.size
     )
   end
 
@@ -781,16 +784,6 @@ class HasAndBelongsToManyAssociationsTest < ActiveRecord::TestCase
     developer.reload
     assert_equal 2, developer.projects.length
     assert_equal [projects(:active_record), projects(:action_controller)].map(&:id).sort, developer.project_ids.sort
-  end
-
-  def test_singular_ids_are_reloaded_after_collection_concat
-    student = Student.create(name: "Alberto Almagro")
-    student.lesson_ids
-
-    lesson = Lesson.create(name: "DSI")
-    student.lessons << lesson
-
-    assert_includes student.lesson_ids, lesson.id
   end
 
   def test_scoped_find_on_through_association_doesnt_return_read_only_records
@@ -880,7 +873,7 @@ class HasAndBelongsToManyAssociationsTest < ActiveRecord::TestCase
 
   def test_has_and_belongs_to_many_associations_on_new_records_use_null_relations
     projects = Developer.new.projects
-    assert_queries(0) do
+    assert_no_queries(ignore_none: false) do
       assert_equal [], projects
       assert_equal [], projects.where(title: "omg")
       assert_equal [], projects.pluck(:title)
@@ -1008,14 +1001,16 @@ class HasAndBelongsToManyAssociationsTest < ActiveRecord::TestCase
   end
 
   def test_has_and_belongs_to_many_while_partial_writes_false
-    original_partial_writes = ActiveRecord::Base.partial_writes
-    ActiveRecord::Base.partial_writes = false
-    developer = Developer.new(name: "Mehmet Emin İNAÇ")
-    developer.projects << Project.new(name: "Bounty")
+    begin
+      original_partial_writes = ActiveRecord::Base.partial_writes
+      ActiveRecord::Base.partial_writes = false
+      developer = Developer.new(name: "Mehmet Emin İNAÇ")
+      developer.projects << Project.new(name: "Bounty")
 
-    assert developer.save
-  ensure
-    ActiveRecord::Base.partial_writes = original_partial_writes
+      assert developer.save
+    ensure
+      ActiveRecord::Base.partial_writes = original_partial_writes
+    end
   end
 
   def test_has_and_belongs_to_many_with_belongs_to

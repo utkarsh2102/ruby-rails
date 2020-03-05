@@ -121,7 +121,7 @@ module ActionDispatch
         # not contained within the headers hash.
         def env_name(key)
           key = key.to_s
-          if HTTP_HEADER.match?(key)
+          if key =~ HTTP_HEADER
             key = key.upcase.tr("-", "_")
             key = "HTTP_" + key unless CGI_VARIABLES.include?(key)
           end

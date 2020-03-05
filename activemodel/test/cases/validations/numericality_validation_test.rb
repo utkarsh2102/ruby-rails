@@ -66,7 +66,7 @@ class NumericalityValidationTest < ActiveModel::TestCase
   end
 
   def test_validates_numericality_of_with_integer_only_and_proc_as_value
-    Topic.define_method(:allow_only_integers?) { false }
+    Topic.send(:define_method, :allow_only_integers?, lambda { false })
     Topic.validates_numericality_of :approved, only_integer: Proc.new(&:allow_only_integers?)
 
     invalid!(NIL + BLANK + JUNK)
@@ -214,23 +214,23 @@ class NumericalityValidationTest < ActiveModel::TestCase
   end
 
   def test_validates_numericality_with_proc
-    Topic.define_method(:min_approved) { 5 }
+    Topic.send(:define_method, :min_approved, lambda { 5 })
     Topic.validates_numericality_of :approved, greater_than_or_equal_to: Proc.new(&:min_approved)
 
     invalid!([3, 4])
     valid!([5, 6])
   ensure
-    Topic.remove_method :min_approved
+    Topic.send(:remove_method, :min_approved)
   end
 
   def test_validates_numericality_with_symbol
-    Topic.define_method(:max_approved) { 5 }
+    Topic.send(:define_method, :max_approved, lambda { 5 })
     Topic.validates_numericality_of :approved, less_than_or_equal_to: :max_approved
 
     invalid!([6])
     valid!([4, 5])
   ensure
-    Topic.remove_method :max_approved
+    Topic.send(:remove_method, :max_approved)
   end
 
   def test_validates_numericality_with_numeric_message
@@ -281,7 +281,7 @@ class NumericalityValidationTest < ActiveModel::TestCase
     assert_predicate topic, :invalid?
   end
 
-  def test_validates_numericality_with_object_acting_as_numeric
+  def test_validates_numericalty_with_object_acting_as_numeric
     klass = Class.new do
       def to_f
         123.54

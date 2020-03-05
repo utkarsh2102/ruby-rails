@@ -9,7 +9,6 @@ require "active_job/execution"
 require "active_job/callbacks"
 require "active_job/exceptions"
 require "active_job/logging"
-require "active_job/timezones"
 require "active_job/translation"
 
 module ActiveJob #:nodoc:
@@ -40,7 +39,7 @@ module ActiveJob #:nodoc:
   # Records that are passed in are serialized/deserialized using Global
   # ID. More information can be found in Arguments.
   #
-  # To enqueue a job to be performed as soon as the queuing system is free:
+  # To enqueue a job to be performed as soon as the queueing system is free:
   #
   #   ProcessPhotoJob.perform_later(photo)
   #
@@ -68,7 +67,6 @@ module ActiveJob #:nodoc:
     include Callbacks
     include Exceptions
     include Logging
-    include Timezones
     include Translation
 
     ActiveSupport.run_load_hooks(:active_job, self)

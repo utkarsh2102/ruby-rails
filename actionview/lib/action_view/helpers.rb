@@ -23,6 +23,7 @@ module ActionView #:nodoc:
     autoload :JavaScriptHelper, "action_view/helpers/javascript_helper"
     autoload :NumberHelper
     autoload :OutputSafetyHelper
+    autoload :RecordTagHelper
     autoload :RenderingHelper
     autoload :SanitizeHelper
     autoload :TagHelper
@@ -56,6 +57,7 @@ module ActionView #:nodoc:
     include JavaScriptHelper
     include NumberHelper
     include OutputSafetyHelper
+    include RecordTagHelper
     include RenderingHelper
     include SanitizeHelper
     include TagHelper

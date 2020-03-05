@@ -14,7 +14,7 @@
     </p>
   <% end %>
 
-  <%= render "rescues/trace", traces: @traces, trace_to_show: @trace_to_show %>
+  <%= render template: "rescues/_trace" %>
 
   <% if @routes_inspector %>
     <h2>

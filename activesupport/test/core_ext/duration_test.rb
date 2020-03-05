@@ -16,30 +16,30 @@ class DurationTest < ActiveSupport::TestCase
     assert_kind_of ActiveSupport::Duration, d
     assert_kind_of Numeric, d
     assert_kind_of Integer, d
-    assert_not d.is_a?(Hash)
+    assert !d.is_a?(Hash)
 
     k = Class.new
     class << k; undef_method :== end
-    assert_not d.is_a?(k)
+    assert !d.is_a?(k)
   end
 
   def test_instance_of
-    assert 1.minute.instance_of?(Integer)
+    assert 1.minute.instance_of?(1.class)
     assert 2.days.instance_of?(ActiveSupport::Duration)
-    assert_not 3.second.instance_of?(Numeric)
+    assert !3.second.instance_of?(Numeric)
   end
 
   def test_threequals
     assert ActiveSupport::Duration === 1.day
-    assert_not (ActiveSupport::Duration === 1.day.to_i)
-    assert_not (ActiveSupport::Duration === "foo")
+    assert !(ActiveSupport::Duration === 1.day.to_i)
+    assert !(ActiveSupport::Duration === "foo")
   end
 
   def test_equals
     assert 1.day == 1.day
     assert 1.day == 1.day.to_i
     assert 1.day.to_i == 1.day
-    assert_not (1.day == "foo")
+    assert !(1.day == "foo")
   end
 
   def test_to_s
@@ -53,11 +53,11 @@ class DurationTest < ActiveSupport::TestCase
     assert 1.minute.eql?(1.minute)
     assert 1.minute.eql?(60.seconds)
     assert 2.days.eql?(48.hours)
-    assert_not 1.second.eql?(1)
-    assert_not 1.eql?(1.second)
+    assert !1.second.eql?(1)
+    assert !1.eql?(1.second)
     assert 1.minute.eql?(180.seconds - 2.minutes)
-    assert_not 1.minute.eql?(60)
-    assert_not 1.minute.eql?("foo")
+    assert !1.minute.eql?(60)
+    assert !1.minute.eql?("foo")
   end
 
   def test_inspect
@@ -156,18 +156,6 @@ class DurationTest < ActiveSupport::TestCase
 
   def test_date_added_with_multiplied_duration
     assert_equal Date.civil(2017, 1, 3), Date.civil(2017, 1, 1) + 1.day * 2
-  end
-
-  def test_date_added_with_multiplied_duration_larger_than_one_month
-    assert_equal Date.civil(2017, 2, 15), Date.civil(2017, 1, 1) + 1.day * 45
-  end
-
-  def test_date_added_with_divided_duration
-    assert_equal Date.civil(2017, 1, 3), Date.civil(2017, 1, 1) + 4.days / 2
-  end
-
-  def test_date_added_with_divided_duration_larger_than_one_month
-    assert_equal Date.civil(2017, 2, 15), Date.civil(2017, 1, 1) + 90.days / 2
   end
 
   def test_plus_with_time

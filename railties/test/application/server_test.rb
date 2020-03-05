@@ -18,27 +18,43 @@ module ApplicationTests
       teardown_app
     end
 
+    test "deprecate support of older `config.ru`" do
+      remove_file "config.ru"
+      app_file "config.ru", <<-RUBY
+        require_relative 'config/environment'
+        run AppTemplate::Application
+      RUBY
+
+      server = Rails::Server.new(config: "#{app_path}/config.ru")
+      server.app
+
+      log = File.read(Rails.application.config.paths["log"].first)
+      assert_match(/DEPRECATION WARNING: Using `Rails::Application` subclass to start the server is deprecated/, log)
+    end
+
     test "restart rails server with custom pid file path" do
       skip "PTY unavailable" unless available_pty?
 
       File.open("#{app_path}/config/boot.rb", "w") do |f|
-        f.puts "ENV['BUNDLE_GEMFILE'] = '#{Bundler.default_gemfile}'"
+        f.puts "ENV['BUNDLE_GEMFILE'] = '#{Bundler.default_gemfile.to_s}'"
         f.puts "require 'bundler/setup'"
       end
 
-      primary, replica = PTY.open
+      master, slave = PTY.open
       pid = nil
 
       Bundler.with_original_env do
-        pid = Process.spawn("bin/rails server -b localhost -P tmp/dummy.pid", chdir: app_path, in: replica, out: replica, err: replica)
-        assert_output("Listening", primary)
+        begin
+          pid = Process.spawn("bin/rails server -b localhost -P tmp/dummy.pid", chdir: app_path, in: slave, out: slave, err: slave)
+          assert_output("Listening", master)
 
-        rails("restart")
+          rails("restart")
 
-        assert_output("Restarting", primary)
-        assert_output("Listening", primary)
-      ensure
-        kill(pid) if pid
+          assert_output("Restarting", master)
+          assert_output("Listening", master)
+        ensure
+          kill(pid) if pid
+        end
       end
     end
 

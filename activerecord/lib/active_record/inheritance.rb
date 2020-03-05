@@ -55,11 +55,7 @@ module ActiveRecord
         if has_attribute?(inheritance_column)
           subclass = subclass_from_attributes(attributes)
 
-          if subclass.nil? && scope_attributes = current_scope&.scope_for_create
-            subclass = subclass_from_attributes(scope_attributes)
-          end
-
-          if subclass.nil? && base_class?
+          if subclass.nil? && base_class == self
             subclass = subclass_from_attributes(column_defaults)
           end
         end
@@ -106,12 +102,6 @@ module ActiveRecord
         else
           superclass.base_class
         end
-      end
-
-      # Returns whether the class is a base class.
-      # See #base_class for more information.
-      def base_class?
-        base_class == self
       end
 
       # Set this to +true+ if this is an abstract class (see
@@ -180,7 +170,7 @@ module ActiveRecord
         # Returns the class type of the record using the current module as a prefix. So descendants of
         # MyApp::Business::Account would appear as MyApp::Business::AccountSubclass.
         def compute_type(type_name)
-          if type_name.start_with?("::")
+          if type_name.start_with?("::".freeze)
             # If the type is prefixed with a scope operator then we assume that
             # the type_name is an absolute reference.
             ActiveSupport::Dependencies.constantize(type_name)
@@ -249,7 +239,7 @@ module ActiveRecord
           sti_column = arel_attribute(inheritance_column, table)
           sti_names  = ([self] + descendants).map(&:sti_name)
 
-          predicate_builder.build(sti_column, sti_names)
+          sti_column.in(sti_names)
         end
 
         # Detect the subclass from the inheritance column of attrs. If the inheritance column value

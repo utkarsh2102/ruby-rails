@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require "active_support/core_ext/regexp"
+
 module ActiveSupport
   class Deprecation
     class DeprecationProxy #:nodoc:
@@ -120,14 +122,7 @@ module ActiveSupport
     #   # => DEPRECATION WARNING: PLANETS is deprecated! Use PLANETS_POST_2006 instead.
     #        (Backtrace information…)
     #        ["Mercury", "Venus", "Earth", "Mars", "Jupiter", "Saturn", "Uranus", "Neptune"]
-    class DeprecatedConstantProxy < Module
-      def self.new(*args, &block)
-        object = args.first
-
-        return object unless object
-        super
-      end
-
+    class DeprecatedConstantProxy < DeprecationProxy
       def initialize(old_const, new_const, deprecator = ActiveSupport::Deprecation.instance, message: "#{old_const} is deprecated! Use #{new_const} instead.")
         require "active_support/inflector/methods"
 
@@ -135,14 +130,6 @@ module ActiveSupport
         @new_const = new_const
         @deprecator = deprecator
         @message = message
-      end
-
-      instance_methods.each { |m| undef_method m unless /^__|^object_id$/.match?(m) }
-
-      # Don't give a deprecation warning on inspect since test/unit and error
-      # logs rely on it for diagnostics.
-      def inspect
-        target.inspect
       end
 
       # Returns the class of the new constant.
@@ -159,14 +146,8 @@ module ActiveSupport
           ActiveSupport::Inflector.constantize(@new_const.to_s)
         end
 
-        def const_missing(name)
-          @deprecator.warn(@message, caller_locations)
-          target.const_get(name)
-        end
-
-        def method_missing(called, *args, &block)
-          @deprecator.warn(@message, caller_locations)
-          target.__send__(called, *args, &block)
+        def warn(callstack, called, args)
+          @deprecator.warn(@message, callstack)
         end
     end
   end

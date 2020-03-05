@@ -6,11 +6,15 @@ module ActiveModel
       include Helpers::Timezone
       include Helpers::TimeValue
       include Helpers::AcceptsMultiparameterTime.new(
-        defaults: { 1 => 2000, 2 => 1, 3 => 1, 4 => 0, 5 => 0 }
+        defaults: { 1 => 1970, 2 => 1, 3 => 1, 4 => 0, 5 => 0 }
       )
 
       def type
         :time
+      end
+
+      def serialize(value)
+        super(cast(value))
       end
 
       def user_input_in_time_zone(value)

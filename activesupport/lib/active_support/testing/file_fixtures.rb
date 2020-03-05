@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-require "active_support/concern"
-
 module ActiveSupport
   module Testing
     # Adds simple access to sample files called file fixtures.

@@ -1,7 +1,7 @@
-# Active Job – Make work happen later
+# Active Job -- Make work happen later
 
 Active Job is a framework for declaring jobs and making them run on a variety
-of queuing backends. These jobs can be everything from regularly scheduled
+of queueing backends. These jobs can be everything from regularly scheduled
 clean-ups, to billing charges, to mailings. Anything that can be chopped up into
 small units of work and run in parallel, really.
 
@@ -17,13 +17,12 @@ about API differences between Delayed Job and Resque. Picking your queuing
 backend becomes more of an operational concern, then. And you'll be able to
 switch between them without having to rewrite your jobs.
 
-You can read more about Active Job in the [Active Job Basics](https://edgeguides.rubyonrails.org/active_job_basics.html) guide.
 
 ## Usage
 
-To learn how to use your preferred queuing backend see its adapter
+To learn how to use your preferred queueing backend see its adapter
 documentation at
-[ActiveJob::QueueAdapters](https://api.rubyonrails.org/classes/ActiveJob/QueueAdapters.html).
+[ActiveJob::QueueAdapters](http://api.rubyonrails.org/classes/ActiveJob/QueueAdapters.html).
 
 Declare a job like so:
 
@@ -40,7 +39,7 @@ end
 Enqueue a job like so:
 
 ```ruby
-MyJob.perform_later record  # Enqueue a job to be performed as soon as the queuing system is free.
+MyJob.perform_later record  # Enqueue a job to be performed as soon as the queueing system is free.
 ```
 
 ```ruby
@@ -83,17 +82,11 @@ This works with any class that mixes in GlobalID::Identification, which
 by default has been mixed into Active Record classes.
 
 
-## Supported queuing systems
+## Supported queueing systems
 
-Active Job has built-in adapters for multiple queuing backends (Sidekiq,
+Active Job has built-in adapters for multiple queueing backends (Sidekiq,
 Resque, Delayed Job and others). To get an up-to-date list of the adapters
-see the API Documentation for [ActiveJob::QueueAdapters](https://api.rubyonrails.org/classes/ActiveJob/QueueAdapters.html).
-
-**Please note:** We are not accepting pull requests for new adapters. We
-encourage library authors to provide an ActiveJob adapter as part of
-their gem, or as a stand-alone gem. For discussion about this see the
-following PRs: [23311](https://github.com/rails/rails/issues/23311#issuecomment-176275718),
-[21406](https://github.com/rails/rails/pull/21406#issuecomment-138813484), and [#32285](https://github.com/rails/rails/pull/32285).
+see the API Documentation for [ActiveJob::QueueAdapters](http://api.rubyonrails.org/classes/ActiveJob/QueueAdapters.html).
 
 ## Auxiliary gems
 
@@ -109,7 +102,7 @@ The latest version of Active Job can be installed with RubyGems:
 
 Source code can be downloaded as part of the Rails project on GitHub:
 
-* https://github.com/rails/rails/tree/master/activejob
+* https://github.com/rails/rails/tree/5-2-stable/activejob
 
 ## License
 
@@ -122,7 +115,7 @@ Active Job is released under the MIT license:
 
 API documentation is at:
 
-* https://api.rubyonrails.org
+* http://api.rubyonrails.org
 
 Bug reports for the Ruby on Rails project can be filed here:
 

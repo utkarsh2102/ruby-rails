@@ -78,6 +78,7 @@ class ObjectTryTest < ActiveSupport::TestCase
   def test_try_with_private_method_bang
     klass = Class.new do
       private
+
         def private_method
           "private method"
         end
@@ -89,6 +90,7 @@ class ObjectTryTest < ActiveSupport::TestCase
   def test_try_with_private_method
     klass = Class.new do
       private
+
         def private_method
           "private method"
         end
@@ -107,6 +109,7 @@ class ObjectTryTest < ActiveSupport::TestCase
     end
 
     private
+
       def private_delegator_method
         "private delegator method"
       end
@@ -117,11 +120,11 @@ class ObjectTryTest < ActiveSupport::TestCase
   end
 
   def test_try_with_method_on_delegator_target
-    assert_equal 5, Decorator.new(@string).try(:size)
+    assert_equal 5, Decorator.new(@string).size
   end
 
   def test_try_with_overridden_method_on_delegator
-    assert_equal "overridden reverse", Decorator.new(@string).try(:reverse)
+    assert_equal "overridden reverse", Decorator.new(@string).reverse
   end
 
   def test_try_with_private_method_on_delegator
@@ -137,6 +140,7 @@ class ObjectTryTest < ActiveSupport::TestCase
   def test_try_with_private_method_on_delegator_target
     klass = Class.new do
       private
+
         def private_method
           "private method"
         end
@@ -148,6 +152,7 @@ class ObjectTryTest < ActiveSupport::TestCase
   def test_try_with_private_method_on_delegator_target_bang
     klass = Class.new do
       private
+
         def private_method
           "private method"
         end

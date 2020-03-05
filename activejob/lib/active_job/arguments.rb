@@ -14,30 +14,29 @@ module ActiveJob
   end
 
   # Raised when an unsupported argument type is set as a job argument. We
-  # currently support String, Integer, Float, NilClass, TrueClass, FalseClass,
-  # BigDecimal, Symbol, Date, Time, DateTime, ActiveSupport::TimeWithZone,
-  # ActiveSupport::Duration, Hash, ActiveSupport::HashWithIndifferentAccess,
-  # Array or GlobalID::Identification instances, although this can be extended
-  # by adding custom serializers.
+  # currently support NilClass, Integer, Fixnum, Float, String, TrueClass, FalseClass,
+  # Bignum, BigDecimal, and objects that can be represented as GlobalIDs (ex: Active Record).
   # Raised if you set the key for a Hash something else than a string or
   # a symbol. Also raised when trying to serialize an object which can't be
-  # identified with a GlobalID - such as an unpersisted Active Record model.
+  # identified with a Global ID - such as an unpersisted Active Record model.
   class SerializationError < ArgumentError; end
 
   module Arguments
     extend self
-    # Serializes a set of arguments. Intrinsic types that can safely be
-    # serialized without mutation are returned as-is. Arrays/Hashes are
-    # serialized element by element. All other types are serialized using
-    # GlobalID.
+    # :nodoc:
+    TYPE_WHITELIST = [ NilClass, String, Integer, Float, BigDecimal, TrueClass, FalseClass ]
+    TYPE_WHITELIST.push(Fixnum, Bignum) unless 1.class == Integer
+
+    # Serializes a set of arguments. Whitelisted types are returned
+    # as-is. Arrays/Hashes are serialized element by element.
+    # All other types are serialized using GlobalID.
     def serialize(arguments)
       arguments.map { |argument| serialize_argument(argument) }
     end
 
-    # Deserializes a set of arguments. Intrinsic types that can safely be
-    # deserialized without mutation are returned as-is. Arrays/Hashes are
-    # deserialized element by element. All other types are deserialized using
-    # GlobalID.
+    # Deserializes a set of arguments. Whitelisted types are returned
+    # as-is. Arrays/Hashes are deserialized element by element.
+    # All other types are deserialized using GlobalID.
     def deserialize(arguments)
       arguments.map { |argument| deserialize_argument(argument) }
     rescue
@@ -45,30 +44,17 @@ module ActiveJob
     end
 
     private
-
       # :nodoc:
-      PERMITTED_TYPES = [ NilClass, String, Integer, Float, BigDecimal, TrueClass, FalseClass ]
+      GLOBALID_KEY = "_aj_globalid".freeze
       # :nodoc:
-      GLOBALID_KEY = "_aj_globalid"
+      SYMBOL_KEYS_KEY = "_aj_symbol_keys".freeze
       # :nodoc:
-      SYMBOL_KEYS_KEY = "_aj_symbol_keys"
-      # :nodoc:
-      WITH_INDIFFERENT_ACCESS_KEY = "_aj_hash_with_indifferent_access"
-      # :nodoc:
-      OBJECT_SERIALIZER_KEY = "_aj_serialized"
-
-      # :nodoc:
-      RESERVED_KEYS = [
-        GLOBALID_KEY, GLOBALID_KEY.to_sym,
-        SYMBOL_KEYS_KEY, SYMBOL_KEYS_KEY.to_sym,
-        OBJECT_SERIALIZER_KEY, OBJECT_SERIALIZER_KEY.to_sym,
-        WITH_INDIFFERENT_ACCESS_KEY, WITH_INDIFFERENT_ACCESS_KEY.to_sym,
-      ]
-      private_constant :PERMITTED_TYPES, :RESERVED_KEYS, :GLOBALID_KEY, :SYMBOL_KEYS_KEY, :WITH_INDIFFERENT_ACCESS_KEY
+      WITH_INDIFFERENT_ACCESS_KEY = "_aj_hash_with_indifferent_access".freeze
+      private_constant :GLOBALID_KEY, :SYMBOL_KEYS_KEY, :WITH_INDIFFERENT_ACCESS_KEY
 
       def serialize_argument(argument)
         case argument
-        when *PERMITTED_TYPES
+        when *TYPE_WHITELIST
           argument
         when GlobalID::Identification
           convert_to_global_id_hash(argument)
@@ -84,7 +70,7 @@ module ActiveJob
         when -> (arg) { arg.respond_to?(:permitted?) }
           serialize_indifferent_hash(argument.to_h)
         else
-          Serializers.serialize(argument)
+          raise SerializationError.new("Unsupported argument type: #{argument.class.name}")
         end
       end
 
@@ -92,15 +78,13 @@ module ActiveJob
         case argument
         when String
           argument
-        when *PERMITTED_TYPES
+        when *TYPE_WHITELIST
           argument
         when Array
           argument.map { |arg| deserialize_argument(arg) }
         when Hash
           if serialized_global_id?(argument)
             deserialize_global_id argument
-          elsif custom_serialized?(argument)
-            Serializers.deserialize(argument)
           else
             deserialize_hash(argument)
           end
@@ -115,10 +99,6 @@ module ActiveJob
 
       def deserialize_global_id(hash)
         GlobalID::Locator.locate hash[GLOBALID_KEY]
-      end
-
-      def custom_serialized?(hash)
-        hash.key?(OBJECT_SERIALIZER_KEY)
       end
 
       def serialize_hash(argument)
@@ -136,6 +116,14 @@ module ActiveJob
         end
         result
       end
+
+      # :nodoc:
+      RESERVED_KEYS = [
+        GLOBALID_KEY, GLOBALID_KEY.to_sym,
+        SYMBOL_KEYS_KEY, SYMBOL_KEYS_KEY.to_sym,
+        WITH_INDIFFERENT_ACCESS_KEY, WITH_INDIFFERENT_ACCESS_KEY.to_sym,
+      ]
+      private_constant :RESERVED_KEYS
 
       def serialize_hash_key(key)
         case key

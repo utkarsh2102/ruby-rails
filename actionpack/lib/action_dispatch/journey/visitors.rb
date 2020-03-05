@@ -40,7 +40,7 @@ module ActionDispatch
         @parameters.each do |index|
           param = parts[index]
           value = hash[param.name]
-          return "" unless value
+          return "".freeze unless value
           parts[index] = param.escape value
         end
 

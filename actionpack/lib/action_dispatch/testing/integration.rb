@@ -50,11 +50,10 @@ module ActionDispatch
 
       # Follow a single redirect response. If the last response was not a
       # redirect, an exception will be raised. Otherwise, the redirect is
-      # performed on the location header. Any arguments are passed to the
-      # underlying call to `get`.
-      def follow_redirect!(**args)
+      # performed on the location header.
+      def follow_redirect!
         raise "not a redirect! #{status} #{status_message}" unless redirect?
-        get(response.location, **args)
+        get(response.location)
         status
       end
     end
@@ -190,12 +189,6 @@ module ActionDispatch
       #   merged into the Rack env hash.
       # - +env+: Additional env to pass, as a Hash. The headers will be
       #   merged into the Rack env hash.
-      # - +xhr+: Set to `true` if you want to make and Ajax request.
-      #   Adds request headers characteristic of XMLHttpRequest e.g. HTTP_X_REQUESTED_WITH.
-      #   The headers will be merged into the Rack env hash.
-      # - +as+: Used for encoding the request with different content type.
-      #   Supports `:json` by default and will set the appropriate request headers.
-      #   The headers will be merged into the Rack env hash.
       #
       # This method is rarely used directly. Use +#get+, +#post+, or other standard
       # HTTP methods in integration tests. +#process+ is only required when using a
@@ -217,7 +210,7 @@ module ActionDispatch
           method = :post
         end
 
-        if %r{://}.match?(path)
+        if path =~ %r{://}
           path = build_expanded_path(path) do |location|
             https! URI::HTTPS === location if location.scheme
 
@@ -335,7 +328,7 @@ module ActionDispatch
         klass = APP_SESSIONS[app] ||= Class.new(Integration::Session) {
           # If the app is a Rails app, make url_helpers available on the session.
           # This makes app.url_for and app.foo_path available in the console.
-          if app.respond_to?(:routes) && app.routes.is_a?(ActionDispatch::Routing::RouteSet)
+          if app.respond_to?(:routes)
             include app.routes.url_helpers
             include app.routes.mounted_helpers
           end

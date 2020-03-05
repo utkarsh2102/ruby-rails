@@ -13,23 +13,19 @@ class ForceSSLController < ActionController::Base
 end
 
 class ForceSSLControllerLevel < ForceSSLController
-  ActiveSupport::Deprecation.silence do
-    force_ssl
-  end
+  force_ssl
 end
 
 class ForceSSLCustomOptions < ForceSSLController
-  ActiveSupport::Deprecation.silence do
-    force_ssl host: "secure.example.com", only: :redirect_host
-    force_ssl port: 8443, only: :redirect_port
-    force_ssl subdomain: "secure", only: :redirect_subdomain
-    force_ssl domain: "secure.com", only: :redirect_domain
-    force_ssl path: "/foo", only: :redirect_path
-    force_ssl status: :found, only: :redirect_status
-    force_ssl flash: { message: "Foo, Bar!" }, only: :redirect_flash
-    force_ssl alert: "Foo, Bar!", only: :redirect_alert
-    force_ssl notice: "Foo, Bar!", only: :redirect_notice
-  end
+  force_ssl host: "secure.example.com", only: :redirect_host
+  force_ssl port: 8443, only: :redirect_port
+  force_ssl subdomain: "secure", only: :redirect_subdomain
+  force_ssl domain: "secure.com", only: :redirect_domain
+  force_ssl path: "/foo", only: :redirect_path
+  force_ssl status: :found, only: :redirect_status
+  force_ssl flash: { message: "Foo, Bar!" }, only: :redirect_flash
+  force_ssl alert: "Foo, Bar!", only: :redirect_alert
+  force_ssl notice: "Foo, Bar!", only: :redirect_notice
 
   def force_ssl_action
     render plain: action_name
@@ -59,21 +55,15 @@ class ForceSSLCustomOptions < ForceSSLController
 end
 
 class ForceSSLOnlyAction < ForceSSLController
-  ActiveSupport::Deprecation.silence do
-    force_ssl only: :cheeseburger
-  end
+  force_ssl only: :cheeseburger
 end
 
 class ForceSSLExceptAction < ForceSSLController
-  ActiveSupport::Deprecation.silence do
-    force_ssl except: :banana
-  end
+  force_ssl except: :banana
 end
 
 class ForceSSLIfCondition < ForceSSLController
-  ActiveSupport::Deprecation.silence do
-    force_ssl if: :use_force_ssl?
-  end
+  force_ssl if: :use_force_ssl?
 
   def use_force_ssl?
     action_name == "cheeseburger"
@@ -81,9 +71,7 @@ class ForceSSLIfCondition < ForceSSLController
 end
 
 class ForceSSLFlash < ForceSSLController
-  ActiveSupport::Deprecation.silence do
-    force_ssl except: [:banana, :set_flash, :use_flash]
-  end
+  force_ssl except: [:banana, :set_flash, :use_flash]
 
   def set_flash
     flash["that"] = "hello"

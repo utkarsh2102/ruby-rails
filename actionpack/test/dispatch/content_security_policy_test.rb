@@ -116,12 +116,6 @@ class ContentSecurityPolicyTest < ActiveSupport::TestCase
     @policy.object_src false
     assert_no_match %r{object-src}, @policy.build
 
-    @policy.prefetch_src :self
-    assert_match %r{prefetch-src 'self'}, @policy.build
-
-    @policy.prefetch_src false
-    assert_no_match %r{prefetch-src}, @policy.build
-
     @policy.script_src :self
     assert_match %r{script-src 'self'}, @policy.build
 
@@ -345,11 +339,6 @@ class ContentSecurityPolicyIntegrationTest < ActionDispatch::IntegrationTest
       p.script_src :self
     end
 
-    content_security_policy only: :style_src do |p|
-      p.default_src false
-      p.style_src :self
-    end
-
     content_security_policy(false, only: :no_policy)
 
     content_security_policy_report_only only: :report_only
@@ -374,10 +363,6 @@ class ContentSecurityPolicyIntegrationTest < ActionDispatch::IntegrationTest
       head :ok
     end
 
-    def style_src
-      head :ok
-    end
-
     def no_policy
       head :ok
     end
@@ -396,7 +381,6 @@ class ContentSecurityPolicyIntegrationTest < ActionDispatch::IntegrationTest
       get "/conditional", to: "policy#conditional"
       get "/report-only", to: "policy#report_only"
       get "/script-src", to: "policy#script_src"
-      get "/style-src", to: "policy#style_src"
       get "/no-policy", to: "policy#no_policy"
     end
   end
@@ -455,11 +439,6 @@ class ContentSecurityPolicyIntegrationTest < ActionDispatch::IntegrationTest
   def test_adds_nonce_to_script_src_content_security_policy
     get "/script-src"
     assert_policy "script-src 'self' 'nonce-iyhD0Yc0W+c='"
-  end
-
-  def test_adds_nonce_to_style_src_content_security_policy
-    get "/style-src"
-    assert_policy "style-src 'self' 'nonce-iyhD0Yc0W+c='"
   end
 
   def test_generates_no_content_security_policy
@@ -542,59 +521,5 @@ class DisabledContentSecurityPolicyIntegrationTest < ActionDispatch::Integration
   def test_generates_content_security_policy_header_when_globally_disabled
     get "/inline"
     assert_equal "default-src https://example.com", response.headers["Content-Security-Policy"]
-  end
-end
-
-class NonceDirectiveContentSecurityPolicyIntegrationTest < ActionDispatch::IntegrationTest
-  class PolicyController < ActionController::Base
-    def index
-      head :ok
-    end
-  end
-
-  ROUTES = ActionDispatch::Routing::RouteSet.new
-  ROUTES.draw do
-    scope module: "nonce_directive_content_security_policy_integration_test" do
-      get "/", to: "policy#index"
-    end
-  end
-
-  POLICY = ActionDispatch::ContentSecurityPolicy.new do |p|
-    p.default_src -> { :self  }
-    p.script_src -> { :https }
-    p.style_src -> { :https }
-  end
-
-  class PolicyConfigMiddleware
-    def initialize(app)
-      @app = app
-    end
-
-    def call(env)
-      env["action_dispatch.content_security_policy"] = POLICY
-      env["action_dispatch.content_security_policy_nonce_generator"] = proc { "iyhD0Yc0W+c=" }
-      env["action_dispatch.content_security_policy_report_only"] = false
-      env["action_dispatch.content_security_policy_nonce_directives"] = %w(script-src)
-      env["action_dispatch.show_exceptions"] = false
-
-      @app.call(env)
-    end
-  end
-
-  APP = build_app(ROUTES) do |middleware|
-    middleware.use PolicyConfigMiddleware
-    middleware.use ActionDispatch::ContentSecurityPolicy::Middleware
-  end
-
-  def app
-    APP
-  end
-
-  def test_generate_nonce_only_specified_in_nonce_directives
-    get "/"
-
-    assert_response :success
-    assert_match "script-src https: 'nonce-iyhD0Yc0W+c='", response.headers["Content-Security-Policy"]
-    assert_no_match "style-src https: 'nonce-iyhD0Yc0W+c='", response.headers["Content-Security-Policy"]
   end
 end

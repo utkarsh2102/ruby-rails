@@ -1,22 +1,17 @@
 # frozen_string_literal: true
 
 require "cases/helper"
+require "models/topic"
+require "models/reply"
 require "models/person"
 require "models/traffic_light"
 require "models/post"
+require "bcrypt"
 
 class SerializedAttributeTest < ActiveRecord::TestCase
   fixtures :topics, :posts
 
   MyObject = Struct.new :attribute1, :attribute2
-
-  class Topic < ActiveRecord::Base
-    serialize :content
-  end
-
-  class ImportantTopic < Topic
-    serialize :important, Hash
-  end
 
   teardown do
     Topic.serialize("content")
@@ -54,10 +49,10 @@ class SerializedAttributeTest < ActiveRecord::TestCase
   def test_serialized_attributes_from_database_on_subclass
     Topic.serialize :content, Hash
 
-    t = ImportantTopic.new(content: { foo: :bar })
+    t = Reply.new(content: { foo: :bar })
     assert_equal({ foo: :bar }, t.content)
     t.save!
-    t = ImportantTopic.last
+    t = Reply.last
     assert_equal({ foo: :bar }, t.content)
   end
 
@@ -327,7 +322,7 @@ class SerializedAttributeTest < ActiveRecord::TestCase
     topic = Topic.create!(content: {})
     topic2 = Topic.create!(content: nil)
 
-    assert_equal [topic, topic2], Topic.where(content: nil).sort_by(&:id)
+    assert_equal [topic, topic2], Topic.where(content: nil)
   end
 
   def test_nil_is_always_persisted_as_null
@@ -372,9 +367,9 @@ class SerializedAttributeTest < ActiveRecord::TestCase
   end
 
   def test_serialized_attribute_works_under_concurrent_initial_access
-    model = Class.new(Topic)
+    model = Topic.dup
 
-    topic = model.create!
+    topic = model.last
     topic.update group: "1"
 
     model.serialize :group, JSON

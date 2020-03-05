@@ -1,5 +1,3 @@
-# frozen_string_literal: true
-
 tap "homebrew/core"
 tap "homebrew/bundle"
 tap "homebrew/services"
@@ -13,4 +11,3 @@ brew "yarn"
 cask "xquartz"
 brew "mupdf"
 brew "poppler"
-brew "imagemagick"

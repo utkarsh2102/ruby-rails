@@ -58,7 +58,7 @@ module ActionView
 
         def tag_options(options, escape = true)
           return if options.blank?
-          output = +""
+          output = "".dup
           sep    = " "
           options.each_pair do |key, value|
             if TAG_PREFIXES.include?(key) && value.is_a?(Hash)
@@ -86,12 +86,11 @@ module ActionView
 
         def tag_option(key, value, escape)
           if value.is_a?(Array)
-            value = escape ? safe_join(value, " ") : value.join(" ")
+            value = escape ? safe_join(value, " ".freeze) : value.join(" ".freeze)
           else
-            value = escape ? ERB::Util.unwrapped_html_escape(value).dup : value.to_s.dup
+            value = escape ? ERB::Util.unwrapped_html_escape(value) : value.to_s
           end
-          value.gsub!('"', "&quot;")
-          %(#{key}="#{value}")
+          %(#{key}="#{value.gsub('"'.freeze, '&quot;'.freeze)}")
         end
 
         private
@@ -228,10 +227,10 @@ module ActionView
       #   tag("img", src: "open & shut.png")
       #   # => <img src="open &amp; shut.png" />
       #
-      #   tag("img", { src: "open &amp; shut.png" }, false, false)
+      #   tag("img", {src: "open &amp; shut.png"}, false, false)
       #   # => <img src="open &amp; shut.png" />
       #
-      #   tag("div", data: { name: 'Stephen', city_state: %w(Chicago IL) })
+      #   tag("div", data: {name: 'Stephen', city_state: %w(Chicago IL)})
       #   # => <div data-name="Stephen" data-city-state="[&quot;Chicago&quot;,&quot;IL&quot;]" />
       def tag(name = nil, options = nil, open = false, escape = true)
         if name.nil?

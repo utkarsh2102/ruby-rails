@@ -12,31 +12,16 @@ module ActiveRecord
       ])
     end
 
-    test "includes_column?" do
-      assert result.includes_column?("col_1")
-      assert_not result.includes_column?("foo")
-    end
-
     test "length" do
       assert_equal 3, result.length
     end
 
-    test "to_a returns row_hashes" do
+    test "to_hash returns row_hashes" do
       assert_equal [
         { "col_1" => "row 1 col 1", "col_2" => "row 1 col 2" },
         { "col_1" => "row 2 col 1", "col_2" => "row 2 col 2" },
         { "col_1" => "row 3 col 1", "col_2" => "row 3 col 2" },
-      ], result.to_a
-    end
-
-    test "to_hash (deprecated) returns row_hashes" do
-      assert_deprecated do
-        assert_equal [
-          { "col_1" => "row 1 col 1", "col_2" => "row 1 col 2" },
-          { "col_1" => "row 2 col 1", "col_2" => "row 2 col 2" },
-          { "col_1" => "row 3 col 1", "col_2" => "row 3 col 2" },
-        ], result.to_hash
-      end
+      ], result.to_hash
     end
 
     test "first returns first row as a hash" do

@@ -20,7 +20,6 @@ module ActionDispatch
 
     setup do
       @cleaner = ActiveSupport::BacktraceCleaner.new
-      @cleaner.remove_filters!
       @cleaner.add_silencer { |line| line !~ /^lib/ }
     end
 
@@ -109,27 +108,11 @@ module ActionDispatch
       wrapper = ExceptionWrapper.new(@cleaner, exception)
 
       assert_equal({
-        "Application Trace" => [
-          exception_object_id: exception.object_id,
-          id: 0,
-          trace: "lib/file.rb:42:in `index'"
-        ],
-        "Framework Trace" => [
-          exception_object_id: exception.object_id,
-          id: 1,
-          trace: "/gems/rack.rb:43:in `index'"
-        ],
+        "Application Trace" => [ id: 0, trace: "lib/file.rb:42:in `index'" ],
+        "Framework Trace" => [ id: 1, trace: "/gems/rack.rb:43:in `index'" ],
         "Full Trace" => [
-          {
-            exception_object_id: exception.object_id,
-            id: 0,
-            trace: "lib/file.rb:42:in `index'"
-          },
-          {
-            exception_object_id: exception.object_id,
-            id: 1,
-            trace: "/gems/rack.rb:43:in `index'"
-          }
+          { id: 0, trace: "lib/file.rb:42:in `index'" },
+          { id: 1, trace: "/gems/rack.rb:43:in `index'" }
         ]
       }, wrapper.traces)
     end

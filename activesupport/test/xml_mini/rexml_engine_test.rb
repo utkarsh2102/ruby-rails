@@ -12,7 +12,7 @@ class REXMLEngineTest < XMLMiniEngineTest
   end
 
   def test_parse_from_frozen_string
-    xml_string = "<root></root>"
+    xml_string = "<root></root>".freeze
     assert_equal({ "root" => {} }, ActiveSupport::XmlMini.parse(xml_string))
   end
 

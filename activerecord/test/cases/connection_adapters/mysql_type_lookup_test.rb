@@ -27,12 +27,8 @@ if current_adapter?(:Mysql2Adapter)
         def test_string_types
           assert_lookup_type :string, "enum('one', 'two', 'three')"
           assert_lookup_type :string, "ENUM('one', 'two', 'three')"
-          assert_lookup_type :string, "enum ('one', 'two', 'three')"
-          assert_lookup_type :string, "ENUM ('one', 'two', 'three')"
           assert_lookup_type :string, "set('one', 'two', 'three')"
           assert_lookup_type :string, "SET('one', 'two', 'three')"
-          assert_lookup_type :string, "set ('one', 'two', 'three')"
-          assert_lookup_type :string, "SET ('one', 'two', 'three')"
         end
 
         def test_set_type_with_value_matching_other_type
@@ -40,7 +36,7 @@ if current_adapter?(:Mysql2Adapter)
         end
 
         def test_enum_type_with_value_matching_other_type
-          assert_lookup_type :string, "ENUM('unicode', '8bit', 'none', 'time')"
+          assert_lookup_type :string, "ENUM('unicode', '8bit', 'none')"
         end
 
         def test_binary_types

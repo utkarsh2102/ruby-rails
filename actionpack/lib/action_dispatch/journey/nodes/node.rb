@@ -32,7 +32,7 @@ module ActionDispatch
         end
 
         def name
-          -left.tr("*:", "")
+          left.tr "*:".freeze, "".freeze
         end
 
         def type
@@ -65,12 +65,12 @@ module ActionDispatch
         def literal?; false; end
       end
 
-      class Slash < Terminal # :nodoc:
-        def type; :SLASH; end
-      end
-
-      class Dot < Terminal # :nodoc:
-        def type; :DOT; end
+      %w{ Symbol Slash Dot }.each do |t|
+        class_eval <<-eoruby, __FILE__, __LINE__ + 1
+          class #{t} < Terminal;
+            def type; :#{t.upcase}; end
+          end
+        eoruby
       end
 
       class Symbol < Terminal # :nodoc:
@@ -82,14 +82,13 @@ module ActionDispatch
         def initialize(left)
           super
           @regexp = DEFAULT_EXP
-          @name = -left.tr("*:", "")
+          @name = left.tr "*:".freeze, "".freeze
         end
 
         def default_regexp?
           regexp == DEFAULT_EXP
         end
 
-        def type; :SYMBOL; end
         def symbol?; true; end
       end
 

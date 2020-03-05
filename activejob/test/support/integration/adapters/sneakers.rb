@@ -1,7 +1,18 @@
 # frozen_string_literal: true
 
 require "sneakers/runner"
+require "sneakers/publisher"
 require "timeout"
+
+module Sneakers
+  class Publisher
+    def safe_ensure_connected
+      @mutex.synchronize do
+        ensure_connection! unless connected?
+      end
+    end
+  end
+end
 
 module SneakersJobsManager
   def setup
@@ -18,8 +29,7 @@ module SneakersJobsManager
                         log: Rails.root.join("log/sneakers.log").to_s
     unless can_run?
       puts "Cannot run integration tests for sneakers. To be able to run integration tests for sneakers you need to install and start rabbitmq.\n"
-      status = ENV["CI"] ? false : true
-      exit status
+      exit
     end
   end
 
@@ -69,7 +79,7 @@ module SneakersJobsManager
     def bunny_publisher
       @bunny_publisher ||= begin
         p = ActiveJob::QueueAdapters::SneakersAdapter::JobWrapper.send(:publisher)
-        p.ensure_connection!
+        p.safe_ensure_connected
         p
       end
     end

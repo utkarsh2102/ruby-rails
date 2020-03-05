@@ -1,7 +1,6 @@
 # frozen_string_literal: true
 
 require "active_support/execution_wrapper"
-require "active_support/executor"
 
 module ActiveSupport
   #--
@@ -50,9 +49,11 @@ module ActiveSupport
     def self.reload!
       executor.wrap do
         new.tap do |instance|
-          instance.run!
-        ensure
-          instance.complete!
+          begin
+            instance.run!
+          ensure
+            instance.complete!
+          end
         end
       end
       prepare!

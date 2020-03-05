@@ -12,7 +12,8 @@ module ActiveRecord
         attribute.eq(bind)
       end
 
-      private
+      protected
+
         attr_reader :predicate_builder
     end
   end

@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require "active_support/core_ext/string/strip"
+
 module ActiveRecord
   module ConnectionAdapters
     class AbstractAdapter
@@ -15,13 +17,14 @@ module ActiveRecord
         end
 
         delegate :quote_column_name, :quote_table_name, :quote_default_expression, :type_to_sql,
-          :options_include_default?, :supports_indexes_in_create?, :supports_foreign_keys?, :foreign_key_options,
-          to: :@conn, private: true
+          :options_include_default?, :supports_indexes_in_create?, :supports_foreign_keys_in_create?, :foreign_key_options, to: :@conn
+        private :quote_column_name, :quote_table_name, :quote_default_expression, :type_to_sql,
+          :options_include_default?, :supports_indexes_in_create?, :supports_foreign_keys_in_create?, :foreign_key_options
 
         private
 
           def visit_AlterTable(o)
-            sql = +"ALTER TABLE #{quote_table_name(o.name)} "
+            sql = "ALTER TABLE #{quote_table_name(o.name)} ".dup
             sql << o.adds.map { |col| accept col }.join(" ")
             sql << o.foreign_key_adds.map { |fk| visit_AddForeignKey fk }.join(" ")
             sql << o.foreign_key_drops.map { |fk| visit_DropForeignKey fk }.join(" ")
@@ -29,19 +32,17 @@ module ActiveRecord
 
           def visit_ColumnDefinition(o)
             o.sql_type = type_to_sql(o.type, o.options)
-            column_sql = +"#{quote_column_name(o.name)} #{o.sql_type}"
+            column_sql = "#{quote_column_name(o.name)} #{o.sql_type}".dup
             add_column_options!(column_sql, column_options(o)) unless o.type == :primary_key
             column_sql
           end
 
           def visit_AddColumnDefinition(o)
-            +"ADD #{accept(o.column)}"
+            "ADD #{accept(o.column)}".dup
           end
 
           def visit_TableDefinition(o)
-            create_sql = +"CREATE#{table_modifier_in_create(o)} TABLE "
-            create_sql << "IF NOT EXISTS " if o.if_not_exists
-            create_sql << "#{quote_table_name(o.name)} "
+            create_sql = "CREATE#{' TEMPORARY' if o.temporary} TABLE #{quote_table_name(o.name)} ".dup
 
             statements = o.columns.map { |c| accept c }
             statements << accept(o.primary_keys) if o.primary_keys
@@ -50,7 +51,7 @@ module ActiveRecord
               statements.concat(o.indexes.map { |column_name, options| index_in_create(o.name, column_name, options) })
             end
 
-            if supports_foreign_keys?
+            if supports_foreign_keys_in_create?
               statements.concat(o.foreign_keys.map { |to_table, options| foreign_key_in_create(o.name, to_table, options) })
             end
 
@@ -65,7 +66,7 @@ module ActiveRecord
           end
 
           def visit_ForeignKeyDefinition(o)
-            sql = +<<~SQL
+            sql = <<-SQL.strip_heredoc
               CONSTRAINT #{quote_column_name(o.name)}
               FOREIGN KEY (#{quote_column_name(o.column)})
                 REFERENCES #{quote_table_name(o.to_table)} (#{quote_column_name(o.primary_key)})
@@ -121,15 +122,7 @@ module ActiveRecord
             sql
           end
 
-          # Returns any SQL string to go between CREATE and TABLE. May be nil.
-          def table_modifier_in_create(o)
-            " TEMPORARY" if o.temporary
-          end
-
           def foreign_key_in_create(from_table, to_table, options)
-            prefix = ActiveRecord::Base.table_name_prefix
-            suffix = ActiveRecord::Base.table_name_suffix
-            to_table = "#{prefix}#{to_table}#{suffix}"
             options = foreign_key_options(from_table, to_table, options)
             accept ForeignKeyDefinition.new(from_table, to_table, options)
           end
@@ -140,7 +133,7 @@ module ActiveRecord
             when :cascade  then "ON #{action} CASCADE"
             when :restrict then "ON #{action} RESTRICT"
             else
-              raise ArgumentError, <<~MSG
+              raise ArgumentError, <<-MSG.strip_heredoc
                 '#{dependency}' is not supported for :on_update or :on_delete.
                 Supported values are: :nullify, :cascade, :restrict
               MSG

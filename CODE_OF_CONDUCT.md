@@ -4,9 +4,9 @@ The Rails team is committed to fostering a welcoming community.
 
 **Our Code of Conduct can be found here**:
 
-https://rubyonrails.org/conduct/
+http://rubyonrails.org/conduct/
 
 For a history of updates, see the page history here:
 
-https://github.com/rails/homepage/commits/master/conduct.html
+https://github.com/rails/rails.github.com/commits/master/conduct/index.html
 

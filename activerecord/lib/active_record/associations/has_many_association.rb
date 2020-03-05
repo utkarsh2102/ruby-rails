@@ -36,6 +36,14 @@ module ActiveRecord
         super
       end
 
+      def empty?
+        if reflection.has_cached_counter?
+          size.zero?
+        else
+          super
+        end
+      end
+
       private
 
         # Returns the number of records in this collection.
@@ -61,7 +69,7 @@ module ActiveRecord
           # If there's nothing in the database and @target has no new records
           # we are certain the current target is an empty array. This is a
           # documented side-effect of the method that may avoid an extra SELECT.
-          loaded! if count == 0
+          (@target ||= []) && loaded! if count == 0
 
           [association_scope.limit_value, count].compact.min
         end
@@ -84,7 +92,7 @@ module ActiveRecord
           if method == :delete_all
             scope.delete_all
           else
-            scope.update_all(nullified_owner_attributes)
+            scope.update_all(reflection.foreign_key => nil)
           end
         end
 

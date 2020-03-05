@@ -26,13 +26,6 @@ module ActionView
     extend ActiveSupport::Concern
     include ActionView::ViewPaths
 
-    attr_reader :rendered_format
-
-    def initialize
-      @rendered_format = nil
-      super
-    end
-
     # Overwrite process to setup I18n proxy.
     def process(*) #:nodoc:
       old_config, I18n.config = I18n.config, I18nProxy.new(I18n.config, lookup_context)
@@ -42,65 +35,57 @@ module ActionView
     end
 
     module ClassMethods
-      def _routes
-      end
-
-      def _helpers
-      end
-
-      def build_view_context_class(klass, supports_path, routes, helpers)
-        Class.new(klass) do
-          if routes
-            include routes.url_helpers(supports_path)
-            include routes.mounted_helpers
-          end
-
-          if helpers
-            include helpers
-          end
-        end
-      end
-
       def view_context_class
-        klass = ActionView::LookupContext::DetailsKey.view_context_class(ActionView::Base)
+        @view_context_class ||= begin
+          supports_path = supports_path?
+          routes  = respond_to?(:_routes)  && _routes
+          helpers = respond_to?(:_helpers) && _helpers
 
-        @view_context_class ||= build_view_context_class(klass, supports_path?, _routes, _helpers)
+          Class.new(ActionView::Base) do
+            if routes
+              include routes.url_helpers(supports_path)
+              include routes.mounted_helpers
+            end
 
-        if klass.changed?(@view_context_class)
-          @view_context_class = build_view_context_class(klass, supports_path?, _routes, _helpers)
+            if helpers
+              include helpers
+            end
+          end
         end
-
-        @view_context_class
       end
     end
 
+    attr_internal_writer :view_context_class
+
     def view_context_class
-      self.class.view_context_class
+      @_view_context_class ||= self.class.view_context_class
     end
 
     # An instance of a view class. The default view class is ActionView::Base.
     #
     # The view class must have the following methods:
-    #
-    # * <tt>View.new(lookup_context, assigns, controller)</tt> — Create a new
-    #   ActionView instance for a controller and we can also pass the arguments.
-    #
-    # * <tt>View#render(option)</tt> — Returns String with the rendered template.
+    # View.new[lookup_context, assigns, controller]
+    #   Create a new ActionView instance for a controller and we can also pass the arguments.
+    # View#render(option)
+    #   Returns String with the rendered template
     #
     # Override this method in a module to change the default behavior.
     def view_context
-      view_context_class.new(lookup_context, view_assigns, self)
+      view_context_class.new(view_renderer, view_assigns, self)
     end
 
     # Returns an object that is able to render templates.
     def view_renderer # :nodoc:
-      # Lifespan: Per controller
       @_view_renderer ||= ActionView::Renderer.new(lookup_context)
     end
 
     def render_to_body(options = {})
       _process_options(options)
       _render_template(options)
+    end
+
+    def rendered_format
+      Template::Types[lookup_context.rendered_format]
     end
 
     private
@@ -112,22 +97,17 @@ module ActionView
         context = view_context
 
         context.assign assigns if assigns
+        lookup_context.rendered_format = nil if options[:formats]
         lookup_context.variants = variant if variant
 
-        rendered_template = context.in_rendering_context(options) do |renderer|
-          renderer.render_to_object(context, options)
-        end
-
-        rendered_format = rendered_template.format || lookup_context.formats.first
-        @rendered_format = Template::Types[rendered_format]
-
-        rendered_template.body
+        view_renderer.render(context, options)
       end
 
       # Assign the rendered format to look up context.
       def _process_format(format)
         super
-        lookup_context.formats = [format.to_sym] if format.to_sym
+        lookup_context.formats = [format.to_sym]
+        lookup_context.rendered_format = lookup_context.formats.first
       end
 
       # Normalize args by converting render "foo" to render :action => "foo" and

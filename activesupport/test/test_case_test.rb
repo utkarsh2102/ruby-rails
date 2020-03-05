@@ -2,7 +2,7 @@
 
 require "abstract_unit"
 
-class AssertionsTest < ActiveSupport::TestCase
+class AssertDifferenceTest < ActiveSupport::TestCase
   def setup
     @object = Class.new do
       attr_accessor :num
@@ -52,22 +52,6 @@ class AssertionsTest < ActiveSupport::TestCase
     assert_equal "Object Changed.\n\"@object.num\" didn't change by 0.\nExpected: 0\n  Actual: 1", error.message
   end
 
-  def test_assert_no_difference_with_multiple_expressions_pass
-    another_object = @object.dup
-    assert_no_difference ["@object.num", -> { another_object.num }] do
-      # ...
-    end
-  end
-
-  def test_assert_no_difference_with_multiple_expressions_fail
-    another_object = @object.dup
-    assert_raises(Minitest::Assertion) do
-      assert_no_difference ["@object.num", -> { another_object.num }], "Another Object Changed" do
-        another_object.increment
-      end
-    end
-  end
-
   def test_assert_difference
     assert_difference "@object.num", +1 do
       @object.increment
@@ -104,7 +88,7 @@ class AssertionsTest < ActiveSupport::TestCase
   def test_expression_is_evaluated_in_the_appropriate_scope
     silence_warnings do
       local_scope = "foo"
-      _ = local_scope  # to suppress unused variable warning
+      local_scope = local_scope  # to suppress unused variable warning
       assert_difference("local_scope; @object.num") { @object.increment }
     end
   end
@@ -277,7 +261,7 @@ class AssertionsTest < ActiveSupport::TestCase
       end
     end
 
-    assert_equal "@object.num should 1.\n\"@object.num\" didn't change to as expected\nExpected: 1\n  Actual: -1", error.message
+    assert_equal "@object.num should 1.\n\"@object.num\" didn't change to 1", error.message
   end
 
   def test_assert_no_changes_pass

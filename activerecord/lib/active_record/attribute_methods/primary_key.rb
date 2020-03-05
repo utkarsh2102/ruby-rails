@@ -14,34 +14,41 @@ module ActiveRecord
         [key] if key
       end
 
-      # Returns the primary key column's value.
+      # Returns the primary key value.
       def id
-        _read_attribute(@primary_key)
+        sync_with_transaction_state
+        primary_key = self.class.primary_key
+        _read_attribute(primary_key) if primary_key
       end
 
-      # Sets the primary key column's value.
+      # Sets the primary key value.
       def id=(value)
-        _write_attribute(@primary_key, value)
+        sync_with_transaction_state
+        primary_key = self.class.primary_key
+        _write_attribute(primary_key, value) if primary_key
       end
 
-      # Queries the primary key column's value.
+      # Queries the primary key value.
       def id?
-        query_attribute(@primary_key)
+        sync_with_transaction_state
+        query_attribute(self.class.primary_key)
       end
 
-      # Returns the primary key column's value before type cast.
+      # Returns the primary key value before type cast.
       def id_before_type_cast
-        read_attribute_before_type_cast(@primary_key)
+        sync_with_transaction_state
+        read_attribute_before_type_cast(self.class.primary_key)
       end
 
-      # Returns the primary key column's previous value.
+      # Returns the primary key previous value.
       def id_was
-        attribute_was(@primary_key)
+        sync_with_transaction_state
+        attribute_was(self.class.primary_key)
       end
 
-      # Returns the primary key column's value from the database.
       def id_in_database
-        attribute_in_database(@primary_key)
+        sync_with_transaction_state
+        attribute_in_database(self.class.primary_key)
       end
 
       private
@@ -76,7 +83,7 @@ module ActiveRecord
           end
 
           def reset_primary_key #:nodoc:
-            if base_class?
+            if self == base_class
               self.primary_key = get_primary_key(base_class.name)
             else
               self.primary_key = base_class.primary_key
@@ -114,7 +121,7 @@ module ActiveRecord
           #
           #   Project.primary_key # => "foo_id"
           def primary_key=(value)
-            @primary_key        = value && -value.to_s
+            @primary_key        = value && value.to_s
             @quoted_primary_key = nil
             @attributes_builder = nil
           end
@@ -124,7 +131,7 @@ module ActiveRecord
             def suppress_composite_primary_key(pk)
               return pk unless pk.is_a?(Array)
 
-              warn <<~WARNING
+              warn <<-WARNING.strip_heredoc
                 WARNING: Active Record does not support composite primary key.
 
                 #{table_name} has composite primary key. Composite primary key is ignored.

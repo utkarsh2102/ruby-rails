@@ -103,10 +103,6 @@ module AbstractController
       # :call-seq: before_action(names, block)
       #
       # Append a callback before actions. See _insert_callbacks for parameter details.
-      #
-      # If the callback renders or redirects, the action will not run. If there
-      # are additional callbacks scheduled to run after that callback, they are
-      # also cancelled.
 
       ##
       # :method: prepend_before_action
@@ -114,10 +110,6 @@ module AbstractController
       # :call-seq: prepend_before_action(names, block)
       #
       # Prepend a callback before actions. See _insert_callbacks for parameter details.
-      #
-      # If the callback renders or redirects, the action will not run. If there
-      # are additional callbacks scheduled to run after that callback, they are
-      # also cancelled.
 
       ##
       # :method: skip_before_action
@@ -132,10 +124,6 @@ module AbstractController
       # :call-seq: append_before_action(names, block)
       #
       # Append a callback before actions. See _insert_callbacks for parameter details.
-      #
-      # If the callback renders or redirects, the action will not run. If there
-      # are additional callbacks scheduled to run after that callback, they are
-      # also cancelled.
 
       ##
       # :method: after_action

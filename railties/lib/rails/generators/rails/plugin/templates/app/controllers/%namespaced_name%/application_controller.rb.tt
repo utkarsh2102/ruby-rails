@@ -1,4 +1,4 @@
-<%= wrap_in_modules <<~rb
+<%= wrap_in_modules <<-rb.strip_heredoc
   class ApplicationController < ActionController::#{api? ? "API" : "Base"}
     #{ api? ? '# ' : '' }protect_from_forgery with: :exception
   end

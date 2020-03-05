@@ -4,6 +4,7 @@ require "active_support/core_ext/array/conversions"
 require "active_support/core_ext/module/delegation"
 require "active_support/core_ext/object/acts_like"
 require "active_support/core_ext/string/filters"
+require "active_support/deprecation"
 
 module ActiveSupport
   # Provides accurate date and time measurements using Date#advance and
@@ -213,11 +214,8 @@ module ActiveSupport
     end
 
     def coerce(other) #:nodoc:
-      case other
-      when Scalar
+      if Scalar === other
         [other, self]
-      when Duration
-        [Scalar.new(other.value), self]
       else
         [Scalar.new(other), self]
       end
@@ -338,8 +336,8 @@ module ActiveSupport
     #   1.year.to_i     # => 31556952
     #
     # In such cases, Ruby's core
-    # Date[https://ruby-doc.org/stdlib/libdoc/date/rdoc/Date.html] and
-    # Time[https://ruby-doc.org/stdlib/libdoc/time/rdoc/Time.html] should be used for precision
+    # Date[http://ruby-doc.org/stdlib/libdoc/date/rdoc/Date.html] and
+    # Time[http://ruby-doc.org/stdlib/libdoc/time/rdoc/Time.html] should be used for precision
     # date and time arithmetic.
     def to_i
       @value.to_i
@@ -375,6 +373,7 @@ module ActiveSupport
       return "0 seconds" if parts.empty?
 
       parts.
+        reduce(::Hash.new(0)) { |h, (l, r)| h[l] += r; h }.
         sort_by { |unit,  _ | PARTS.index(unit) }.
         map     { |unit, val| "#{val} #{val == 1 ? unit.to_s.chop : unit.to_s}" }.
         to_sentence(locale: ::I18n.default_locale)

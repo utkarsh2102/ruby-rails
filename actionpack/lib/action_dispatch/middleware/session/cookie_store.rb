@@ -16,11 +16,16 @@ module ActionDispatch
     # The cookie jar used for storage is automatically configured to be the
     # best possible option given your application's configuration.
     #
+    # If you only have secret_token set, your cookies will be signed, but
+    # not encrypted. This means a user cannot alter their +user_id+ without
+    # knowing your app's secret key, but can easily read their +user_id+. This
+    # was the default for Rails 3 apps.
+    #
     # Your cookies will be encrypted using your apps secret_key_base. This
     # goes a step further than signed cookies in that encrypted cookies cannot
     # be altered or read by users. This is the default starting in Rails 4.
     #
-    # Configure your session store in an initializer:
+    # Configure your session store in <tt>config/initializers/session_store.rb</tt>:
     #
     #   Rails.application.config.session_store :cookie_store, key: '_your_app_session'
     #

@@ -137,11 +137,6 @@ module ActiveRecord
       assert relation.skip_query_cache_value
     end
 
-    test "skip_preloading!" do
-      relation.skip_preloading!
-      assert relation.skip_preloading_value
-    end
-
     private
       def relation
         @relation ||= Relation.new(FakeKlass)

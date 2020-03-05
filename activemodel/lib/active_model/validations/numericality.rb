@@ -99,11 +99,11 @@ module ActiveModel
       end
 
       def is_integer?(raw_value)
-        INTEGER_REGEX.match?(raw_value.to_s)
+        INTEGER_REGEX === raw_value.to_s
       end
 
       def is_hexadecimal_literal?(raw_value)
-        /\A0[xX]/.match?(raw_value.to_s)
+        /\A0[xX]/ === raw_value.to_s
       end
 
       def filtered_options(value)

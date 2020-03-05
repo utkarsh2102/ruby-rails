@@ -3,8 +3,6 @@
 module ActiveRecord
   module Tasks # :nodoc:
     class MySQLDatabaseTasks # :nodoc:
-      ER_DB_CREATE_EXISTS = 1007
-
       delegate :connection, :establish_connection, to: ActiveRecord::Base
 
       def initialize(configuration)
@@ -16,7 +14,7 @@ module ActiveRecord
         connection.create_database configuration["database"], creation_options
         establish_connection configuration
       rescue ActiveRecord::StatementInvalid => error
-        if connection.error_number(error.cause) == ER_DB_CREATE_EXISTS
+        if error.message.include?("database exists")
           raise DatabaseAlreadyExists
         else
           raise
@@ -70,7 +68,9 @@ module ActiveRecord
 
       private
 
-        attr_reader :configuration
+        def configuration
+          @configuration
+        end
 
         def configuration_without_database
           configuration.merge("database" => nil)
@@ -106,7 +106,7 @@ module ActiveRecord
         end
 
         def run_cmd_error(cmd, args, action)
-          msg = +"failed to execute: `#{cmd}`\n"
+          msg = "failed to execute: `#{cmd}`\n".dup
           msg << "Please check the output above for any errors and make sure that `#{cmd}` is installed in your PATH and has proper permissions.\n\n"
           msg
         end

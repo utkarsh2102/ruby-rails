@@ -91,6 +91,7 @@ class InheritanceTest < ActiveRecord::TestCase
     end
 
     ActiveSupport::Dependencies.stub(:safe_constantize, proc { raise e }) do
+
       exception = assert_raises NameError do
         Company.send :compute_type, "InvalidModel"
       end
@@ -162,7 +163,7 @@ class InheritanceTest < ActiveRecord::TestCase
     assert_not_predicate ActiveRecord::Base, :descends_from_active_record?
     assert AbstractCompany.descends_from_active_record?, "AbstractCompany should descend from ActiveRecord::Base"
     assert Company.descends_from_active_record?, "Company should descend from ActiveRecord::Base"
-    assert_not Class.new(Company).descends_from_active_record?, "Company subclass should not descend from ActiveRecord::Base"
+    assert !Class.new(Company).descends_from_active_record?, "Company subclass should not descend from ActiveRecord::Base"
   end
 
   def test_abstract_class
@@ -173,26 +174,17 @@ class InheritanceTest < ActiveRecord::TestCase
 
   def test_inheritance_base_class
     assert_equal Post, Post.base_class
-    assert_predicate Post, :base_class?
     assert_equal Post, SpecialPost.base_class
-    assert_not_predicate SpecialPost, :base_class?
     assert_equal Post, StiPost.base_class
-    assert_not_predicate StiPost, :base_class?
     assert_equal Post, SubStiPost.base_class
-    assert_not_predicate SubStiPost, :base_class?
     assert_equal SubAbstractStiPost, SubAbstractStiPost.base_class
-    assert_predicate SubAbstractStiPost, :base_class?
   end
 
   def test_abstract_inheritance_base_class
     assert_equal LoosePerson, LoosePerson.base_class
-    assert_predicate LoosePerson, :base_class?
     assert_equal LooseDescendant, LooseDescendant.base_class
-    assert_predicate LooseDescendant, :base_class?
     assert_equal TightPerson, TightPerson.base_class
-    assert_predicate TightPerson, :base_class?
     assert_equal TightPerson, TightDescendant.base_class
-    assert_not_predicate TightDescendant, :base_class?
   end
 
   def test_base_class_activerecord_error
@@ -240,7 +232,7 @@ class InheritanceTest < ActiveRecord::TestCase
     cabbage = vegetable.becomes!(Cabbage)
     assert_equal "Cabbage", cabbage.custom_type
 
-    cabbage.becomes!(Vegetable)
+    vegetable = cabbage.becomes!(Vegetable)
     assert_nil cabbage.custom_type
   end
 
@@ -657,7 +649,7 @@ class InheritanceAttributeMappingTest < ActiveRecord::TestCase
 
     assert_equal ["omg_inheritance_attribute_mapping_test/company"], ActiveRecord::Base.connection.select_values("SELECT sponsorable_type FROM sponsors")
 
-    sponsor = Sponsor.find(sponsor.id)
+    sponsor = Sponsor.first
     assert_equal startup, sponsor.sponsorable
   end
 end

@@ -5,11 +5,11 @@ module ActionView
     class Builder
       class_attribute :default_format, default: :xml
 
-      def call(template, source)
+      def call(template)
         require_engine
         "xml = ::Builder::XmlMarkup.new(:indent => 2);" \
           "self.output_buffer = xml.target!;" +
-          source +
+          template.source +
           ";xml.target!;"
       end
 

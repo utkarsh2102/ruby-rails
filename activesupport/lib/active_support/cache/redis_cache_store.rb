@@ -17,6 +17,7 @@ end
 
 require "digest/sha2"
 require "active_support/core_ext/marshal"
+require "active_support/core_ext/hash/transform_values"
 
 module ActiveSupport
   module Cache
@@ -65,11 +66,6 @@ module ActiveSupport
       # The maximum number of entries to receive per SCAN call.
       SCAN_BATCH_SIZE = 1000
       private_constant :SCAN_BATCH_SIZE
-
-      # Advertise cache versioning support.
-      def self.supports_cache_versioning?
-        true
-      end
 
       # Support raw values in the local cache strategy.
       module LocalCacheWithRaw # :nodoc:
@@ -152,17 +148,15 @@ module ActiveSupport
 
       # Creates a new Redis cache store.
       #
-      # Handles four options: :redis block, :redis instance, single :url
-      # string, and multiple :url strings.
+      # Handles three options: block provided to instantiate, single URL
+      # provided, and multiple URLs provided.
       #
-      #   Option  Class       Result
-      #   :redis  Proc    ->  options[:redis].call
-      #   :redis  Object  ->  options[:redis]
-      #   :url    String  ->  Redis.new(url: …)
-      #   :url    Array   ->  Redis::Distributed.new([{ url: … }, { url: … }, …])
+      #   :redis Proc   -> options[:redis].call
+      #   :url   String -> Redis.new(url: …)
+      #   :url   Array  -> Redis::Distributed.new([{ url: … }, { url: … }, …])
       #
       # No namespace is set by default. Provide one if the Redis cache
-      # server is shared with other apps: <tt>namespace: 'myapp-cache'</tt>.
+      # server is shared with other apps: <tt>namespace: 'myapp-cache'<tt>.
       #
       # Compression is enabled by default with a 1kB threshold, so cached
       # values larger than 1kB are automatically compressed. Disable by
@@ -265,14 +259,7 @@ module ActiveSupport
       def increment(name, amount = 1, options = nil)
         instrument :increment, name, amount: amount do
           failsafe :increment do
-            options = merged_options(options)
-            key = normalize_key(name, options)
-
-            redis.with do |c|
-              c.incrby(key, amount).tap do
-                write_key_expiry(c, key, options)
-              end
-            end
+            redis.with { |c| c.incrby normalize_key(name, options), amount }
           end
         end
       end
@@ -288,14 +275,7 @@ module ActiveSupport
       def decrement(name, amount = 1, options = nil)
         instrument :decrement, name, amount: amount do
           failsafe :decrement do
-            options = merged_options(options)
-            key = normalize_key(name, options)
-
-            redis.with do |c|
-              c.decrby(key, amount).tap do
-                write_key_expiry(c, key, options)
-              end
-            end
+            redis.with { |c| c.decrby normalize_key(name, options), amount }
           end
         end
       end
@@ -363,7 +343,6 @@ module ActiveSupport
         def read_multi_mget(*names)
           options = names.extract_options!
           options = merged_options(options)
-          return {} if names == []
 
           keys = names.map { |name| normalize_key(name, options) }
 
@@ -404,12 +383,6 @@ module ActiveSupport
             else
               redis.with { |c| c.set key, serialized_entry }
             end
-          end
-        end
-
-        def write_key_expiry(client, key, options)
-          if options[:expires_in] && client.ttl(key).negative?
-            client.expire key, options[:expires_in].to_i
           end
         end
 
@@ -471,7 +444,7 @@ module ActiveSupport
 
         def failsafe(method, returning: nil)
           yield
-        rescue ::Redis::BaseError => e
+        rescue ::Redis::BaseConnectionError => e
           handle_exception exception: e, method: method, returning: returning
           returning
         end

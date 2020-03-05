@@ -50,19 +50,7 @@ module ActionDispatch
 
         private
           def constraint_args(constraint, request)
-            arity = if constraint.respond_to?(:arity)
-              constraint.arity
-            else
-              constraint.method(:call).arity
-            end
-
-            if arity < 1
-              []
-            elsif arity == 1
-              [request]
-            else
-              [request.path_parameters, request]
-            end
+            constraint.arity == 1 ? [request] : [request.path_parameters, request]
           end
       end
 
@@ -70,17 +58,17 @@ module ActionDispatch
         ANCHOR_CHARACTERS_REGEX = %r{\A(\\A|\^)|(\\Z|\\z|\$)\Z}
         OPTIONAL_FORMAT_REGEX = %r{(?:\(\.:format\)+|\.:format|/)\Z}
 
-        attr_reader :requirements, :defaults, :to, :default_controller,
-                    :default_action, :required_defaults, :ast, :scope_options
+        attr_reader :requirements, :defaults
+        attr_reader :to, :default_controller, :default_action
+        attr_reader :required_defaults, :ast
 
         def self.build(scope, set, ast, controller, default_action, to, via, formatted, options_constraints, anchor, options)
           options = scope[:options].merge(options) if scope[:options]
 
           defaults = (scope[:defaults] || {}).dup
           scope_constraints = scope[:constraints] || {}
-          scope_options = scope[:options] || {}
 
-          new set, ast, defaults, controller, default_action, scope[:module], to, formatted, scope_constraints, scope_options, scope[:blocks] || [], via, options_constraints, anchor, options
+          new set, ast, defaults, controller, default_action, scope[:module], to, formatted, scope_constraints, scope[:blocks] || [], via, options_constraints, anchor, options
         end
 
         def self.check_via(via)
@@ -111,18 +99,17 @@ module ActionDispatch
           format != false && path !~ OPTIONAL_FORMAT_REGEX
         end
 
-        def initialize(set, ast, defaults, controller, default_action, modyoule, to, formatted, scope_constraints, scope_options, blocks, via, options_constraints, anchor, options)
+        def initialize(set, ast, defaults, controller, default_action, modyoule, to, formatted, scope_constraints, blocks, via, options_constraints, anchor, options)
           @defaults = defaults
           @set = set
 
-          @to                 = intern(to)
-          @default_controller = intern(controller)
-          @default_action     = intern(default_action)
+          @to                 = to
+          @default_controller = controller
+          @default_action     = default_action
           @ast                = ast
           @anchor             = anchor
           @via                = via
           @internal           = options.delete(:internal)
-          @scope_options      = scope_options
 
           path_params = ast.find_all(&:symbol?).map(&:to_sym)
 
@@ -161,8 +148,17 @@ module ActionDispatch
         end
 
         def make_route(name, precedence)
-          Journey::Route.new(name, application, path, conditions, required_defaults,
-                             defaults, request_method, precedence, scope_options, @internal)
+          route = Journey::Route.new(name,
+                            application,
+                            path,
+                            conditions,
+                            required_defaults,
+                            defaults,
+                            request_method,
+                            precedence,
+                            @internal)
+
+          route
         end
 
         def application
@@ -223,10 +219,6 @@ module ActionDispatch
         private :build_path
 
         private
-          def intern(object)
-            object.is_a?(String) ? -object : object
-          end
-
           def add_wildcard_options(options, formatted, path_ast)
             # Add a constraint for wildcard route to make it non-greedy and match the
             # optional format part of the route by default.
@@ -287,7 +279,7 @@ module ActionDispatch
 
           def verify_regexp_requirements(requirements)
             requirements.each do |requirement|
-              if ANCHOR_CHARACTERS_REGEX.match?(requirement.source)
+              if requirement.source =~ ANCHOR_CHARACTERS_REGEX
                 raise ArgumentError, "Regexp anchor characters are not allowed in routing requirements: #{requirement.inspect}"
               end
 
@@ -316,8 +308,8 @@ module ActionDispatch
           def check_controller_and_action(path_params, controller, action)
             hash = check_part(:controller, controller, path_params, {}) do |part|
               translate_controller(part) {
-                message = +"'#{part}' is not a supported controller name. This can lead to potential routing problems."
-                message << " See https://guides.rubyonrails.org/routing.html#specifying-a-controller-to-use"
+                message = "'#{part}' is not a supported controller name. This can lead to potential routing problems.".dup
+                message << " See http://guides.rubyonrails.org/routing.html#specifying-a-controller-to-use"
 
                 raise ArgumentError, message
               }
@@ -341,7 +333,7 @@ module ActionDispatch
           end
 
           def split_to(to)
-            if /#/.match?(to)
+            if to =~ /#/
               to.split("#")
             else
               []
@@ -350,7 +342,7 @@ module ActionDispatch
 
           def add_controller_module(controller, modyoule)
             if modyoule && !controller.is_a?(Regexp)
-              if %r{\A/}.match?(controller)
+              if controller =~ %r{\A/}
                 controller[1..-1]
               else
                 [modyoule, controller].compact.join("/")
@@ -561,10 +553,10 @@ module ActionDispatch
         #
         #     match 'json_only', constraints: { format: 'json' }, via: :get
         #
-        #     class PermitList
+        #     class Whitelist
         #       def matches?(request) request.remote_ip == '1.2.3.4' end
         #     end
-        #     match 'path', to: 'c#a', constraints: PermitList.new, via: :get
+        #     match 'path', to: 'c#a', constraints: Whitelist.new, via: :get
         #
         #   See <tt>Scoping#constraints</tt> for more examples with its scope
         #   equivalent.
@@ -619,7 +611,7 @@ module ActionDispatch
           end
 
           raise ArgumentError, "A rack application must be specified" unless app.respond_to?(:call)
-          raise ArgumentError, <<~MSG unless path
+          raise ArgumentError, <<-MSG.strip_heredoc unless path
             Must be called with mount point
 
               mount SomeRackApp, at: "some_route"
@@ -652,7 +644,7 @@ module ActionDispatch
 
         # Query if the following named route was already defined.
         def has_named_route?(name)
-          @set.named_routes.key?(name)
+          @set.named_routes.key? name
         end
 
         private
@@ -676,7 +668,7 @@ module ActionDispatch
 
             script_namer = ->(options) do
               prefix_options = options.slice(*_route.segment_keys)
-              prefix_options[:relative_url_root] = ""
+              prefix_options[:relative_url_root] = "".freeze
 
               if options[:_recall]
                 prefix_options.reverse_merge!(options[:_recall].slice(*_route.segment_keys))
@@ -1146,10 +1138,6 @@ module ActionDispatch
           attr_reader :controller, :path, :param
 
           def initialize(entities, api_only, shallow, options = {})
-            if options[:param].to_s.include?(":")
-              raise ArgumentError, ":param option can't contain colons"
-            end
-
             @name       = entities.to_s
             @path       = (options[:path] || @name).to_s
             @controller = (options[:controller] || @name).to_s
@@ -1171,16 +1159,10 @@ module ActionDispatch
           end
 
           def actions
-            if @except
-              available_actions - Array(@except).map(&:to_sym)
-            else
-              available_actions
-            end
-          end
-
-          def available_actions
             if @only
               Array(@only).map(&:to_sym)
+            elsif @except
+              default_actions - Array(@except).map(&:to_sym)
             else
               default_actions
             end
@@ -1407,8 +1389,6 @@ module ActionDispatch
         #   as a comment on a blog post like <tt>/posts/a-long-permalink/comments/1234</tt>
         #   to be shortened to just <tt>/comments/1234</tt>.
         #
-        #   Set <tt>shallow: false</tt> on a child resource to ignore a parent's shallow parameter.
-        #
         # [:shallow_path]
         #   Prefixes nested shallow routes with the specified path.
         #
@@ -1450,9 +1430,6 @@ module ActionDispatch
         # [:format]
         #   Allows you to specify the default value for optional +format+
         #   segment or disable it by supplying +false+.
-        #
-        # [:param]
-        #   Allows you to override the default param name of +:id+ in the URL.
         #
         # === Examples
         #
@@ -1611,7 +1588,7 @@ module ActionDispatch
             when Symbol
               options[:action] = to
             when String
-              if /#/.match?(to)
+              if to =~ /#/
                 options[:to] = to
               else
                 options[:controller] = to
@@ -1679,8 +1656,7 @@ module ActionDispatch
               return true
             end
 
-            if options[:shallow]
-              options.delete(:shallow)
+            if options.delete(:shallow)
               shallow do
                 send(method, resources.pop, options, &block)
               end
@@ -1938,7 +1914,7 @@ module ActionDispatch
 
             default_action = options.delete(:action) || @scope[:action]
 
-            if /^[\w\-\/]+$/.match?(action)
+            if action =~ /^[\w\-\/]+$/
               default_action ||= action.tr("-", "_") unless action.include?("/")
             else
               action = nil
@@ -1958,7 +1934,9 @@ module ActionDispatch
           end
 
           def match_root_route(options)
-            args = ["/", { as: :root, via: :get }.merge(options)]
+            name = has_named_route?(name_for_action(:root, nil)) ? nil : :root
+            args = ["/", { as: name, via: :get }.merge!(options)]
+
             match(*args)
           end
       end
@@ -2074,7 +2052,7 @@ module ActionDispatch
         # of routing helpers, e.g:
         #
         #   direct :homepage do
-        #     "https://rubyonrails.org"
+        #     "http://www.rubyonrails.org"
         #   end
         #
         #   direct :commentable do |model|

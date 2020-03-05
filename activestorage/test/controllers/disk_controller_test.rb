@@ -32,18 +32,10 @@ class ActiveStorage::DiskControllerTest < ActionDispatch::IntegrationTest
     assert_equal " worl", response.body
   end
 
-  test "showing blob that does not exist" do
-    blob = create_blob
-    blob.delete
-
-    get blob.service_url
-  end
-
   test "showing blob with invalid key" do
     get rails_disk_service_url(encoded_key: "Invalid key", filename: "hello.txt")
     assert_response :not_found
   end
-
 
   test "directly uploading blob with integrity" do
     data = "Something else entirely!"
@@ -89,11 +81,5 @@ class ActiveStorage::DiskControllerTest < ActionDispatch::IntegrationTest
     put blob.service_url_for_direct_upload, params: data, headers: { "Content-Type" => "text/plain" }
     assert_response :unprocessable_entity
     assert_not blob.service.exist?(blob.key)
-  end
-
-  test "directly uploading blob with invalid token" do
-    put update_rails_disk_service_url(encoded_token: "invalid"),
-      params: "Something else entirely!", headers: { "Content-Type" => "text/plain" }
-    assert_response :not_found
   end
 end

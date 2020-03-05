@@ -149,7 +149,7 @@ module ActiveRecord
       private
 
         def define_non_cyclic_method(name, &block)
-          return if instance_methods(false).include?(name)
+          return if method_defined?(name)
           define_method(name) do |*args|
             result = true; @_already_called ||= {}
             # Loop prevention for validation of associations
@@ -416,7 +416,7 @@ module ActiveRecord
                 saved = record.save(validate: false)
               end
 
-              raise(RecordInvalid.new(association.owner)) unless saved
+              raise ActiveRecord::Rollback unless saved
             end
           end
         end

@@ -16,7 +16,8 @@ module ActiveRecord
         when true        then true
         when false, nil  then false
         else
-          if !type_for_attribute(attr_name) { false }
+          column = self.class.columns_hash[attr_name]
+          if column.nil?
             if Numeric === value || value !~ /[^0-9]/
               !value.to_i.zero?
             else
@@ -32,7 +33,7 @@ module ActiveRecord
       end
 
       private
-        # Dispatch target for <tt>*?</tt> attribute methods.
+        # Handle *? for method_missing.
         def attribute?(attribute_name)
           query_attribute(attribute_name)
         end

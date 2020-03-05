@@ -50,7 +50,7 @@ class NamedScopingTest < ActiveRecord::TestCase
 
   def test_calling_merge_at_first_in_scope
     Topic.class_eval do
-      scope :calling_merge_at_first_in_scope, Proc.new { merge(Topic.unscoped.replied) }
+      scope :calling_merge_at_first_in_scope, Proc.new { merge(Topic.replied) }
     end
     assert_equal Topic.calling_merge_at_first_in_scope.to_a, Topic.replied.to_a
   end
@@ -86,7 +86,7 @@ class NamedScopingTest < ActiveRecord::TestCase
   def test_scopes_are_composable
     assert_equal((approved = Topic.all.merge!(where: { approved: true }).to_a), Topic.approved)
     assert_equal((replied = Topic.all.merge!(where: "replies_count > 0").to_a), Topic.replied)
-    assert_not (approved == replied)
+    assert !(approved == replied)
     assert_not_empty (approved & replied)
 
     assert_equal approved & replied, Topic.approved.replied
@@ -303,6 +303,13 @@ class NamedScopingTest < ActiveRecord::TestCase
     assert_equal "lifo", topic.author_name
   end
 
+  def test_deprecated_delegating_private_method
+    assert_deprecated do
+      scope = Topic.all.by_private_lifo
+      assert_not scope.instance_variable_get(:@delegate_to_klass)
+    end
+  end
+
   def test_reserved_scope_names
     klass = Class.new(ActiveRecord::Base) do
       self.table_name = "topics"
@@ -447,17 +454,6 @@ class NamedScopingTest < ActiveRecord::TestCase
     assert_equal [posts(:sti_comments)], Post.with_special_comments.with_post(4).to_a.uniq
   end
 
-  def test_class_method_in_scope
-    assert_deprecated do
-      assert_equal [topics(:second)], topics(:first).approved_replies.ordered
-    end
-  end
-
-  def test_nested_scoping
-    expected = Reply.approved
-    assert_equal expected.to_a, Topic.rejected.nested_scoping(expected)
-  end
-
   def test_scopes_batch_finders
     assert_equal 4, Topic.approved.count
 
@@ -492,9 +488,8 @@ class NamedScopingTest < ActiveRecord::TestCase
 
     [:public_method, :protected_method, :private_method].each do |reserved_method|
       assert Topic.respond_to?(reserved_method, true)
-      assert_called(ActiveRecord::Base.logger, :warn) do
-        silence_warnings { Topic.scope(reserved_method, -> { }) }
-      end
+      ActiveRecord::Base.logger.expects(:warn)
+      silence_warnings { Topic.scope(reserved_method, -> {}) }
     end
   end
 
@@ -601,15 +596,5 @@ class NamedScopingTest < ActiveRecord::TestCase
     assert_not_predicate Topic, :one?
     Topic.create!
     assert_predicate Topic, :one?
-  end
-
-  def test_scope_with_annotation
-    Topic.class_eval do
-      scope :including_annotate_in_scope, Proc.new { annotate("from-scope") }
-    end
-
-    assert_sql(%r{/\* from-scope \*/}) do
-      assert Topic.including_annotate_in_scope.to_a, Topic.all.to_a
-    end
   end
 end

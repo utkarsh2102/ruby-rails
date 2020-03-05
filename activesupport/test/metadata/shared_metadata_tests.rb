@@ -1,6 +1,11 @@
 # frozen_string_literal: true
 
 module SharedMessageMetadataTests
+  def teardown
+    travel_back
+    super
+  end
+
   def null_serializing?
     false
   end

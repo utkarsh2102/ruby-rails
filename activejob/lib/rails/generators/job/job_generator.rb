@@ -28,10 +28,6 @@ module Rails # :nodoc:
       end
 
       private
-        def file_name
-          @_file_name ||= super.sub(/_job\z/i, "")
-        end
-
         def application_job_file_name
           @application_job_file_name ||= if mountable_engine?
             "app/jobs/#{namespaced_path}/application_job.rb"

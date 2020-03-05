@@ -15,26 +15,17 @@ module ActiveRecord
       other == records
     end
 
-    def build(attributes = nil, &block)
-      block = _deprecated_scope_block("new", &block)
-      @association.scoping(self) do
-        @association.build(attributes, &block)
-      end
+    def build(*args, &block)
+      scoping { @association.build(*args, &block) }
     end
     alias new build
 
-    def create(attributes = nil, &block)
-      block = _deprecated_scope_block("create", &block)
-      @association.scoping(self) do
-        @association.create(attributes, &block)
-      end
+    def create(*args, &block)
+      scoping { @association.create(*args, &block) }
     end
 
-    def create!(attributes = nil, &block)
-      block = _deprecated_scope_block("create!", &block)
-      @association.scoping(self) do
-        @association.create!(attributes, &block)
-      end
+    def create!(*args, &block)
+      scoping { @association.create!(*args, &block) }
     end
 
     private

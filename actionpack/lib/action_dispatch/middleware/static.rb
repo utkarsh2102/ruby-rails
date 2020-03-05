@@ -41,6 +41,7 @@ module ActionDispatch
         rescue SystemCallError
           false
         end
+
       }
         return ::Rack::Utils.escape_path(match).b
       end
@@ -68,7 +69,7 @@ module ActionDispatch
 
       headers["Vary"] = "Accept-Encoding" if gzip_path
 
-      [status, headers, body]
+      return [status, headers, body]
     ensure
       request.path_info = path
     end
@@ -79,7 +80,7 @@ module ActionDispatch
       end
 
       def content_type(path)
-        ::Rack::Mime.mime_type(::File.extname(path), "text/plain")
+        ::Rack::Mime.mime_type(::File.extname(path), "text/plain".freeze)
       end
 
       def gzip_encoding_accepted?(request)
@@ -89,8 +90,8 @@ module ActionDispatch
       def gzip_file_path(path)
         can_gzip_mime = content_type(path) =~ /\A(?:text\/|application\/javascript)/
         gzip_path     = "#{path}.gz"
-        if can_gzip_mime && File.exist?(File.join(@root, ::Rack::Utils.unescape_path(gzip_path)))
-          gzip_path
+        if can_gzip_mime && File.exist?(File.join(@root, ::Rack::Utils.unescape_path(gzip_path).b))
+          gzip_path.b
         else
           false
         end
@@ -116,7 +117,7 @@ module ActionDispatch
       req = Rack::Request.new env
 
       if req.get? || req.head?
-        path = req.path_info.chomp("/")
+        path = req.path_info.chomp("/".freeze)
         if match = @file_handler.match?(path)
           req.path_info = match
           return @file_handler.serve(req)

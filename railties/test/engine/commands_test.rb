@@ -24,7 +24,7 @@ class Rails::Engine::CommandsTest < ActiveSupport::TestCase
 
   def test_runner_command_work_inside_engine
     output = capture(:stdout) do
-      Dir.chdir(plugin_path) { system({ "SKIP_REQUIRE_WEBPACKER" => "true" }, "bin/rails runner 'puts Rails.env'") }
+      Dir.chdir(plugin_path) { system("bin/rails runner 'puts Rails.env'") }
     end
 
     assert_equal "test", output.strip
@@ -33,29 +33,29 @@ class Rails::Engine::CommandsTest < ActiveSupport::TestCase
   def test_console_command_work_inside_engine
     skip "PTY unavailable" unless available_pty?
 
-    primary, replica = PTY.open
-    spawn_command("console", replica)
-    assert_output(">", primary)
+    master, slave = PTY.open
+    spawn_command("console", slave)
+    assert_output(">", master)
   ensure
-    primary.puts "quit"
+    master.puts "quit"
   end
 
   def test_dbconsole_command_work_inside_engine
     skip "PTY unavailable" unless available_pty?
 
-    primary, replica = PTY.open
-    spawn_command("dbconsole", replica)
-    assert_output("sqlite>", primary)
+    master, slave = PTY.open
+    spawn_command("dbconsole", slave)
+    assert_output("sqlite>", master)
   ensure
-    primary.puts ".exit"
+    master.puts ".exit"
   end
 
   def test_server_command_work_inside_engine
     skip "PTY unavailable" unless available_pty?
 
-    primary, replica = PTY.open
-    pid = spawn_command("server", replica)
-    assert_output("Listening on", primary)
+    master, slave = PTY.open
+    pid = spawn_command("server", slave)
+    assert_output("Listening on", master)
   ensure
     kill(pid)
   end
@@ -67,7 +67,6 @@ class Rails::Engine::CommandsTest < ActiveSupport::TestCase
 
     def spawn_command(command, fd)
       Process.spawn(
-        { "SKIP_REQUIRE_WEBPACKER" => "true" },
         "#{plugin_path}/bin/rails #{command}",
         in: fd, out: fd, err: fd
       )

@@ -5,7 +5,7 @@ module ActiveRecord
     module PostgreSQL
       module OID # :nodoc:
         class Hstore < Type::Value # :nodoc:
-          include ActiveModel::Type::Helpers::Mutable
+          include Type::Helpers::Mutable
 
           def type
             :hstore

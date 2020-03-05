@@ -35,7 +35,7 @@ module Erb # :nodoc:
         end
 
         def file_name
-          @_file_name ||= super.sub(/_mailer\z/i, "")
+          @_file_name ||= super.gsub(/_mailer/i, "")
         end
     end
   end

@@ -1,11 +1,10 @@
 # frozen_string_literal: true
 
-require "rails/command"
-require "active_support/deprecation"
+require "rails/dev_caching"
 
 namespace :dev do
-  task cache: :environment do
-    ActiveSupport::Deprecation.warn("Using `bin/rake dev:cache` is deprecated and will be removed in Rails 6.1. Use `bin/rails dev:cache` instead.\n")
-    Rails::Command.invoke "dev:cache"
+  desc "Toggle development mode caching on/off"
+  task :cache do
+    Rails::DevCaching.enable_by_file
   end
 end

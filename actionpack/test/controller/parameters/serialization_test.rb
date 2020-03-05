@@ -2,6 +2,7 @@
 
 require "abstract_unit"
 require "action_controller/metal/strong_parameters"
+require "active_support/core_ext/string/strip"
 
 class ParametersSerializationTest < ActiveSupport::TestCase
   setup do
@@ -30,7 +31,7 @@ class ParametersSerializationTest < ActiveSupport::TestCase
   end
 
   test "yaml backwardscompatible with psych 2.0.8 format" do
-    params = YAML.load <<~end_of_yaml
+    params = YAML.load <<-end_of_yaml.strip_heredoc
       --- !ruby/hash:ActionController::Parameters
       key: :value
     end_of_yaml
@@ -40,7 +41,7 @@ class ParametersSerializationTest < ActiveSupport::TestCase
   end
 
   test "yaml backwardscompatible with psych 2.0.9+ format" do
-    params = YAML.load(<<~end_of_yaml)
+    params = YAML.load(<<-end_of_yaml.strip_heredoc)
       --- !ruby/hash-with-ivars:ActionController::Parameters
       elements:
         key: :value

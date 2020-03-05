@@ -1,7 +1,6 @@
 # frozen_string_literal: true
 
 require "active_record/associations/join_dependency/join_part"
-require "active_support/core_ext/array/extract"
 
 module ActiveRecord
   module Associations
@@ -36,9 +35,10 @@ module ActiveRecord
             arel = join_scope.arel(alias_tracker.aliases)
             nodes = arel.constraints.first
 
-            others = nodes.children.extract! do |node|
-              !Arel.fetch_attribute(node) { |attr| attr.relation.name == table.name }
+            others, children = nodes.children.partition do |node|
+              !fetch_arel_attribute(node) { |attr| attr.relation.name == table.name }
             end
+            nodes = table.create_and(children)
 
             joins << table.create_join(table, table.create_on(nodes), join_type)
 
@@ -59,13 +59,14 @@ module ActiveRecord
           @table  = tables.first
         end
 
-        def readonly?
-          return @readonly if defined?(@readonly)
-
-          @readonly = reflection.scope && reflection.scope_for(base_klass.unscoped).readonly_value
-        end
-
         private
+          def fetch_arel_attribute(value)
+            case value
+            when Arel::Nodes::Between, Arel::Nodes::In, Arel::Nodes::NotIn, Arel::Nodes::Equality, Arel::Nodes::NotEqual, Arel::Nodes::LessThan, Arel::Nodes::LessThanOrEqual, Arel::Nodes::GreaterThan, Arel::Nodes::GreaterThanOrEqual
+              yield value.left.is_a?(Arel::Attributes::Attribute) ? value.left : value.right
+            end
+          end
+
           def append_constraints(join, constraints)
             if join.is_a?(Arel::Nodes::StringJoin)
               join_string = table.create_and(constraints.unshift(join.left))

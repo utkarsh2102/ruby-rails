@@ -74,7 +74,7 @@ module Rails
         end
 
         def executable
-          "rails #{command_name}"
+          "bin/rails #{command_name}"
         end
 
         # Use Rails' default banner.
@@ -119,7 +119,7 @@ module Rails
         # For a Rails::Command::TestCommand placed in <tt>rails/command/test_command.rb</tt>
         # would return <tt>rails/test</tt>.
         def default_command_root
-          path = File.expand_path(relative_command_path, __dir__)
+          path = File.expand_path(File.join("../commands", command_root_namespace), __dir__)
           path if File.exist?(path)
         end
 
@@ -139,20 +139,12 @@ module Rails
           end
 
           def command_root_namespace
-            (namespace.split(":") - %w(rails)).join(":")
-          end
-
-          def relative_command_path
-            File.join("../commands", *command_root_namespace.split(":"))
+            (namespace.split(":") - %w( rails )).first
           end
 
           def namespaced_commands
             commands.keys.map do |key|
-              if command_root_namespace.match?(/(\A|\:)#{key}\z/)
-                command_root_namespace
-              else
-                "#{command_root_namespace}:#{key}"
-              end
+              key == command_root_namespace ? key : "#{command_root_namespace}:#{key}"
             end
           end
       end

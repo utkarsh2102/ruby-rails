@@ -60,6 +60,14 @@ class FragmentCachingTest < ActionController::TestCase
     @m2v2 = ModelWithKeyAndVersion.new("model/2", "2")
   end
 
+  def test_fragment_cache_key
+    assert_deprecated do
+      assert_equal "views/what a key", @controller.fragment_cache_key("what a key")
+      assert_equal "views/test.host/fragment_caching_test/some_action",
+        @controller.fragment_cache_key(controller: "fragment_caching_test", action: "some_action")
+    end
+  end
+
   def test_combined_fragment_cache_key
     assert_equal [ :views, "what a key" ], @controller.combined_fragment_cache_key("what a key")
     assert_equal [ :views, "test.host/fragment_caching_test/some_action" ],
@@ -86,14 +94,14 @@ class FragmentCachingTest < ActionController::TestCase
   def test_fragment_exist_with_caching_enabled
     @store.write("views/name", "value")
     assert @controller.fragment_exist?("name")
-    assert_not @controller.fragment_exist?("other_name")
+    assert !@controller.fragment_exist?("other_name")
   end
 
   def test_fragment_exist_with_caching_disabled
     @controller.perform_caching = false
     @store.write("views/name", "value")
-    assert_not @controller.fragment_exist?("name")
-    assert_not @controller.fragment_exist?("other_name")
+    assert !@controller.fragment_exist?("name")
+    assert !@controller.fragment_exist?("other_name")
   end
 
   def test_write_fragment_with_caching_enabled
@@ -136,7 +144,7 @@ class FragmentCachingTest < ActionController::TestCase
     buffer = "generated till now -> ".html_safe
     buffer << view_context.send(:fragment_for, "expensive") { fragment_computed = true }
 
-    assert_not fragment_computed
+    assert !fragment_computed
     assert_equal "generated till now -> fragment content", buffer
   end
 
@@ -212,7 +220,7 @@ CACHED
     assert_equal expected_body, @response.body
 
     assert_equal "This bit's fragment cached",
-      @store.read("views/functional_caching/fragment_cached:#{template_digest("functional_caching/fragment_cached", "html")}/fragment")
+      @store.read("views/functional_caching/fragment_cached:#{template_digest("functional_caching/fragment_cached")}/fragment")
   end
 
   def test_fragment_caching_in_partials
@@ -221,7 +229,7 @@ CACHED
     assert_match(/Old fragment caching in a partial/, @response.body)
 
     assert_match("Old fragment caching in a partial",
-      @store.read("views/functional_caching/_partial:#{template_digest("functional_caching/_partial", "html")}/test.host/functional_caching/html_fragment_cached_with_partial"))
+      @store.read("views/functional_caching/_partial:#{template_digest("functional_caching/_partial")}/test.host/functional_caching/html_fragment_cached_with_partial"))
   end
 
   def test_skipping_fragment_cache_digesting
@@ -251,7 +259,7 @@ CACHED
     assert_match(/Some inline content/, @response.body)
     assert_match(/Some cached content/, @response.body)
     assert_match("Some cached content",
-      @store.read("views/functional_caching/inline_fragment_cached:#{template_digest("functional_caching/inline_fragment_cached", "html")}/test.host/functional_caching/inline_fragment_cached"))
+      @store.read("views/functional_caching/inline_fragment_cached:#{template_digest("functional_caching/inline_fragment_cached")}/test.host/functional_caching/inline_fragment_cached"))
   end
 
   def test_fragment_cache_instrumentation
@@ -271,39 +279,36 @@ CACHED
   end
 
   def test_html_formatted_fragment_caching
-    format = "html"
-    get :formatted_fragment_cached, format: format
+    get :formatted_fragment_cached, format: "html"
     assert_response :success
     expected_body = "<body>\n<p>ERB</p>\n</body>\n"
 
     assert_equal expected_body, @response.body
 
     assert_equal "<p>ERB</p>",
-      @store.read("views/functional_caching/formatted_fragment_cached:#{template_digest("functional_caching/formatted_fragment_cached", format)}/fragment")
+      @store.read("views/functional_caching/formatted_fragment_cached:#{template_digest("functional_caching/formatted_fragment_cached")}/fragment")
   end
 
   def test_xml_formatted_fragment_caching
-    format = "xml"
-    get :formatted_fragment_cached, format: format
+    get :formatted_fragment_cached, format: "xml"
     assert_response :success
     expected_body = "<body>\n  <p>Builder</p>\n</body>\n"
 
     assert_equal expected_body, @response.body
 
     assert_equal "  <p>Builder</p>\n",
-      @store.read("views/functional_caching/formatted_fragment_cached:#{template_digest("functional_caching/formatted_fragment_cached", format)}/fragment")
+      @store.read("views/functional_caching/formatted_fragment_cached:#{template_digest("functional_caching/formatted_fragment_cached")}/fragment")
   end
 
   def test_fragment_caching_with_variant
-    format = "html"
-    get :formatted_fragment_cached_with_variant, format: format, params: { v: :phone }
+    get :formatted_fragment_cached_with_variant, format: "html", params: { v: :phone }
     assert_response :success
     expected_body = "<body>\n<p>PHONE</p>\n</body>\n"
 
     assert_equal expected_body, @response.body
 
     assert_equal "<p>PHONE</p>",
-      @store.read("views/functional_caching/formatted_fragment_cached_with_variant:#{template_digest("functional_caching/formatted_fragment_cached_with_variant", format)}/fragment")
+      @store.read("views/functional_caching/formatted_fragment_cached_with_variant:#{template_digest("functional_caching/formatted_fragment_cached_with_variant")}/fragment")
   end
 
   def test_fragment_caching_with_html_partials_in_xml
@@ -312,8 +317,8 @@ CACHED
   end
 
   private
-    def template_digest(name, format)
-      ActionView::Digestor.digest(name: name, format: format, finder: @controller.lookup_context)
+    def template_digest(name)
+      ActionView::Digestor.digest(name: name, finder: @controller.lookup_context)
     end
 end
 

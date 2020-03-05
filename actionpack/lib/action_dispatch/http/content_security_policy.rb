@@ -5,9 +5,9 @@ require "active_support/core_ext/object/deep_dup"
 module ActionDispatch #:nodoc:
   class ContentSecurityPolicy
     class Middleware
-      CONTENT_TYPE = "Content-Type"
-      POLICY = "Content-Security-Policy"
-      POLICY_REPORT_ONLY = "Content-Security-Policy-Report-Only"
+      CONTENT_TYPE = "Content-Type".freeze
+      POLICY = "Content-Security-Policy".freeze
+      POLICY_REPORT_ONLY = "Content-Security-Policy-Report-Only".freeze
 
       def initialize(app)
         @app = app
@@ -22,9 +22,8 @@ module ActionDispatch #:nodoc:
 
         if policy = request.content_security_policy
           nonce = request.content_security_policy_nonce
-          nonce_directives = request.content_security_policy_nonce_directives
           context = request.controller_instance || request
-          headers[header_name(request)] = policy.build(context, nonce, nonce_directives)
+          headers[header_name(request)] = policy.build(context, nonce)
         end
 
         response
@@ -52,11 +51,10 @@ module ActionDispatch #:nodoc:
     end
 
     module Request
-      POLICY = "action_dispatch.content_security_policy"
-      POLICY_REPORT_ONLY = "action_dispatch.content_security_policy_report_only"
-      NONCE_GENERATOR = "action_dispatch.content_security_policy_nonce_generator"
-      NONCE = "action_dispatch.content_security_policy_nonce"
-      NONCE_DIRECTIVES = "action_dispatch.content_security_policy_nonce_directives"
+      POLICY = "action_dispatch.content_security_policy".freeze
+      POLICY_REPORT_ONLY = "action_dispatch.content_security_policy_report_only".freeze
+      NONCE_GENERATOR = "action_dispatch.content_security_policy_nonce_generator".freeze
+      NONCE = "action_dispatch.content_security_policy_nonce".freeze
 
       def content_security_policy
         get_header(POLICY)
@@ -80,14 +78,6 @@ module ActionDispatch #:nodoc:
 
       def content_security_policy_nonce_generator=(generator)
         set_header(NONCE_GENERATOR, generator)
-      end
-
-      def content_security_policy_nonce_directives
-        get_header(NONCE_DIRECTIVES)
-      end
-
-      def content_security_policy_nonce_directives=(generator)
-        set_header(NONCE_DIRECTIVES, generator)
       end
 
       def content_security_policy_nonce
@@ -137,15 +127,14 @@ module ActionDispatch #:nodoc:
       manifest_src:    "manifest-src",
       media_src:       "media-src",
       object_src:      "object-src",
-      prefetch_src:    "prefetch-src",
       script_src:      "script-src",
       style_src:       "style-src",
       worker_src:      "worker-src"
     }.freeze
 
-    DEFAULT_NONCE_DIRECTIVES = %w[script-src style-src].freeze
+    NONCE_DIRECTIVES = %w[script-src].freeze
 
-    private_constant :MAPPINGS, :DIRECTIVES, :DEFAULT_NONCE_DIRECTIVES
+    private_constant :MAPPINGS, :DIRECTIVES, :NONCE_DIRECTIVES
 
     attr_reader :directives
 
@@ -214,9 +203,8 @@ module ActionDispatch #:nodoc:
       end
     end
 
-    def build(context = nil, nonce = nil, nonce_directives = nil)
-      nonce_directives = DEFAULT_NONCE_DIRECTIVES if nonce_directives.nil?
-      build_directives(context, nonce, nonce_directives).compact.join("; ")
+    def build(context = nil, nonce = nil)
+      build_directives(context, nonce).compact.join("; ")
     end
 
     private
@@ -239,10 +227,10 @@ module ActionDispatch #:nodoc:
         end
       end
 
-      def build_directives(context, nonce, nonce_directives)
+      def build_directives(context, nonce)
         @directives.map do |directive, sources|
           if sources.is_a?(Array)
-            if nonce && nonce_directive?(directive, nonce_directives)
+            if nonce && nonce_directive?(directive)
               "#{directive} #{build_directive(sources, context).join(' ')} 'nonce-#{nonce}'"
             else
               "#{directive} #{build_directive(sources, context).join(' ')}"
@@ -277,8 +265,8 @@ module ActionDispatch #:nodoc:
         end
       end
 
-      def nonce_directive?(directive, nonce_directives)
-        nonce_directives.include?(directive)
+      def nonce_directive?(directive)
+        NONCE_DIRECTIVES.include?(directive)
       end
   end
 end

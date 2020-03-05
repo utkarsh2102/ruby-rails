@@ -26,7 +26,7 @@ module ActiveRecord
       # Implements the reload reader method, e.g. foo.reload_bar for
       # Foo.has_one :bar
       def force_reload_reader
-        reload(true)
+        klass.uncached { reload }
         target
       end
 
@@ -36,7 +36,21 @@ module ActiveRecord
         end
 
         def find_target
-          super.first
+          scope = self.scope
+          return scope.take if skip_statement_cache?(scope)
+
+          conn = klass.connection
+          sc = reflection.association_scope_cache(conn, owner) do |params|
+            as = AssociationScope.create { params.bind }
+            target_scope.merge!(as.scope(self)).limit(1)
+          end
+
+          binds = AssociationScope.get_bind_values(owner, reflection.chain)
+          sc.execute(binds, conn) do |record|
+            set_inverse_instance record
+          end.first
+        rescue ::RangeError
+          nil
         end
 
         def replace(record)

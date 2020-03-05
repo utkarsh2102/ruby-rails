@@ -3,7 +3,6 @@
 require "abstract_unit"
 require "rails/engine"
 require "action_dispatch/routing/inspector"
-require "io/console/size"
 
 class MountedRackApp
   def self.call(env)
@@ -16,8 +15,14 @@ end
 module ActionDispatch
   module Routing
     class RoutesInspectorTest < ActiveSupport::TestCase
-      setup do
+      def setup
         @set = ActionDispatch::Routing::RouteSet.new
+      end
+
+      def draw(options = nil, &block)
+        @set.draw(&block)
+        inspector = ActionDispatch::Routing::RoutesInspector.new(@set.routes)
+        inspector.format(ActionDispatch::Routing::ConsoleFormatter.new, options).split("\n")
       end
 
       def test_displaying_routes_for_engines
@@ -300,7 +305,7 @@ module ActionDispatch
       end
 
       def test_routes_can_be_filtered
-        output = draw(grep: "posts") do
+        output = draw("posts") do
           resources :articles
           resources :posts
         end
@@ -316,76 +321,8 @@ module ActionDispatch
                       "          DELETE /posts/:id(.:format)      posts#destroy"], output
       end
 
-      def test_routes_when_expanded
-        previous_console_winsize = IO.console.winsize
-        IO.console.winsize = [0, 23]
-
-        engine = Class.new(Rails::Engine) do
-          def self.inspect
-            "Blog::Engine"
-          end
-        end
-        engine.routes.draw do
-          get "/cart", to: "cart#show"
-        end
-
-        output = draw(formatter: ActionDispatch::Routing::ConsoleFormatter::Expanded.new) do
-          get "/custom/assets", to: "custom_assets#show"
-          get "/custom/furnitures", to: "custom_furnitures#show"
-          mount engine => "/blog", :as => "blog"
-        end
-
-        assert_equal ["--[ Route 1 ]----------",
-                      "Prefix            | custom_assets",
-                      "Verb              | GET",
-                      "URI               | /custom/assets(.:format)",
-                      "Controller#Action | custom_assets#show",
-                      "--[ Route 2 ]----------",
-                      "Prefix            | custom_furnitures",
-                      "Verb              | GET",
-                      "URI               | /custom/furnitures(.:format)",
-                      "Controller#Action | custom_furnitures#show",
-                      "--[ Route 3 ]----------",
-                      "Prefix            | blog",
-                      "Verb              | ",
-                      "URI               | /blog",
-                      "Controller#Action | Blog::Engine",
-                      "",
-                      "[ Routes for Blog::Engine ]",
-                      "--[ Route 1 ]----------",
-                      "Prefix            | cart",
-                      "Verb              | GET",
-                      "URI               | /cart(.:format)",
-                      "Controller#Action | cart#show"], output
-      ensure
-        IO.console.winsize = previous_console_winsize
-      end
-
-      def test_no_routes_matched_filter_when_expanded
-        output = draw(grep: "rails/dummy", formatter: ActionDispatch::Routing::ConsoleFormatter::Expanded.new) do
-          get "photos/:id" => "photos#show", :id => /[A-Z]\d{5}/
-        end
-
-        assert_equal [
-          "No routes were found for this grep pattern.",
-          "For more information about routes, see the Rails guide: https://guides.rubyonrails.org/routing.html."
-        ], output
-      end
-
-      def test_not_routes_when_expanded
-        output = draw(grep: "rails/dummy", formatter: ActionDispatch::Routing::ConsoleFormatter::Expanded.new) { }
-
-        assert_equal [
-          "You don't have any routes defined!",
-          "",
-          "Please add some routes in config/routes.rb.",
-          "",
-          "For more information about routes, see the Rails guide: https://guides.rubyonrails.org/routing.html."
-        ], output
-      end
-
       def test_routes_can_be_filtered_with_namespaced_controllers
-        output = draw(grep: "admin/posts") do
+        output = draw("admin/posts") do
           resources :articles
           namespace :admin do
             resources :posts
@@ -433,31 +370,31 @@ module ActionDispatch
         end
 
         assert_equal [
-          "No routes were found for this controller.",
-          "For more information about routes, see the Rails guide: https://guides.rubyonrails.org/routing.html."
+          "No routes were found for this controller",
+          "For more information about routes, see the Rails guide: http://guides.rubyonrails.org/routing.html."
         ], output
       end
 
       def test_no_routes_matched_filter
-        output = draw(grep: "rails/dummy") do
+        output = draw("rails/dummy") do
           get "photos/:id" => "photos#show", :id => /[A-Z]\d{5}/
         end
 
         assert_equal [
-          "No routes were found for this grep pattern.",
-          "For more information about routes, see the Rails guide: https://guides.rubyonrails.org/routing.html."
+          "No routes were found for this controller",
+          "For more information about routes, see the Rails guide: http://guides.rubyonrails.org/routing.html."
         ], output
       end
 
       def test_no_routes_were_defined
-        output = draw(grep: "Rails::DummyController") { }
+        output = draw("Rails::DummyController") {}
 
         assert_equal [
           "You don't have any routes defined!",
           "",
           "Please add some routes in config/routes.rb.",
           "",
-          "For more information about routes, see the Rails guide: https://guides.rubyonrails.org/routing.html."
+          "For more information about routes, see the Rails guide: http://guides.rubyonrails.org/routing.html."
         ], output
       end
 
@@ -483,13 +420,6 @@ module ActionDispatch
           "custom_assets GET  /custom/assets(.:format) custom_assets#show",
         ], output
       end
-
-      private
-        def draw(formatter: ActionDispatch::Routing::ConsoleFormatter::Sheet.new, **options, &block)
-          @set.draw(&block)
-          inspector = ActionDispatch::Routing::RoutesInspector.new(@set.routes)
-          inspector.format(formatter, options).split("\n")
-        end
     end
   end
 end

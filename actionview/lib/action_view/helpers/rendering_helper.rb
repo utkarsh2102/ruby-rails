@@ -27,12 +27,10 @@ module ActionView
       def render(options = {}, locals = {}, &block)
         case options
         when Hash
-          in_rendering_context(options) do |renderer|
-            if block_given?
-              view_renderer.render_partial(self, options.merge(partial: options[:layout]), &block)
-            else
-              view_renderer.render(self, options)
-            end
+          if block_given?
+            view_renderer.render_partial(self, options.merge(partial: options[:layout]), &block)
+          else
+            view_renderer.render(self, options)
           end
         else
           view_renderer.render_partial(self, partial: options, locals: locals, &block)

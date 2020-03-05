@@ -14,11 +14,6 @@ module TestUnit # :nodoc:
 
         template "system_test.rb", File.join("test/system", class_path, "#{file_name.pluralize}_test.rb")
       end
-
-      private
-        def file_name
-          @_file_name ||= super.sub(/_test\z/i, "")
-        end
     end
   end
 end

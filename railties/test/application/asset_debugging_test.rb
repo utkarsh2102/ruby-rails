@@ -13,7 +13,7 @@ module ApplicationTests
 
       app_file "app/assets/javascripts/application.js", "//= require_tree ."
       app_file "app/assets/javascripts/xmlhr.js", "function f1() { alert(); }"
-      app_file "app/assets/config/manifest.js", <<~JS
+      app_file "app/assets/config/manifest.js", <<-JS.strip_heredoc
         //= link_tree ../images
         //= link_directory ../stylesheets .css
         //= link_directory ../javascripts .js
@@ -99,7 +99,7 @@ module ApplicationTests
       end
     end
 
-    test "public URL methods are not over-written by the asset pipeline" do
+    test "public url methods are not over-written by the asset pipeline" do
       contents = "doesnotexist"
       cases = {
         asset_url:       %r{http://example.org/#{contents}},

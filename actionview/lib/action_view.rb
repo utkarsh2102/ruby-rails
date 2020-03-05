@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 #--
-# Copyright (c) 2004-2019 David Heinemeier Hansson
+# Copyright (c) 2004-2018 David Heinemeier Hansson
 #
 # Permission is hereby granted, free of charge, to any person obtaining
 # a copy of this software and associated documentation files (the
@@ -35,6 +35,7 @@ module ActionView
   eager_autoload do
     autoload :Base
     autoload :Context
+    autoload :CompiledTemplates, "action_view/context"
     autoload :Digestor
     autoload :Helpers
     autoload :LookupContext
@@ -44,7 +45,6 @@ module ActionView
     autoload :Rendering
     autoload :RoutingUrlFor
     autoload :Template
-    autoload :UnboundTemplate
     autoload :ViewPaths
 
     autoload_under "renderer" do
@@ -81,7 +81,6 @@ module ActionView
     end
   end
 
-  autoload :CacheExpiry
   autoload :TestCase
 
   def self.eager_load!

@@ -1,18 +1,16 @@
 # frozen_string_literal: true
 
-require "rails/command/environment_argument"
-
 module Rails
   module Command
     class RunnerCommand < Base # :nodoc:
-      include EnvironmentArgument
-
-      self.environment_desc = "The environment for the runner to operate under (test/development/production)"
+      class_option :environment, aliases: "-e", type: :string,
+        default: Rails::Command.environment.dup,
+        desc: "The environment for the runner to operate under (test/development/production)"
 
       no_commands do
         def help
           super
-          say self.class.desc
+          puts self.class.desc
         end
       end
 
@@ -21,8 +19,6 @@ module Rails
       end
 
       def perform(code_or_file = nil, *command_argv)
-        extract_environment_option_from_argument
-
         unless code_or_file
           help
           exit 1
@@ -43,11 +39,11 @@ module Rails
         else
           begin
             eval(code_or_file, TOPLEVEL_BINDING, __FILE__, __LINE__)
-          rescue SyntaxError, NameError => e
-            error "Please specify a valid ruby command or the path of a script to run."
-            error "Run '#{self.class.executable} -h' for help."
-            error ""
-            error e
+          rescue SyntaxError, NameError => error
+            $stderr.puts "Please specify a valid ruby command or the path of a script to run."
+            $stderr.puts "Run '#{self.class.executable} -h' for help."
+            $stderr.puts
+            $stderr.puts error
             exit 1
           end
         end

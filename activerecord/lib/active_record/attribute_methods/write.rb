@@ -13,16 +13,19 @@ module ActiveRecord
         private
 
           def define_method_attribute=(name)
-            ActiveModel::AttributeMethods::AttrNames.define_attribute_accessor_method(
-              generated_attribute_methods, name, writer: true,
-            ) do |temp_method_name, attr_name_expr|
-              generated_attribute_methods.module_eval <<-RUBY, __FILE__, __LINE__ + 1
-                def #{temp_method_name}(value)
-                  name = #{attr_name_expr}
-                  _write_attribute(name, value)
-                end
-              RUBY
-            end
+            safe_name = name.unpack("h*".freeze).first
+            ActiveRecord::AttributeMethods::AttrNames.set_name_cache safe_name, name
+            sync_with_transaction_state = "sync_with_transaction_state" if name == primary_key
+
+            generated_attribute_methods.module_eval <<-STR, __FILE__, __LINE__ + 1
+              def __temp__#{safe_name}=(value)
+                name = ::ActiveRecord::AttributeMethods::AttrNames::ATTR_#{safe_name}
+                #{sync_with_transaction_state}
+                _write_attribute(name, value)
+              end
+              alias_method #{(name + '=').inspect}, :__temp__#{safe_name}=
+              undef_method :__temp__#{safe_name}=
+            STR
           end
       end
 
@@ -30,29 +33,33 @@ module ActiveRecord
       # specified +value+. Empty strings for Integer and Float columns are
       # turned into +nil+.
       def write_attribute(attr_name, value)
-        name = attr_name.to_s
-        name = self.class.attribute_aliases[name] || name
+        name = if self.class.attribute_alias?(attr_name)
+          self.class.attribute_alias(attr_name).to_s
+        else
+          attr_name.to_s
+        end
 
-        name = @primary_key if name == "id" && @primary_key
+        primary_key = self.class.primary_key
+        name = primary_key if name == "id".freeze && primary_key
+        sync_with_transaction_state if name == primary_key
         _write_attribute(name, value)
       end
 
       # This method exists to avoid the expensive primary_key check internally, without
       # breaking compatibility with the write_attribute API
       def _write_attribute(attr_name, value) # :nodoc:
-        sync_with_transaction_state if @transaction_state&.finalized?
         @attributes.write_from_user(attr_name.to_s, value)
         value
       end
 
       private
         def write_attribute_without_type_cast(attr_name, value)
-          sync_with_transaction_state if @transaction_state&.finalized?
-          @attributes.write_cast_value(attr_name.to_s, value)
+          name = attr_name.to_s
+          @attributes.write_cast_value(name, value)
           value
         end
 
-        # Dispatch target for <tt>*=</tt> attribute methods.
+        # Handle *= for method_missing.
         def attribute=(attribute_name, value)
           _write_attribute(attribute_name, value)
         end

@@ -30,7 +30,7 @@ module FileUpdateCheckerSharedTests
 
     checker = new_checker { i += 1 }
 
-    assert_not checker.execute_if_updated
+    assert !checker.execute_if_updated
     assert_equal 0, i
   end
 
@@ -41,7 +41,7 @@ module FileUpdateCheckerSharedTests
 
     checker = new_checker(tmpfiles) { i += 1 }
 
-    assert_not checker.execute_if_updated
+    assert !checker.execute_if_updated
     assert_equal 0, i
   end
 
@@ -186,18 +186,6 @@ module FileUpdateCheckerSharedTests
     assert_equal 1, i
   end
 
-  test "should execute the block if files change in a watched directory any extensions" do
-    i = 0
-
-    checker = new_checker([], tmpdir => []) { i += 1 }
-
-    touch(tmpfile("foo.rb"))
-    wait
-
-    assert checker.execute_if_updated
-    assert_equal 1, i
-  end
-
   test "should execute the block if files change in a watched directory several extensions" do
     i = 0
 
@@ -224,7 +212,7 @@ module FileUpdateCheckerSharedTests
     touch(tmpfile("foo.rb"))
     wait
 
-    assert_not checker.execute_if_updated
+    assert !checker.execute_if_updated
     assert_equal 0, i
   end
 
@@ -250,7 +238,7 @@ module FileUpdateCheckerSharedTests
     mkdir(subdir)
     wait
 
-    assert_not checker.execute_if_updated
+    assert !checker.execute_if_updated
     assert_equal 0, i
 
     touch(File.join(subdir, "nested.rb"))
@@ -271,7 +259,7 @@ module FileUpdateCheckerSharedTests
     touch(tmpfile("new.txt"))
     wait
 
-    assert_not checker.execute_if_updated
+    assert !checker.execute_if_updated
     assert_equal 0, i
 
     # subdir does not look for Ruby files, but its parent tmpdir does.

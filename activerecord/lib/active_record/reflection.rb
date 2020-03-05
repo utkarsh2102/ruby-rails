@@ -13,37 +13,33 @@ module ActiveRecord
       class_attribute :aggregate_reflections, instance_writer: false, default: {}
     end
 
-    class << self
-      def create(macro, name, scope, options, ar)
-        reflection = reflection_class_for(macro).new(name, scope, options, ar)
-        options[:through] ? ThroughReflection.new(reflection) : reflection
-      end
-
-      def add_reflection(ar, name, reflection)
-        ar.clear_reflections_cache
-        name = -name.to_s
-        ar._reflections = ar._reflections.except(name).merge!(name => reflection)
-      end
-
-      def add_aggregate_reflection(ar, name, reflection)
-        ar.aggregate_reflections = ar.aggregate_reflections.merge(-name.to_s => reflection)
-      end
-
-      private
-        def reflection_class_for(macro)
-          case macro
-          when :composed_of
-            AggregateReflection
-          when :has_many
-            HasManyReflection
-          when :has_one
-            HasOneReflection
-          when :belongs_to
-            BelongsToReflection
-          else
-            raise "Unsupported Macro: #{macro}"
-          end
+    def self.create(macro, name, scope, options, ar)
+      klass = \
+        case macro
+        when :composed_of
+          AggregateReflection
+        when :has_many
+          HasManyReflection
+        when :has_one
+          HasOneReflection
+        when :belongs_to
+          BelongsToReflection
+        else
+          raise "Unsupported Macro: #{macro}"
         end
+
+      reflection = klass.new(name, scope, options, ar)
+      options[:through] ? ThroughReflection.new(reflection) : reflection
+    end
+
+    def self.add_reflection(ar, name, reflection)
+      ar.clear_reflections_cache
+      name = name.to_s
+      ar._reflections = ar._reflections.except(name).merge!(name => reflection)
+    end
+
+    def self.add_aggregate_reflection(ar, name, reflection)
+      ar.aggregate_reflections = ar.aggregate_reflections.merge(name.to_s => reflection)
     end
 
     # \Reflection enables the ability to examine the associations and aggregations of
@@ -417,7 +413,7 @@ module ActiveRecord
     class AssociationReflection < MacroReflection #:nodoc:
       def compute_class(name)
         if polymorphic?
-          raise ArgumentError, "Polymorphic associations do not support computing the class."
+          raise ArgumentError, "Polymorphic association does not support to compute class."
         end
         active_record.send(:compute_type, name)
       end
@@ -477,7 +473,7 @@ module ActiveRecord
       def check_preloadable!
         return unless scope
 
-        unless scope.arity == 0
+        if scope.arity > 0
           raise ArgumentError, <<-MSG.squish
             The association scope '#{name}' is instance dependent (the scope
             block takes an argument). Preloading instance dependent scopes is
@@ -965,14 +961,16 @@ module ActiveRecord
         collect_join_reflections(seed + [self])
       end
 
+      # TODO Change this to private once we've dropped Ruby 2.2 support.
+      # Workaround for Ruby 2.2 "private attribute?" warning.
       protected
+        attr_reader :delegate_reflection
+
         def actual_source_reflection # FIXME: this is a horrible name
           source_reflection.actual_source_reflection
         end
 
       private
-        attr_reader :delegate_reflection
-
         def collect_join_reflections(seed)
           a = source_reflection.add_as_source seed
           if options[:source_type]

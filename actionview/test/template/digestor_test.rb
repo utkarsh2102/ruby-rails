@@ -7,8 +7,9 @@ require "action_view/dependency_tracker"
 class FixtureFinder < ActionView::LookupContext
   FIXTURES_DIR = File.expand_path("../fixtures/digestor", __dir__)
 
-  def self.build(details = {})
-    new(ActionView::PathSet.new(["digestor", "digestor/api"]), details, [])
+  def initialize(details = {})
+    super(ActionView::PathSet.new(["digestor", "digestor/api"]), details, [])
+    @rendered_format = :html
   end
 end
 
@@ -145,12 +146,13 @@ class TemplateDigestorTest < ActionView::TestCase
   end
 
   def test_nested_template_deps_with_non_default_rendered_format
+    finder.rendered_format = nil
     nested_deps = [{ "comments/comments" => ["comments/comment"] }]
     assert_equal nested_deps, nested_dependencies("messages/thread")
   end
 
   def test_template_formats_of_nested_deps_with_non_default_rendered_format
-    @finder = finder.with_prepended_formats([:json])
+    finder.rendered_format = nil
     assert_equal [:json], tree_template_formats("messages/thread").uniq
   end
 
@@ -159,10 +161,12 @@ class TemplateDigestorTest < ActionView::TestCase
   end
 
   def test_template_dependencies_with_fallback_from_js_to_html_format
+    finder.rendered_format = :js
     assert_equal ["comments/comment"], dependencies("comments/show")
   end
 
   def test_template_digest_with_fallback_from_js_to_html_format
+    finder.rendered_format = :js
     assert_digest_difference("comments/show") do
       change_template("comments/_comment")
     end
@@ -215,14 +219,14 @@ class TemplateDigestorTest < ActionView::TestCase
 
   def test_details_are_included_in_cache_key
     # Cache the template digest.
-    @finder = FixtureFinder.build(formats: [:html])
+    @finder = FixtureFinder.new(formats: [:html])
     old_digest = digest("events/_event")
 
     # Change the template; the cached digest remains unchanged.
     change_template("events/_event")
 
     # The details are changed, so a new cache key is generated.
-    @finder = FixtureFinder.build
+    @finder = FixtureFinder.new
 
     # The cache is busted.
     assert_not_equal old_digest, digest("events/_event")
@@ -326,14 +330,12 @@ class TemplateDigestorTest < ActionView::TestCase
 
     def assert_digest_difference(template_name, options = {})
       previous_digest = digest(template_name, options)
-      finder.view_paths.each(&:clear_cache)
       finder.digest_cache.clear
 
       yield
 
       assert_not_equal previous_digest, digest(template_name, options), "digest didn't change"
       finder.digest_cache.clear
-      finder.view_paths.each(&:clear_cache)
     end
 
     def digest(template_name, options = {})
@@ -341,14 +343,9 @@ class TemplateDigestorTest < ActionView::TestCase
       finder_options = options.extract!(:variants, :format)
 
       finder.variants = finder_options[:variants] || []
+      finder.rendered_format = finder_options[:format] if finder_options[:format]
 
-      finder_with_formats = if finder_options[:format]
-        finder.with_prepended_formats(Array(finder_options[:format]))
-      else
-        finder
-      end
-
-      ActionView::Digestor.digest(name: template_name, format: finder_options[:format], finder: finder_with_formats, dependencies: (options[:dependencies] || []))
+      ActionView::Digestor.digest(name: template_name, finder: finder, dependencies: (options[:dependencies] || []))
     end
 
     def dependencies(template_name)
@@ -363,7 +360,7 @@ class TemplateDigestorTest < ActionView::TestCase
 
     def tree_template_formats(template_name)
       tree = ActionView::Digestor.tree(template_name, finder)
-      tree.flatten.map(&:template).compact.map(&:format)
+      tree.flatten.map(&:template).compact.flat_map(&:formats)
     end
 
     def disable_resolver_caching
@@ -374,7 +371,7 @@ class TemplateDigestorTest < ActionView::TestCase
     end
 
     def finder
-      @finder ||= FixtureFinder.build
+      @finder ||= FixtureFinder.new
     end
 
     def change_template(template_name, variant = nil)

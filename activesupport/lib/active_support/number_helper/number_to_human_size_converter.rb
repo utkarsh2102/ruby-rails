@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-require "active_support/number_helper/number_converter"
-
 module ActiveSupport
   module NumberHelper
     class NumberToHumanSizeConverter < NumberConverter #:nodoc:
@@ -24,7 +22,7 @@ module ActiveSupport
           human_size = number / (base**exponent)
           number_to_format = NumberToRoundedConverter.convert(human_size, options)
         end
-        conversion_format.gsub("%n", number_to_format).gsub("%u", unit)
+        conversion_format.gsub("%n".freeze, number_to_format).gsub("%u".freeze, unit)
       end
 
       private

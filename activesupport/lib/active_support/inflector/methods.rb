@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require "active_support/inflections"
+require "active_support/core_ext/regexp"
 
 module ActiveSupport
   # The Inflector transforms words from singular to plural, class names to table
@@ -73,7 +74,7 @@ module ActiveSupport
         string = string.sub(inflections.acronyms_camelize_regex) { |match| match.downcase }
       end
       string.gsub!(/(?:_|(\/))([a-z\d]*)/i) { "#{$1}#{inflections.acronyms[$2] || $2.capitalize}" }
-      string.gsub!("/", "::")
+      string.gsub!("/".freeze, "::".freeze)
       string
     end
 
@@ -90,11 +91,11 @@ module ActiveSupport
     #   camelize(underscore('SSLError'))  # => "SslError"
     def underscore(camel_cased_word)
       return camel_cased_word unless /[A-Z-]|::/.match?(camel_cased_word)
-      word = camel_cased_word.to_s.gsub("::", "/")
-      word.gsub!(inflections.acronyms_underscore_regex) { "#{$1 && '_' }#{$2.downcase}" }
-      word.gsub!(/([A-Z\d]+)([A-Z][a-z])/, '\1_\2')
-      word.gsub!(/([a-z\d])([A-Z])/, '\1_\2')
-      word.tr!("-", "_")
+      word = camel_cased_word.to_s.gsub("::".freeze, "/".freeze)
+      word.gsub!(inflections.acronyms_underscore_regex) { "#{$1 && '_'.freeze }#{$2.downcase}" }
+      word.gsub!(/([A-Z\d]+)([A-Z][a-z])/, '\1_\2'.freeze)
+      word.gsub!(/([a-z\d])([A-Z])/, '\1_\2'.freeze)
+      word.tr!("-".freeze, "_".freeze)
       word.downcase!
       word
     end
@@ -130,11 +131,11 @@ module ActiveSupport
 
       inflections.humans.each { |(rule, replacement)| break if result.sub!(rule, replacement) }
 
-      result.sub!(/\A_+/, "")
+      result.sub!(/\A_+/, "".freeze)
       unless keep_id_suffix
-        result.sub!(/_id\z/, "")
+        result.sub!(/_id\z/, "".freeze)
       end
-      result.tr!("_", " ")
+      result.tr!("_".freeze, " ".freeze)
 
       result.gsub!(/([a-z\d]*)/i) do |match|
         "#{inflections.acronyms[match.downcase] || match.downcase}"
@@ -199,14 +200,14 @@ module ActiveSupport
     #   classify('calculus')     # => "Calculus"
     def classify(table_name)
       # strip out any leading schema name
-      camelize(singularize(table_name.to_s.sub(/.*\./, "")))
+      camelize(singularize(table_name.to_s.sub(/.*\./, "".freeze)))
     end
 
     # Replaces underscores with dashes in the string.
     #
     #   dasherize('puni_puni') # => "puni-puni"
     def dasherize(underscored_word)
-      underscored_word.tr("_", "-")
+      underscored_word.tr("_".freeze, "-".freeze)
     end
 
     # Removes the module part from the expression in the string.
@@ -269,7 +270,7 @@ module ActiveSupport
     # NameError is raised when the name is not in CamelCase or the constant is
     # unknown.
     def constantize(camel_cased_word)
-      names = camel_cased_word.split("::")
+      names = camel_cased_word.split("::".freeze)
 
       # Trigger a built-in NameError exception including the ill-formed constant in the message.
       Object.const_get(camel_cased_word) if names.empty?
@@ -342,7 +343,18 @@ module ActiveSupport
     #   ordinal(-11)   # => "th"
     #   ordinal(-1021) # => "st"
     def ordinal(number)
-      I18n.translate("number.nth.ordinals", number: number)
+      abs_number = number.to_i.abs
+
+      if (11..13).include?(abs_number % 100)
+        "th"
+      else
+        case abs_number % 10
+        when 1; "st"
+        when 2; "nd"
+        when 3; "rd"
+        else    "th"
+        end
+      end
     end
 
     # Turns a number into an ordinal string used to denote the position in an
@@ -355,7 +367,7 @@ module ActiveSupport
     #   ordinalize(-11)   # => "-11th"
     #   ordinalize(-1021) # => "-1021st"
     def ordinalize(number)
-      I18n.translate("number.nth.ordinalized", number: number)
+      "#{number}#{ordinal(number)}"
     end
 
     private
@@ -366,7 +378,7 @@ module ActiveSupport
       #   const_regexp("Foo::Bar::Baz") # => "Foo(::Bar(::Baz)?)?"
       #   const_regexp("::")            # => "::"
       def const_regexp(camel_cased_word)
-        parts = camel_cased_word.split("::")
+        parts = camel_cased_word.split("::".freeze)
 
         return Regexp.escape(camel_cased_word) if parts.blank?
 

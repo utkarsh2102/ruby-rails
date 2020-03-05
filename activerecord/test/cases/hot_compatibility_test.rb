@@ -56,7 +56,7 @@ class HotCompatibilityTest < ActiveRecord::TestCase
     assert_equal "bar", record.foo
   end
 
-  if current_adapter?(:PostgreSQLAdapter) && ActiveRecord::Base.connection.prepared_statements
+  if current_adapter?(:PostgreSQLAdapter)
     test "cleans up after prepared statement failure in a transaction" do
       with_two_connections do |original_connection, ddl_connection|
         record = @klass.create! bar: "bar"

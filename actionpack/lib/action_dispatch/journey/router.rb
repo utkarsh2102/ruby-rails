@@ -15,6 +15,9 @@ require "action_dispatch/journey/path/pattern"
 module ActionDispatch
   module Journey # :nodoc:
     class Router # :nodoc:
+      class RoutingError < ::StandardError # :nodoc:
+      end
+
       attr_accessor :routes
 
       def initialize(routes)

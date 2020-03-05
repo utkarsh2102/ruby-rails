@@ -18,6 +18,7 @@ module ActiveSupport
       DIR_FORMATTER = "%03X"
       FILENAME_MAX_SIZE = 228 # max filename size on file system is 255, minus room for timestamp and random characters appended by Tempfile (used by atomic write)
       FILEPATH_MAX_SIZE = 900 # max is 1024, plus some room
+      EXCLUDED_DIRS = [".", ".."].freeze
       GITKEEP_FILES = [".gitkeep", ".keep"].freeze
 
       def initialize(cache_path, options = nil)
@@ -25,16 +26,11 @@ module ActiveSupport
         @cache_path = cache_path.to_s
       end
 
-      # Advertise cache versioning support.
-      def self.supports_cache_versioning?
-        true
-      end
-
       # Deletes all items from the cache. In this case it deletes all the entries in the specified
       # file store directory except for .keep or .gitkeep. Be careful which directory is specified in your
       # config file when using +FileStore+ because everything in that directory will be deleted.
       def clear(options = nil)
-        root_dirs = (Dir.children(cache_path) - GITKEEP_FILES)
+        root_dirs = exclude_from(cache_path, EXCLUDED_DIRS + GITKEEP_FILES)
         FileUtils.rm_r(root_dirs.collect { |f| File.join(cache_path, f) })
       rescue Errno::ENOENT
       end
@@ -107,10 +103,12 @@ module ActiveSupport
         def lock_file(file_name, &block)
           if File.exist?(file_name)
             File.open(file_name, "r+") do |f|
-              f.flock File::LOCK_EX
-              yield
-            ensure
-              f.flock File::LOCK_UN
+              begin
+                f.flock File::LOCK_EX
+                yield
+              ensure
+                f.flock File::LOCK_UN
+              end
             end
           else
             yield
@@ -129,19 +127,15 @@ module ActiveSupport
           hash = Zlib.adler32(fname)
           hash, dir_1 = hash.divmod(0x1000)
           dir_2 = hash.modulo(0x1000)
+          fname_paths = []
 
           # Make sure file name doesn't exceed file system limits.
-          if fname.length < FILENAME_MAX_SIZE
-            fname_paths = fname
-          else
-            fname_paths = []
-            begin
-              fname_paths << fname[0, FILENAME_MAX_SIZE]
-              fname = fname[FILENAME_MAX_SIZE..-1]
-            end until fname.blank?
-          end
+          begin
+            fname_paths << fname[0, FILENAME_MAX_SIZE]
+            fname = fname[FILENAME_MAX_SIZE..-1]
+          end until fname.blank?
 
-          File.join(cache_path, DIR_FORMATTER % dir_1, DIR_FORMATTER % dir_2, fname_paths)
+          File.join(cache_path, DIR_FORMATTER % dir_1, DIR_FORMATTER % dir_2, *fname_paths)
         end
 
         # Translate a file path into a key.
@@ -153,7 +147,7 @@ module ActiveSupport
         # Delete empty directories in the cache.
         def delete_empty_directories(dir)
           return if File.realpath(dir) == File.realpath(cache_path)
-          if Dir.children(dir).empty?
+          if exclude_from(dir, EXCLUDED_DIRS).empty?
             Dir.delete(dir) rescue nil
             delete_empty_directories(File.dirname(dir))
           end
@@ -166,7 +160,8 @@ module ActiveSupport
 
         def search_dir(dir, &callback)
           return if !File.exist?(dir)
-          Dir.each_child(dir) do |d|
+          Dir.foreach(dir) do |d|
+            next if EXCLUDED_DIRS.include?(d)
             name = File.join(dir, d)
             if File.directory?(name)
               search_dir(name, &callback)
@@ -190,6 +185,11 @@ module ActiveSupport
               num
             end
           end
+        end
+
+        # Exclude entries from source directory
+        def exclude_from(source, excludes)
+          Dir.entries(source).reject { |f| excludes.include?(f) }
         end
     end
   end

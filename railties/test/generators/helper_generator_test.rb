@@ -30,17 +30,12 @@ class HelperGeneratorTest < Rails::Generators::TestCase
     require "#{destination_root}/app/helpers/products_helper"
 
     assert_nothing_raised do
-      run_generator ["admin::products"]
-    ensure
-      # cleanup
-      Object.send(:remove_const, :ProductsHelper)
+      begin
+        run_generator ["admin::products"]
+      ensure
+        # cleanup
+        Object.send(:remove_const, :ProductsHelper)
+      end
     end
-  end
-
-  def test_helper_suffix_is_not_duplicated
-    run_generator %w(products_helper)
-
-    assert_no_file "app/helpers/products_helper_helper.rb"
-    assert_file "app/helpers/products_helper.rb"
   end
 end

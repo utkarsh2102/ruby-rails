@@ -59,12 +59,11 @@ class ActionCable::Connection::BaseTest < ActionCable::TestCase
     run_in_eventmachine do
       connection = open_connection
 
-      assert_called_with(connection.websocket, :transmit, [{ type: "welcome" }.to_json]) do
-        assert_called(connection.message_buffer, :process!) do
-          connection.process
-          wait_for_async
-        end
-      end
+      connection.websocket.expects(:transmit).with({ type: "welcome" }.to_json)
+      connection.message_buffer.expects(:process!)
+
+      connection.process
+      wait_for_async
 
       assert_equal [ connection ], @server.connections
       assert connection.connected
@@ -77,14 +76,14 @@ class ActionCable::Connection::BaseTest < ActionCable::TestCase
       connection.process
 
       # Setup the connection
+      connection.server.stubs(:timer).returns(true)
       connection.send :handle_open
       assert connection.connected
 
-      assert_called(connection.subscriptions, :unsubscribe_from_all) do
-        connection.send :handle_close
-      end
+      connection.subscriptions.expects(:unsubscribe_from_all)
+      connection.send :handle_close
 
-      assert_not connection.connected
+      assert ! connection.connected
       assert_equal [], @server.connections
     end
   end
@@ -107,9 +106,8 @@ class ActionCable::Connection::BaseTest < ActionCable::TestCase
       connection = open_connection
       connection.process
 
-      assert_called(connection.websocket, :close) do
-        connection.close(reason: "testing")
-      end
+      connection.websocket.expects(:close)
+      connection.close
     end
   end
 

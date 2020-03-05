@@ -238,6 +238,14 @@ class PostgresqlArrayTest < ActiveRecord::PostgreSQLTestCase
     assert_equal(PgArray.last.tags, tag_values)
   end
 
+  def test_insert_fixtures
+    tag_values = ["val1", "val2", "val3_with_'_multiple_quote_'_chars"]
+    assert_deprecated do
+      @connection.insert_fixtures([{ "tags" => tag_values }], "pg_arrays")
+    end
+    assert_equal(PgArray.last.tags, tag_values)
+  end
+
   def test_attribute_for_inspect_for_array_field
     record = PgArray.new { |a| a.ratings = (1..10).to_a }
     assert_equal("[1, 2, 3, 4, 5, 6, 7, 8, 9, 10]", record.attribute_for_inspect(:ratings))
@@ -357,7 +365,7 @@ class PostgresqlArrayTest < ActiveRecord::PostgreSQLTestCase
     assert e1.persisted?, "Saving e1"
 
     e2 = klass.create("tags" => ["black", "blue"])
-    assert_not e2.persisted?, "e2 shouldn't be valid"
+    assert !e2.persisted?, "e2 shouldn't be valid"
     assert e2.errors[:tags].any?, "Should have errors for tags"
     assert_equal ["has already been taken"], e2.errors[:tags], "Should have uniqueness message for tags"
   end

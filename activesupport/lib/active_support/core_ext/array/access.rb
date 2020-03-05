@@ -29,28 +29,16 @@ class Array
     end
   end
 
-  # Returns a new array that includes the passed elements.
+  # Returns a copy of the Array without the specified elements.
   #
-  #   [ 1, 2, 3 ].including(4, 5) # => [ 1, 2, 3, 4, 5 ]
-  #   [ [ 0, 1 ] ].including([ [ 1, 0 ] ]) # => [ [ 0, 1 ], [ 1, 0 ] ]
-  def including(*elements)
-    self + elements.flatten(1)
-  end
-
-  # Returns a copy of the Array excluding the specified elements.
+  #   people = ["David", "Rafael", "Aaron", "Todd"]
+  #   people.without "Aaron", "Todd"
+  #   # => ["David", "Rafael"]
   #
-  #   ["David", "Rafael", "Aaron", "Todd"].excluding("Aaron", "Todd") # => ["David", "Rafael"]
-  #   [ [ 0, 1 ], [ 1, 0 ] ].excluding([ [ 1, 0 ] ]) # => [ [ 0, 1 ] ]
-  #
-  # Note: This is an optimization of <tt>Enumerable#excluding</tt> that uses <tt>Array#-</tt>
+  # Note: This is an optimization of <tt>Enumerable#without</tt> that uses <tt>Array#-</tt>
   # instead of <tt>Array#reject</tt> for performance reasons.
-  def excluding(*elements)
-    self - elements.flatten(1)
-  end
-
-  # Alias for #excluding.
   def without(*elements)
-    excluding(*elements)
+    self - elements
   end
 
   # Equal to <tt>self[1]</tt>.

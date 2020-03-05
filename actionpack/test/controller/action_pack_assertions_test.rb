@@ -276,25 +276,27 @@ class ActionPackAssertionsControllerTest < ActionController::TestCase
   end
 
   def test_assert_redirect_failure_message_with_protocol_relative_url
-    process :redirect_external_protocol_relative
-    assert_redirected_to "/foo"
-  rescue ActiveSupport::TestCase::Assertion => ex
-    assert_no_match(
-      /#{request.protocol}#{request.host}\/\/www.rubyonrails.org/,
-      ex.message,
-      "protocol relative URL was incorrectly normalized"
-    )
+    begin
+      process :redirect_external_protocol_relative
+      assert_redirected_to "/foo"
+    rescue ActiveSupport::TestCase::Assertion => ex
+      assert_no_match(
+        /#{request.protocol}#{request.host}\/\/www.rubyonrails.org/,
+        ex.message,
+        "protocol relative url was incorrectly normalized"
+      )
+    end
   end
 
   def test_template_objects_exist
     process :assign_this
-    assert_not @controller.instance_variable_defined?(:"@hi")
+    assert !@controller.instance_variable_defined?(:"@hi")
     assert @controller.instance_variable_get(:"@howdy")
   end
 
   def test_template_objects_missing
     process :nothing
-    assert_not @controller.instance_variable_defined?(:@howdy)
+    assert !@controller.instance_variable_defined?(:@howdy)
   end
 
   def test_empty_flash
@@ -364,7 +366,7 @@ class ActionPackAssertionsControllerTest < ActionController::TestCase
     process :redirect_external
     assert_predicate @response, :redirect?
     assert_match(/rubyonrails/, @response.redirect_url)
-    assert_no_match(/perloffrails/, @response.redirect_url)
+    assert !/perloffrails/.match(@response.redirect_url)
   end
 
   def test_redirection

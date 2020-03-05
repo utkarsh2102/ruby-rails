@@ -34,22 +34,6 @@ class LoadingTest < ActiveSupport::TestCase
     assert_equal "omg", p.title
   end
 
-  test "constants without a matching file raise NameError" do
-    app_file "app/models/post.rb", <<-RUBY
-      class Post
-        NON_EXISTING_CONSTANT
-      end
-    RUBY
-
-    boot_app
-
-    e = assert_raise(NameError) { User }
-    assert_equal "uninitialized constant #{self.class}::User", e.message
-
-    e = assert_raise(NameError) { Post }
-    assert_equal "uninitialized constant Post::NON_EXISTING_CONSTANT", e.message
-  end
-
   test "concerns in app are autoloaded" do
     app_file "app/controllers/concerns/trackable.rb", <<-CONCERN
       module Trackable
@@ -116,7 +100,7 @@ class LoadingTest < ActiveSupport::TestCase
     RUBY
 
     app_file "app/models/post.rb", <<-MODEL
-      class Post < ApplicationRecord
+      class Post < ActiveRecord::Base
       end
     MODEL
 
@@ -133,12 +117,11 @@ class LoadingTest < ActiveSupport::TestCase
     require "#{rails_root}/config/environment"
     setup_ar!
 
-    initial = [ActiveStorage::Blob, ActiveStorage::Attachment, ActiveRecord::SchemaMigration, ActiveRecord::InternalMetadata, ApplicationRecord, "primary::SchemaMigration"].collect(&:to_s).sort
-    assert_equal initial, ActiveRecord::Base.descendants.collect(&:to_s).sort
+    assert_equal [ActiveStorage::Blob, ActiveStorage::Attachment, ActiveRecord::SchemaMigration, ActiveRecord::InternalMetadata].collect(&:to_s).sort, ActiveRecord::Base.descendants.collect(&:to_s).sort
     get "/load"
-    assert_equal [Post].collect(&:to_s).sort, ActiveRecord::Base.descendants.collect(&:to_s).sort - initial
+    assert_equal [ActiveStorage::Blob, ActiveStorage::Attachment, ActiveRecord::SchemaMigration, ActiveRecord::InternalMetadata, Post].collect(&:to_s).sort, ActiveRecord::Base.descendants.collect(&:to_s).sort
     get "/unload"
-    assert_equal ["ActiveRecord::InternalMetadata", "ActiveRecord::SchemaMigration", "primary::SchemaMigration"], ActiveRecord::Base.descendants.collect(&:to_s).sort.uniq
+    assert_equal [ActiveStorage::Blob, ActiveStorage::Attachment, ActiveRecord::SchemaMigration, ActiveRecord::InternalMetadata].collect(&:to_s).sort, ActiveRecord::Base.descendants.collect(&:to_s).sort
   end
 
   test "initialize cant be called twice" do
@@ -388,7 +371,7 @@ class LoadingTest < ActiveSupport::TestCase
     end
   end
 
-  test "active record query cache hooks are installed before first request in production" do
+  test "active record query cache hooks are installed before first request" do
     app_file "app/controllers/omg_controller.rb", <<-RUBY
       begin
         class OmgController < ActionController::Metal
@@ -412,40 +395,7 @@ class LoadingTest < ActiveSupport::TestCase
       end
     RUBY
 
-    boot_app "production"
-
-    require "rack/test"
-    extend Rack::Test::Methods
-
-    get "/omg/show"
-    assert_equal "Query cache is enabled.", last_response.body
-  end
-
-  test "active record query cache hooks are installed before first request in development" do
-    app_file "app/controllers/omg_controller.rb", <<-RUBY
-      begin
-        class OmgController < ActionController::Metal
-          ActiveSupport.run_load_hooks(:action_controller, self)
-          def show
-            if ActiveRecord::Base.connection.query_cache_enabled
-              self.response_body = ["Query cache is enabled."]
-            else
-              self.response_body = ["Expected ActiveRecord::Base.connection.query_cache_enabled to be true"]
-            end
-          end
-        end
-      rescue => e
-        puts "Error loading metal: \#{e.class} \#{e.message}"
-      end
-    RUBY
-
-    app_file "config/routes.rb", <<-RUBY
-      Rails.application.routes.draw do
-        get "/:controller(/:action)"
-      end
-    RUBY
-
-    boot_app "development"
+    require "#{rails_root}/config/environment"
 
     require "rack/test"
     extend Rack::Test::Methods
@@ -464,13 +414,5 @@ class LoadingTest < ActiveSupport::TestCase
           t.string :title
         end
       end
-    end
-
-    def boot_app(env = "development")
-      ENV["RAILS_ENV"] = env
-
-      require "#{app_path}/config/environment"
-    ensure
-      ENV.delete "RAILS_ENV"
     end
 end

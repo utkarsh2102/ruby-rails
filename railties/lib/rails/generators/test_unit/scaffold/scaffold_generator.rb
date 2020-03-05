@@ -49,20 +49,15 @@ module TestUnit # :nodoc:
           attributes_names.map do |name|
             if %w(password password_confirmation).include?(name) && attributes.any?(&:password_digest?)
               ["#{name}", "'secret'"]
-            elsif !virtual?(name)
+            else
               ["#{name}", "@#{singular_table_name}.#{name}"]
             end
-          end.compact.sort.to_h
+          end.sort.to_h
         end
 
         def boolean?(name)
           attribute = attributes.find { |attr| attr.name == name }
-          attribute&.type == :boolean
-        end
-
-        def virtual?(name)
-          attribute = attributes.find { |attr| attr.name == name }
-          attribute&.virtual?
+          attribute && attribute.type == :boolean
         end
     end
   end
