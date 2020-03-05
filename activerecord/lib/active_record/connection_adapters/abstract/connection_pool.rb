@@ -310,7 +310,7 @@ module ActiveRecord
       include QueryCache::ConnectionPoolConfiguration
 
       attr_accessor :automatic_reconnect, :checkout_timeout, :schema_cache
-      attr_reader :spec, :connections, :size, :reaper
+      attr_reader :spec, :size, :reaper
 
       # Creates a new ConnectionPool object. +spec+ is a ConnectionSpecification
       # object which describes database connection information (e.g. adapter,
@@ -379,7 +379,7 @@ module ActiveRecord
       # #connection can be called any number of times; the connection is
       # held in a cache keyed by a thread.
       def connection
-        @thread_cached_conns[connection_cache_key(@lock_thread || Thread.current)] ||= checkout
+        @thread_cached_conns[connection_cache_key(current_thread)] ||= checkout
       end
 
       # Returns true if there is an open connection being used for the current thread.
@@ -388,7 +388,7 @@ module ActiveRecord
       # #connection or #with_connection methods. Connections obtained through
       # #checkout will not be detected by #active_connection?
       def active_connection?
-        @thread_cached_conns[connection_cache_key(Thread.current)]
+        @thread_cached_conns[connection_cache_key(current_thread)]
       end
 
       # Signal that the thread is finished with the current connection.
@@ -421,6 +421,21 @@ module ActiveRecord
       # Returns true if a connection has already been opened.
       def connected?
         synchronize { @connections.any? }
+      end
+
+      # Returns an array containing the connections currently in the pool.
+      # Access to the array does not require synchronization on the pool because
+      # the array is newly created and not retained by the pool.
+      #
+      # However; this method bypasses the ConnectionPool's thread-safe connection
+      # access pattern. A returned connection may be owned by another thread,
+      # unowned, or by happen-stance owned by the calling thread.
+      #
+      # Calling methods on a connection without ownership is subject to the
+      # thread-safety guarantees of the underlying method. Many of the methods
+      # on connection adapter classes are inherently multi-thread unsafe.
+      def connections
+        synchronize { @connections.dup }
       end
 
       # Disconnects all connections in the pool, and clears the pool.
@@ -666,6 +681,10 @@ module ActiveRecord
         # JRuby users that use Fibers.
         def connection_cache_key(thread)
           thread
+        end
+
+        def current_thread
+          @lock_thread || Thread.current
         end
 
         # Take control of all existing connections so a "group" action such as

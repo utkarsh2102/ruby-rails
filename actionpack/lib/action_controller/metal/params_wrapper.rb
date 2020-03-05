@@ -93,7 +93,7 @@ module ActionController
       end
 
       def model
-        super || synchronize { super || self.model = _default_wrap_model }
+        super || self.model = _default_wrap_model
       end
 
       def include
@@ -115,7 +115,7 @@ module ActionController
 
               if m.respond_to?(:nested_attributes_options) && m.nested_attributes_options.keys.any?
                 self.include += m.nested_attributes_options.keys.map do |key|
-                  key.to_s.concat("_attributes")
+                  key.to_s.dup.concat("_attributes")
                 end
               end
 

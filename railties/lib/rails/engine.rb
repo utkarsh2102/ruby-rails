@@ -531,9 +531,9 @@ module Rails
 
     # Defines the routes for this engine. If a block is given to
     # routes, it is appended to the engine.
-    def routes
+    def routes(&block)
       @routes ||= ActionDispatch::Routing::RouteSet.new_with_config(config)
-      @routes.append(&Proc.new) if block_given?
+      @routes.append(&block) if block_given?
       @routes
     end
 
@@ -548,7 +548,13 @@ module Rails
     # Blog::Engine.load_seed
     def load_seed
       seed_file = paths["db/seeds.rb"].existent.first
-      with_inline_jobs { load(seed_file) } if seed_file
+      return unless seed_file
+
+      if config.try(:active_job).try!(:queue_adapter) == :async
+        with_inline_jobs { load(seed_file) }
+      else
+        load(seed_file)
+      end
     end
 
     # Add configured load paths to Ruby's load path, and remove duplicate entries.

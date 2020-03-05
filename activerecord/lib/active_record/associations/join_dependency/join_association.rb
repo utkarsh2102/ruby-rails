@@ -30,17 +30,21 @@ module ActiveRecord
             table = tables[-i]
             klass = reflection.klass
 
-            constraint = reflection.build_join_constraint(table, foreign_table)
+            join_scope = reflection.join_scope(table, foreign_table, foreign_klass)
 
-            joins << table.create_join(table, table.create_on(constraint), join_type)
-
-            join_scope = reflection.join_scope(table, foreign_klass)
             arel = join_scope.arel(alias_tracker.aliases)
+            nodes = arel.constraints.first
 
-            if arel.constraints.any?
+            others, children = nodes.children.partition do |node|
+              !fetch_arel_attribute(node) { |attr| attr.relation.name == table.name }
+            end
+            nodes = table.create_and(children)
+
+            joins << table.create_join(table, table.create_on(nodes), join_type)
+
+            unless others.empty?
               joins.concat arel.join_sources
-              right = joins.last.right
-              right.expr = right.expr.and(arel.constraints)
+              append_constraints(joins.last, others)
             end
 
             # The current table in this iteration becomes the foreign table in the next
@@ -54,6 +58,23 @@ module ActiveRecord
           @tables = tables
           @table  = tables.first
         end
+
+        private
+          def fetch_arel_attribute(value)
+            case value
+            when Arel::Nodes::Between, Arel::Nodes::In, Arel::Nodes::NotIn, Arel::Nodes::Equality, Arel::Nodes::NotEqual, Arel::Nodes::LessThan, Arel::Nodes::LessThanOrEqual, Arel::Nodes::GreaterThan, Arel::Nodes::GreaterThanOrEqual
+              yield value.left.is_a?(Arel::Attributes::Attribute) ? value.left : value.right
+            end
+          end
+
+          def append_constraints(join, constraints)
+            if join.is_a?(Arel::Nodes::StringJoin)
+              join_string = table.create_and(constraints.unshift(join.left))
+              join.left = Arel.sql(base_klass.connection.visitor.compile(join_string))
+            else
+              join.right.expr.children.concat(constraints)
+            end
+          end
       end
     end
   end

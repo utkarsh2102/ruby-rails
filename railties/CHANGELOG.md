@@ -1,3 +1,25 @@
+## Rails 5.2.4.1 (December 18, 2019) ##
+
+*   No changes.
+
+
+## Rails 5.2.4 (November 27, 2019) ##
+
+*   Use original `bundler` environment variables during the process of generating a new rails project.
+
+    *Marco Costa*
+
+*   Allow loading seeds without ActiveJob.
+
+    Fixes #35782
+
+    *Jeremy Weathers*
+
+*   Only force `:async` ActiveJob adapter to `:inline` during seeding.
+
+    *BatedUrGonnaDie*
+
+
 ## Rails 5.2.3 (March 27, 2019) ##
 
 *   Seed database with inline ActiveJob job adapter.
@@ -11,7 +33,16 @@
 
 ## Rails 5.2.2.1 (March 11, 2019) ##
 
-*   No changes.
+*   Generate random development secrets
+
+    A random development secret is now generated to tmp/development_secret.txt
+
+    This avoids an issue where development mode servers were vulnerable to
+    remote code execution.
+
+    Fixes CVE-2019-5420
+
+    *Eileen M. Uchitelle*, *Aaron Patterson*, *John Hawthorn*
 
 
 ## Rails 5.2.2 (December 04, 2018) ##

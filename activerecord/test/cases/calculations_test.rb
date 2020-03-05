@@ -242,6 +242,12 @@ class CalculationsTest < ActiveRecord::TestCase
     assert_queries(1) { assert_equal 11, posts.count(:all) }
   end
 
+  def test_count_with_eager_loading_and_custom_select_and_order
+    posts = Post.includes(:comments).order("comments.id").select(:type)
+    assert_queries(1) { assert_equal 11, posts.count }
+    assert_queries(1) { assert_equal 11, posts.count(:all) }
+  end
+
   def test_count_with_eager_loading_and_custom_order_and_distinct
     posts = Post.includes(:comments).order("comments.id").distinct
     assert_queries(1) { assert_equal 11, posts.count }
@@ -727,8 +733,14 @@ class CalculationsTest < ActiveRecord::TestCase
   end
 
   def test_pluck_with_join
-    assert_equal [[2, 2], [4, 4]], Reply.includes(:topic).pluck(:id, :"topics.id")
+    assert_equal [[2, 2], [4, 4]], Reply.includes(:topic).order(:id).pluck(:id, :"topics.id")
   end
+
+  def test_group_by_with_order_by_virtual_count_attribute
+    expected = { "SpecialPost" => 1, "StiPost" => 2 }
+    actual = Post.group(:type).order(:count).limit(2).maximum(:comments_count)
+    assert_equal expected, actual
+  end if current_adapter?(:PostgreSQLAdapter)
 
   def test_group_by_with_limit
     expected = { "Post" => 8, "SpecialPost" => 1 }
@@ -796,7 +808,7 @@ class CalculationsTest < ActiveRecord::TestCase
 
   def test_pluck_columns_with_same_name
     expected = [["The First Topic", "The Second Topic of the day"], ["The Third Topic of the day", "The Fourth Topic of the day"]]
-    actual = Topic.joins(:replies)
+    actual = Topic.joins(:replies).order(:id)
       .pluck("topics.title", "replies_topics.title")
     assert_equal expected, actual
   end

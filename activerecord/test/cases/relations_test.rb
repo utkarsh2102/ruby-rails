@@ -303,13 +303,13 @@ class RelationTest < ActiveRecord::TestCase
   end
 
   def test_reverse_order_with_function
-    topics = Topic.order(Arel.sql("length(title)")).reverse_order
-    assert_equal topics(:second).title, topics.first.title
+    topics = Topic.order(Arel.sql("lower(title)")).reverse_order
+    assert_equal topics(:third).title, topics.first.title
   end
 
   def test_reverse_arel_assoc_order_with_function
-    topics = Topic.order(Arel.sql("length(title)") => :asc).reverse_order
-    assert_equal topics(:second).title, topics.first.title
+    topics = Topic.order(Arel.sql("lower(title)") => :asc).reverse_order
+    assert_equal topics(:third).title, topics.first.title
   end
 
   def test_reverse_order_with_function_other_predicates
@@ -1024,6 +1024,12 @@ class RelationTest < ActiveRecord::TestCase
 
   def test_size_with_eager_loading_and_custom_order
     posts = Post.includes(:comments).order("comments.id")
+    assert_queries(1) { assert_equal 11, posts.size }
+    assert_queries(1) { assert_equal 11, posts.load.size }
+  end
+
+  def test_size_with_eager_loading_and_custom_select_and_order
+    posts = Post.includes(:comments).order("comments.id").select(:type)
     assert_queries(1) { assert_equal 11, posts.size }
     assert_queries(1) { assert_equal 11, posts.load.size }
   end
@@ -1948,8 +1954,8 @@ class RelationTest < ActiveRecord::TestCase
   test "joins with order by custom attribute" do
     companies = Company.create!([{ name: "test1" }, { name: "test2" }])
     companies.each { |company| company.contracts.create! }
-    assert_equal companies, Company.joins(:contracts).order(:metadata)
-    assert_equal companies.reverse, Company.joins(:contracts).order(metadata: :desc)
+    assert_equal companies, Company.joins(:contracts).order(:metadata, :count)
+    assert_equal companies.reverse, Company.joins(:contracts).order(metadata: :desc, count: :desc)
   end
 
   test "delegations do not leak to other classes" do
@@ -1985,7 +1991,7 @@ class RelationTest < ActiveRecord::TestCase
   end
 
   def test_relation_join_method
-    assert_equal "Thank you for the welcome,Thank you again for the welcome", Post.first.comments.join(",")
+    assert_equal "Thank you for the welcome,Thank you again for the welcome", Post.first.comments.order(:id).join(",")
   end
 
   def test_relation_with_private_kernel_method

@@ -1,3 +1,48 @@
+## Rails 5.2.4.1 (December 18, 2019) ##
+
+*   No changes.
+
+
+## Rails 5.2.4 (November 27, 2019) ##
+
+*   Fix circular `autosave: true` causes invalid records to be saved.
+
+    Prior to the fix, when there was a circular series of `autosave: true`
+    associations, the callback for a `has_many` association was run while
+    another instance of the same callback on the same association hadn't
+    finished running. When control returned to the first instance of the
+    callback, the instance variable had changed, and subsequent associated
+    records weren't saved correctly. Specifically, the ID field for the
+    `belongs_to` corresponding to the `has_many` was `nil`.
+
+    Fixes #28080.
+
+    *Larry Reid*
+
+*   PostgreSQL: Fix GROUP BY with ORDER BY virtual count attribute.
+
+    Fixes #36022.
+
+    *Ryuta Kamizono*
+
+*   Fix sqlite3 collation parsing when using decimal columns.
+
+    *Martin R. Schuster*
+
+*   Make ActiveRecord `ConnectionPool.connections` method thread-safe.
+
+    Fixes #36465.
+
+    *Jeff Doering*
+
+*   Assign all attributes before calling `build` to ensure the child record is visible in
+    `before_add` and `after_add` callbacks for `has_many :through` associations.
+
+    Fixes #33249.
+
+    *Ryan H. Kerr*
+
+
 ## Rails 5.2.3 (March 27, 2019) ##
 
 *   Fix different `count` calculation when using `size` with manual `select` with DISTINCT.

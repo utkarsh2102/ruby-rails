@@ -260,6 +260,11 @@ class FinderTest < ActiveRecord::TestCase
     assert_not Post.select(:body).distinct.offset(4).exists?
   end
 
+  def test_exists_with_distinct_and_offset_and_eagerload_and_order
+    assert Post.eager_load(:comments).distinct.offset(10).merge(Comment.order(post_id: :asc)).exists?
+    assert_not Post.eager_load(:comments).distinct.offset(11).merge(Comment.order(post_id: :asc)).exists?
+  end
+
   # Ensure +exists?+ runs without an error by excluding distinct value.
   # See https://github.com/rails/rails/pull/26981.
   def test_exists_with_order_and_distinct
@@ -350,7 +355,7 @@ class FinderTest < ActiveRecord::TestCase
     #   limit of 3 and offset of 9, then you should find that there
     #   will be only 2 results, regardless of the limit.
     devs = Developer.all
-    last_devs = Developer.limit(3).offset(9).find devs.map(&:id)
+    last_devs = Developer.limit(3).offset(9).find(devs.map(&:id).sort)
     assert_equal 2, last_devs.size
     assert_equal "fixture_10", last_devs[0].name
     assert_equal "Jamis", last_devs[1].name
@@ -431,7 +436,7 @@ class FinderTest < ActiveRecord::TestCase
   end
 
   def test_take
-    assert_equal topics(:first), Topic.take
+    assert_equal topics(:first), Topic.where("title = 'The First Topic'").take
   end
 
   def test_take_failing
