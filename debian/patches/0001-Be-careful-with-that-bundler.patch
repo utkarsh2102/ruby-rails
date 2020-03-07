@@ -2,26 +2,26 @@ From: Antonio Terceiro <terceiro@debian.org>
 Date: Thu, 3 Mar 2016 16:30:17 -0300
 Subject: Be careful with that bundler
 
----
- railties/lib/rails/generators/app_base.rb | 6 ++----
- 1 file changed, 2 insertions(+), 4 deletions(-)
-
 --- a/railties/lib/rails/generators/app_base.rb
 +++ b/railties/lib/rails/generators/app_base.rb
-@@ -411,11 +411,10 @@
-         # We unset temporary bundler variables to load proper bundler and Gemfile.
+@@ -409,7 +409,6 @@
+         # things in the same process is a recipe for a night with paracetamol.
          #
          # Thanks to James Tucker for the Gem tricks involved in this call.
 -        _bundle_command = Gem.bin_path("bundler", "bundle")
  
          require "bundler"
-         Bundler.with_clean_env do
--          full_command = %Q["#{Gem.ruby}" "#{_bundle_command}" #{command}]
-+          full_command = %Q["#{Gem.ruby}" "/usr/bin/bundle" #{command}]
-           if options[:quiet]
-             system(full_command, out: File::NULL)
-           else
-@@ -449,7 +448,7 @@
+         Bundler.with_original_env do
+@@ -418,7 +417,7 @@
+       end
+ 
+       def exec_bundle_command(bundle_command, command)
+-        full_command = %Q["#{Gem.ruby}" "#{bundle_command}" #{command}]
++        full_command = %Q["#{Gem.ruby}" "/usr/bin/bundle" #{command}]
+         if options[:quiet]
+           system(full_command, out: File::NULL)
+         else
+@@ -451,7 +450,7 @@
        end
  
        def run_bundle
