@@ -4,6 +4,18 @@ rails (2:6.0.2.1+dfsg-3) UNRELEASED; urgency=medium
 
  -- Sruthi Chandran <srud@debian.org>  Fri, 07 Feb 2020 12:17:31 +0100
 
+rails (2:5.2.4.1+dfsg-1) unstable; urgency=medium
+
+  [ Lucas Kanashiro ]
+  * New upstream version 5.2.4.1+dfsg
+
+  [ Utkarsh Gupta ]
+  * Refresh patches
+  * Update patch to remove the function call
+  * Tighten dependency on ruby-rack
+
+ -- Utkarsh Gupta <utkarsh@debian.org>  Sat, 07 Mar 2020 17:35:09 +0530
+
 rails (2:5.2.3+dfsg-3) unstable; urgency=medium
 
   * Tighten dependency on bundler
