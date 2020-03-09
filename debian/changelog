@@ -5,6 +5,7 @@ rails (2:5.2.4.1+dfsg-1) unstable; urgency=medium
 
   [ Utkarsh Gupta ]
   * Refresh patches
+  * Update patch to remove the function call
   * Tighten dependency on ruby-rack
 
  -- Utkarsh Gupta <utkarsh@debian.org>  Sat, 07 Mar 2020 17:35:09 +0530
