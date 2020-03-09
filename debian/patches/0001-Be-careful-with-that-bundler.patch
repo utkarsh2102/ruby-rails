@@ -4,7 +4,7 @@ Subject: Be careful with that bundler
 
 --- a/railties/lib/rails/generators/app_base.rb
 +++ b/railties/lib/rails/generators/app_base.rb
-@@ -409,7 +409,6 @@
+@@ -409,20 +409,15 @@
          # things in the same process is a recipe for a night with paracetamol.
          #
          # Thanks to James Tucker for the Gem tricks involved in this call.
@@ -12,16 +12,26 @@ Subject: Be careful with that bundler
  
          require "bundler"
          Bundler.with_original_env do
-@@ -418,7 +417,7 @@
+-          exec_bundle_command(_bundle_command, command)
+-        end
+-      end
+-
+-      def exec_bundle_command(bundle_command, command)
+-        full_command = %Q["#{Gem.ruby}" "#{bundle_command}" #{command}]
+-        if options[:quiet]
+-          system(full_command, out: File::NULL)
+-        else
+-          system(full_command)
++          full_command = %Q["#{Gem.ruby}" "/usr/bin/bundle" #{command}]
++          if options[:quiet]
++            system(full_command, out: File::NULL)
++          else
++            system(full_command)
++          end
+         end
        end
  
-       def exec_bundle_command(bundle_command, command)
--        full_command = %Q["#{Gem.ruby}" "#{bundle_command}" #{command}]
-+        full_command = %Q["#{Gem.ruby}" "/usr/bin/bundle" #{command}]
-         if options[:quiet]
-           system(full_command, out: File::NULL)
-         else
-@@ -451,7 +450,7 @@
+@@ -451,7 +446,7 @@
        end
  
        def run_bundle
