@@ -356,7 +356,7 @@ GEM
       thor
     raabro (1.1.5)
     racc (1.4.14)
-    rack (2.0.7)
+    rack (2.0.8)
     rack-cache (1.7.2)
       rack (>= 0.4)
     rack-protection (2.0.1)
