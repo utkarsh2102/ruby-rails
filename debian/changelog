@@ -1,3 +1,10 @@
+rails (2:5.2.4.1+dfsg-2) unstable; urgency=medium
+
+  * Add patch to fix possible XSS vector in JS escape helper.
+    (Fixes: CVE-2020-5267) (Closes: #954304)
+
+ -- Utkarsh Gupta <utkarsh@debian.org>  Fri, 20 Mar 2020 05:10:56 +0530
+
 rails (2:5.2.4.1+dfsg-1) unstable; urgency=medium
 
   [ Lucas Kanashiro ]
