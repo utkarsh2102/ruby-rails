@@ -1,3 +1,4 @@
 0001-Be-careful-with-that-bundler.patch
 0002-disable-uglify-in-activestorage-rollup-config-js.patch
 fix-gemfile-lock-for-autopkgtest.patch
+CVE-2020-5267.patch
