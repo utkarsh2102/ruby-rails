@@ -1,8 +1,9 @@
-rails (2:6.0.2.1+dfsg-3) UNRELEASED; urgency=medium
+rails (2:6.0.2.1+dfsg-3) experimental; urgency=medium
 
-  * 
+  * Add patch to fix ActionController::TestSession#id to return
+    Rack::Session::SessionId instance.
 
- -- Sruthi Chandran <srud@debian.org>  Fri, 07 Feb 2020 12:17:31 +0100
+ -- Utkarsh Gupta <utkarsh@debian.org>  Thu, 26 Mar 2020 13:34:17 +0530
 
 rails (2:5.2.4.1+dfsg-1) unstable; urgency=medium
 
