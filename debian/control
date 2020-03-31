@@ -88,7 +88,7 @@ Build-Depends: debhelper-compat (= 12),
                ruby-rails-dom-testing (<< 3.0) <!nocheck>,
                ruby-rails-dom-testing (>= 2.0) <!nocheck>,
                ruby-rails-html-sanitizer (<< 2.0) <!nocheck>,
-               ruby-rails-html-sanitizer (>= 1.0.3) <!nocheck>,
+               ruby-rails-html-sanitizer (>= 1.2~) <!nocheck>,
                ruby-sprockets-rails (>= 2.3.2~) <!nocheck>,
                ruby-thor (<< 2.0) <!nocheck>,
                ruby-thor (>= 0.20.3) <!nocheck>,
@@ -182,7 +182,7 @@ Depends: ruby (>= 1:2.5.0) | ruby-interpreter,
          ruby-rails-dom-testing (<< 3.0),
          ruby-rails-dom-testing (>= 2.0),
          ruby-rails-html-sanitizer (<< 2.0),
-         ruby-rails-html-sanitizer (>= 1.0.3),
+         ruby-rails-html-sanitizer (>= 1.2~),
          ${misc:Depends}
 Description: framework for handling view template lookup and rendering (part of Rails)
  Action View is a framework for handling view template lookup and
@@ -204,7 +204,7 @@ Depends: ruby (>= 1:2.5.0) | ruby-interpreter,
 	 ruby-rails-dom-testing (<< 3.0),
          ruby-rails-dom-testing (>= 2.0),
          ruby-rails-html-sanitizer (<< 2.0),
-         ruby-rails-html-sanitizer (>= 1.0.2),
+         ruby-rails-html-sanitizer (>= 1.2~),
          ${misc:Depends}
 Description: web-flow and rendering framework putting the VC in MVC (part of Rails)
  Action Pack is a framework for web apps on Rails. Simple,
