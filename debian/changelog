@@ -1,3 +1,10 @@
+rails (2:6.0.2.1+dfsg-4) experimental; urgency=medium
+
+  * Tighten dependency on ruby-rails-html-sanitizer (for backports)
+  * Switch to node-babel7 for activestorage javascript bundle generation
+
+ -- Pirate Praveen <praveen@debian.org>  Sun, 03 May 2020 18:25:37 +0530
+
 rails (2:6.0.2.1+dfsg-3) experimental; urgency=medium
 
   * Add patch to fix ActionController::TestSession#id to return
