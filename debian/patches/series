@@ -9,5 +9,4 @@ skip-test-internet-access.patch
 skip-test-unpackaged-dependencies.patch
 skip-test-railties-postgresql.patch
 ignore-test-stuck.patch
-fix-ActionController.patch
 adapt-to-babel7.patch
