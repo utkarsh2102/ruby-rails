@@ -3,6 +3,7 @@
 require "cases/helper"
 require "models/post"
 require "models/author"
+require "models/account"
 require "models/categorization"
 require "models/comment"
 require "models/company"
@@ -20,6 +21,8 @@ require "models/matey"
 require "models/dog"
 require "models/car"
 require "models/tyre"
+require "models/subscriber"
+require "support/stubs/strong_parameters"
 
 class FinderTest < ActiveRecord::TestCase
   fixtures :companies, :topics, :entrants, :developers, :developers_projects, :posts, :comments, :accounts, :authors, :author_addresses, :customers, :categories, :categorizations, :cars
@@ -167,6 +170,7 @@ class FinderTest < ActiveRecord::TestCase
     assert_equal true, Topic.exists?(id: [1, 9999])
 
     assert_equal false, Topic.exists?(45)
+    assert_equal false, Topic.exists?(9999999999999999999999999999999)
     assert_equal false, Topic.exists?(Topic.new.id)
 
     assert_raise(NoMethodError) { Topic.exists?([1, 2]) }
@@ -211,15 +215,33 @@ class FinderTest < ActiveRecord::TestCase
     assert_equal false, relation.exists?(false)
   end
 
+  def test_exists_with_string
+    assert_equal false, Subscriber.exists?("foo")
+    assert_equal false, Subscriber.exists?("   ")
+
+    Subscriber.create!(id: "foo")
+    Subscriber.create!(id: "   ")
+
+    assert_equal true, Subscriber.exists?("foo")
+    assert_equal true, Subscriber.exists?("   ")
+  end
+
+  def test_exists_with_strong_parameters
+    assert_equal false, Subscriber.exists?(ProtectedParams.new(nick: "foo").permit!)
+
+    Subscriber.create!(nick: "foo")
+
+    assert_equal true, Subscriber.exists?(ProtectedParams.new(nick: "foo").permit!)
+
+    assert_raises(ActiveModel::ForbiddenAttributesError) do
+      Subscriber.exists?(ProtectedParams.new(nick: "foo"))
+    end
+  end
+
   def test_exists_passing_active_record_object_is_not_permitted
     assert_raises(ArgumentError) do
       Topic.exists?(Topic.new)
     end
-  end
-
-  def test_exists_returns_false_when_parameter_has_invalid_type
-    assert_equal false, Topic.exists?("foo")
-    assert_equal false, Topic.exists?(("9" * 53).to_i) # number that's bigger than int
   end
 
   def test_exists_does_not_select_columns_without_alias
@@ -274,6 +296,17 @@ class FinderTest < ActiveRecord::TestCase
   # Ensure +exists?+ runs without an error by excluding order value.
   def test_exists_with_order
     assert_equal true, Topic.order(Arel.sql("invalid sql here")).exists?
+  end
+
+  def test_exists_with_large_number
+    assert_equal true, Topic.where(id: [1, 9223372036854775808]).exists?
+    assert_equal true, Topic.where(id: 1..9223372036854775808).exists?
+    assert_equal true, Topic.where(id: -9223372036854775809..9223372036854775808).exists?
+    assert_equal false, Topic.where(id: 9223372036854775808..9223372036854775809).exists?
+    assert_equal false, Topic.where(id: -9223372036854775810..-9223372036854775809).exists?
+    assert_equal false, Topic.where(id: 9223372036854775808..1).exists?
+    assert_equal true, Topic.where(id: 1).or(Topic.where(id: 9223372036854775808)).exists?
+    assert_equal true, Topic.where.not(id: 9223372036854775808).exists?
   end
 
   def test_exists_with_joins
@@ -374,13 +407,22 @@ class FinderTest < ActiveRecord::TestCase
   end
 
   def test_find_on_relation_with_large_number
+    assert_raises(ActiveRecord::RecordNotFound) do
+      Topic.where("1=1").find(9999999999999999999999999999999)
+    end
+    assert_equal topics(:first), Topic.where(id: [1, 9999999999999999999999999999999]).find(1)
+  end
+
+  def test_find_by_on_relation_with_large_number
     assert_nil Topic.where("1=1").find_by(id: 9999999999999999999999999999999)
+    assert_equal topics(:first), Topic.where(id: [1, 9999999999999999999999999999999]).find_by(id: 1)
   end
 
   def test_find_by_bang_on_relation_with_large_number
     assert_raises(ActiveRecord::RecordNotFound) do
       Topic.where("1=1").find_by!(id: 9999999999999999999999999999999)
     end
+    assert_equal topics(:first), Topic.where(id: [1, 9999999999999999999999999999999]).find_by!(id: 1)
   end
 
   def test_find_an_empty_array
@@ -425,14 +467,14 @@ class FinderTest < ActiveRecord::TestCase
   end
 
   def test_find_by_association_subquery
-    author = authors(:david)
-    assert_equal author.post, Post.find_by(author: Author.where(id: author))
-    assert_equal author.post, Post.find_by(author_id: Author.where(id: author))
+    firm = companies(:first_firm)
+    assert_equal firm.account, Account.find_by(firm: Firm.where(id: firm))
+    assert_equal firm.account, Account.find_by(firm_id: Firm.where(id: firm))
   end
 
   def test_find_by_and_where_consistency_with_active_record_instance
-    author = authors(:david)
-    assert_equal Post.where(author_id: author).take, Post.find_by(author_id: author)
+    firm = companies(:first_firm)
+    assert_equal Account.where(firm_id: firm).take, Account.find_by(firm_id: firm)
   end
 
   def test_take
@@ -479,6 +521,7 @@ class FinderTest < ActiveRecord::TestCase
     expected = topics(:first)
     expected.touch # PostgreSQL changes the default order if no order clause is used
     assert_equal expected, Topic.first
+    assert_equal expected, Topic.limit(5).first
   end
 
   def test_model_class_responds_to_first_bang
@@ -501,6 +544,7 @@ class FinderTest < ActiveRecord::TestCase
     expected = topics(:second)
     expected.touch # PostgreSQL changes the default order if no order clause is used
     assert_equal expected, Topic.second
+    assert_equal expected, Topic.limit(5).second
   end
 
   def test_model_class_responds_to_second_bang
@@ -523,6 +567,7 @@ class FinderTest < ActiveRecord::TestCase
     expected = topics(:third)
     expected.touch # PostgreSQL changes the default order if no order clause is used
     assert_equal expected, Topic.third
+    assert_equal expected, Topic.limit(5).third
   end
 
   def test_model_class_responds_to_third_bang
@@ -545,6 +590,7 @@ class FinderTest < ActiveRecord::TestCase
     expected = topics(:fourth)
     expected.touch # PostgreSQL changes the default order if no order clause is used
     assert_equal expected, Topic.fourth
+    assert_equal expected, Topic.limit(5).fourth
   end
 
   def test_model_class_responds_to_fourth_bang
@@ -567,6 +613,7 @@ class FinderTest < ActiveRecord::TestCase
     expected = topics(:fifth)
     expected.touch # PostgreSQL changes the default order if no order clause is used
     assert_equal expected, Topic.fifth
+    assert_equal expected, Topic.limit(5).fifth
   end
 
   def test_model_class_responds_to_fifth_bang
@@ -729,6 +776,24 @@ class FinderTest < ActiveRecord::TestCase
     assert_equal comments.limit(2).to_a.first(3), comments.limit(2).first(3)
   end
 
+  def test_first_have_determined_order_by_default
+    expected = [companies(:second_client), companies(:another_client)]
+    clients = Client.where(name: expected.map(&:name))
+
+    assert_equal expected, clients.first(2)
+    assert_equal expected, clients.limit(5).first(2)
+  end
+
+  def test_implicit_order_column_is_configurable
+    old_implicit_order_column = Topic.implicit_order_column
+    Topic.implicit_order_column = "title"
+
+    assert_equal topics(:fifth), Topic.first
+    assert_equal topics(:third), Topic.last
+  ensure
+    Topic.implicit_order_column = old_implicit_order_column
+  end
+
   def test_take_and_first_and_last_with_integer_should_return_an_array
     assert_kind_of Array, Topic.take(5)
     assert_kind_of Array, Topic.first(5)
@@ -749,8 +814,8 @@ class FinderTest < ActiveRecord::TestCase
     assert_raise(ActiveModel::MissingAttributeError) { topic.title? }
     assert_nil topic.read_attribute("title")
     assert_equal "David", topic.author_name
-    assert !topic.attribute_present?("title")
-    assert !topic.attribute_present?(:title)
+    assert_not topic.attribute_present?("title")
+    assert_not topic.attribute_present?(:title)
     assert topic.attribute_present?("author_name")
     assert_respond_to topic, "author_name"
   end
@@ -832,6 +897,15 @@ class FinderTest < ActiveRecord::TestCase
 
   def test_find_on_hash_conditions_with_array_of_ranges
     assert_equal [1, 2, 6, 7, 8], Comment.where(id: [1..2, 6..8]).to_a.map(&:id).sort
+  end
+
+  def test_find_on_hash_conditions_with_open_ended_range
+    assert_equal [1, 2, 3], Comment.where(id: Float::INFINITY..3).to_a.map(&:id).sort
+  end
+
+  def test_find_on_hash_conditions_with_numeric_range_for_string
+    topic = Topic.create!(title: "12 Factor App")
+    assert_equal [topic], Topic.where(title: 10..2).to_a
   end
 
   def test_find_on_multiple_hash_conditions
@@ -1104,7 +1178,7 @@ class FinderTest < ActiveRecord::TestCase
 
   def test_dynamic_finder_on_one_attribute_with_conditions_returns_same_results_after_caching
     # ensure this test can run independently of order
-    class << Account; self; end.send(:remove_method, :find_by_credit_limit) if Account.public_methods.include?(:find_by_credit_limit)
+    Account.singleton_class.remove_method :find_by_credit_limit if Account.public_methods.include?(:find_by_credit_limit)
     a = Account.where("firm_id = ?", 6).find_by_credit_limit(50)
     assert_equal a, Account.where("firm_id = ?", 6).find_by_credit_limit(50) # find_by_credit_limit has been cached
   end
@@ -1253,6 +1327,18 @@ class FinderTest < ActiveRecord::TestCase
     ).to_a
     assert_equal 3, posts.size
     assert_equal [0, 1, 1], posts.map(&:author_id).sort
+  end
+
+  def test_eager_load_for_no_has_many_with_limit_and_joins_for_has_many
+    relation = Post.eager_load(:author).joins(comments: :post)
+    assert_equal 5, relation.to_a.size
+    assert_equal 5, relation.limit(5).to_a.size
+  end
+
+  def test_eager_load_for_no_has_many_with_limit_and_left_joins_for_has_many
+    relation = Post.eager_load(:author).left_joins(comments: :post)
+    assert_equal 11, relation.to_a.size
+    assert_equal 11, relation.limit(11).to_a.size
   end
 
   def test_find_one_message_on_primary_key

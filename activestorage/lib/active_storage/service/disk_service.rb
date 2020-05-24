@@ -22,18 +22,16 @@ module ActiveStorage
       end
     end
 
-    def download(key)
+    def download(key, &block)
       if block_given?
         instrument :streaming_download, key: key do
-          File.open(path_for(key), "rb") do |file|
-            while data = file.read(5.megabytes)
-              yield data
-            end
-          end
+          stream key, &block
         end
       else
         instrument :download, key: key do
           File.binread path_for(key)
+        rescue Errno::ENOENT
+          raise ActiveStorage::FileNotFoundError
         end
       end
     end
@@ -44,16 +42,16 @@ module ActiveStorage
           file.seek range.begin
           file.read range.size
         end
+      rescue Errno::ENOENT
+        raise ActiveStorage::FileNotFoundError
       end
     end
 
     def delete(key)
       instrument :delete, key: key do
-        begin
-          File.delete path_for(key)
-        rescue Errno::ENOENT
-          # Ignore files already deleted
-        end
+        File.delete path_for(key)
+      rescue Errno::ENOENT
+        # Ignore files already deleted
       end
     end
 
@@ -82,8 +80,8 @@ module ActiveStorage
             disposition: content_disposition,
             content_type: content_type
           },
-          { expires_in: expires_in,
-          purpose: :blob_key }
+          expires_in: expires_in,
+          purpose: :blob_key
         )
 
         current_uri = URI.parse(current_host)
@@ -111,8 +109,8 @@ module ActiveStorage
             content_length: content_length,
             checksum: checksum
           },
-          { expires_in: expires_in,
-          purpose: :blob_token }
+          expires_in: expires_in,
+          purpose: :blob_token
         )
 
         generated_url = url_helpers.update_rails_disk_service_url(verified_token_with_expiration, host: current_host)
@@ -132,6 +130,16 @@ module ActiveStorage
     end
 
     private
+      def stream(key)
+        File.open(path_for(key), "rb") do |file|
+          while data = file.read(5.megabytes)
+            yield data
+          end
+        end
+      rescue Errno::ENOENT
+        raise ActiveStorage::FileNotFoundError
+      end
+
       def folder_for(key)
         [ key[0..1], key[2..3] ].join("/")
       end

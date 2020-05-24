@@ -7,9 +7,9 @@ module ActionPack
   end
 
   module VERSION
-    MAJOR = 5
-    MINOR = 2
-    TINY  = 4
+    MAJOR = 6
+    MINOR = 0
+    TINY  = 3
     PRE   = "1"
 
     STRING = [MAJOR, MINOR, TINY, PRE].compact.join(".")

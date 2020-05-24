@@ -67,6 +67,32 @@ end
 class BasicsTest < ActiveRecord::TestCase
   fixtures :topics, :companies, :developers, :projects, :computers, :accounts, :minimalistics, "warehouse-things", :authors, :author_addresses, :categorizations, :categories, :posts
 
+  def test_generated_association_methods_module_name
+    mod = Post.send(:generated_association_methods)
+    assert_equal "Post::GeneratedAssociationMethods", mod.inspect
+  end
+
+  def test_generated_relation_methods_module_name
+    mod = Post.send(:generated_relation_methods)
+    assert_equal "Post::GeneratedRelationMethods", mod.inspect
+  end
+
+  def test_incomplete_schema_loading
+    topic = Topic.first
+    payload = { foo: 42 }
+    topic.update!(content: payload)
+
+    Topic.reset_column_information
+
+    Topic.connection.stub(:lookup_cast_type_from_column, ->(_) { raise "Some Error" }) do
+      assert_raises RuntimeError do
+        Topic.columns_hash
+      end
+    end
+
+    assert_equal payload, Topic.first.content
+  end
+
   def test_column_names_are_escaped
     conn      = ActiveRecord::Base.connection
     classname = conn.class.name[/[^:]*$/]
@@ -282,11 +308,13 @@ class BasicsTest < ActiveRecord::TestCase
   end
 
   def test_initialize_with_invalid_attribute
-    Topic.new("title" => "test",
-      "last_read(1i)" => "2005", "last_read(2i)" => "2", "last_read(3i)" => "31")
-  rescue ActiveRecord::MultiparameterAssignmentErrors => ex
+    ex = assert_raise(ActiveRecord::MultiparameterAssignmentErrors) do
+      Topic.new("title" => "test",
+        "written_on(4i)" => "16", "written_on(5i)" => "24", "written_on(6i)" => "00")
+    end
+
     assert_equal(1, ex.errors.size)
-    assert_equal("last_read", ex.errors[0].attribute)
+    assert_equal("written_on", ex.errors[0].attribute)
   end
 
   def test_create_after_initialize_without_block
@@ -306,7 +334,7 @@ class BasicsTest < ActiveRecord::TestCase
     assert_equal "Dude", cbs[0].name
     assert_equal "Bob", cbs[1].name
     assert cbs[0].frickinawesome
-    assert !cbs[1].frickinawesome
+    assert_not cbs[1].frickinawesome
   end
 
   def test_load
@@ -434,12 +462,6 @@ class BasicsTest < ActiveRecord::TestCase
   ensure
     Post.pluralize_table_names = true
     Post.reset_table_name
-  end
-
-  if current_adapter?(:Mysql2Adapter)
-    def test_update_all_with_order_and_limit
-      assert_equal 1, Topic.limit(1).order("id DESC").update_all(content: "bulk updated!")
-    end
   end
 
   def test_null_fields
@@ -816,11 +838,11 @@ class BasicsTest < ActiveRecord::TestCase
   def test_clone_of_new_object_marks_as_dirty_only_changed_attributes
     developer = Developer.new name: "Bjorn"
     assert developer.name_changed?            # obviously
-    assert !developer.salary_changed?         # attribute has non-nil default value, so treated as not changed
+    assert_not developer.salary_changed?         # attribute has non-nil default value, so treated as not changed
 
     cloned_developer = developer.clone
     assert_predicate cloned_developer, :name_changed?
-    assert !cloned_developer.salary_changed?  # ... and cloned instance should behave same
+    assert_not cloned_developer.salary_changed?  # ... and cloned instance should behave same
   end
 
   def test_dup_of_saved_object_marks_attributes_as_dirty
@@ -835,12 +857,12 @@ class BasicsTest < ActiveRecord::TestCase
 
   def test_dup_of_saved_object_marks_as_dirty_only_changed_attributes
     developer = Developer.create! name: "Bjorn"
-    assert !developer.name_changed?           # both attributes of saved object should be treated as not changed
+    assert_not developer.name_changed?           # both attributes of saved object should be treated as not changed
     assert_not_predicate developer, :salary_changed?
 
     cloned_developer = developer.dup
     assert cloned_developer.name_changed?     # ... but on cloned object should be
-    assert !cloned_developer.salary_changed?  # ... BUT salary has non-nil default which should be treated as not changed on cloned instance
+    assert_not cloned_developer.salary_changed?  # ... BUT salary has non-nil default which should be treated as not changed on cloned instance
   end
 
   def test_bignum
@@ -856,8 +878,7 @@ class BasicsTest < ActiveRecord::TestCase
     assert_equal company, Company.find(company.id)
   end
 
-  # TODO: extend defaults tests to other databases!
-  if current_adapter?(:PostgreSQLAdapter)
+  if current_adapter?(:PostgreSQLAdapter, :Mysql2Adapter, :SQLite3Adapter)
     def test_default
       with_timezone_config default: :local do
         default = Default.new
@@ -869,7 +890,10 @@ class BasicsTest < ActiveRecord::TestCase
         # char types
         assert_equal "Y", default.char1
         assert_equal "a varchar field", default.char2
-        assert_equal "a text field", default.char3
+        # Mysql text type can't have default value
+        unless current_adapter?(:Mysql2Adapter)
+          assert_equal "a text field", default.char3
+        end
       end
     end
   end
@@ -942,7 +966,7 @@ class BasicsTest < ActiveRecord::TestCase
     end
   end
 
-  def test_clear_cash_when_setting_table_name
+  def test_clear_cache_when_setting_table_name
     original_table_name = Joke.table_name
 
     Joke.table_name = "funny_jokes"
@@ -1037,11 +1061,6 @@ class BasicsTest < ActiveRecord::TestCase
     end
   end
 
-  def test_find_last
-    last = Developer.last
-    assert_equal last, Developer.all.merge!(order: "id desc").first
-  end
-
   def test_last
     assert_equal Developer.all.merge!(order: "id desc").first, Developer.last
   end
@@ -1057,23 +1076,23 @@ class BasicsTest < ActiveRecord::TestCase
   end
 
   def test_find_ordered_last
-    last = Developer.all.merge!(order: "developers.salary ASC").last
-    assert_equal last, Developer.all.merge!(order: "developers.salary ASC").to_a.last
+    last = Developer.order("developers.salary ASC").last
+    assert_equal last, Developer.order("developers.salary": "ASC").to_a.last
   end
 
   def test_find_reverse_ordered_last
-    last = Developer.all.merge!(order: "developers.salary DESC").last
-    assert_equal last, Developer.all.merge!(order: "developers.salary DESC").to_a.last
+    last = Developer.order("developers.salary DESC").last
+    assert_equal last, Developer.order("developers.salary": "DESC").to_a.last
   end
 
   def test_find_multiple_ordered_last
-    last = Developer.all.merge!(order: "developers.name, developers.salary DESC").last
-    assert_equal last, Developer.all.merge!(order: "developers.name, developers.salary DESC").to_a.last
+    last = Developer.order("developers.name, developers.salary DESC").last
+    assert_equal last, Developer.order(:"developers.name", "developers.salary": "DESC").to_a.last
   end
 
   def test_find_keeps_multiple_order_values
-    combined = Developer.all.merge!(order: "developers.name, developers.salary").to_a
-    assert_equal combined, Developer.all.merge!(order: ["developers.name", "developers.salary"]).to_a
+    combined = Developer.order("developers.name, developers.salary").to_a
+    assert_equal combined, Developer.order(:"developers.name", :"developers.salary").to_a
   end
 
   def test_find_keeps_multiple_group_values
@@ -1167,6 +1186,16 @@ class BasicsTest < ActiveRecord::TestCase
     assert_equal expected.attributes, actual.attributes
   end
 
+  def test_marshal_inspected_round_trip
+    expected = posts(:welcome)
+    expected.inspect
+
+    marshalled = Marshal.dump(expected)
+    actual = Marshal.load(marshalled)
+
+    assert_equal expected.attributes, actual.attributes
+  end
+
   def test_marshal_new_record_round_trip
     marshalled = Marshal.dump(Post.new)
     post       = Marshal.load(marshalled)
@@ -1212,6 +1241,8 @@ class BasicsTest < ActiveRecord::TestCase
       wr.close
       assert Marshal.load rd.read
       rd.close
+    ensure
+      self.class.send(:remove_const, "Post") if self.class.const_defined?("Post", false)
     end
   end
 
@@ -1466,11 +1497,11 @@ class BasicsTest < ActiveRecord::TestCase
   end
 
   test "column names are quoted when using #from clause and model has ignored columns" do
-    refute_empty Developer.ignored_columns
+    assert_not_empty Developer.ignored_columns
     query = Developer.from("developers").to_sql
     quoted_id = "#{Developer.quoted_table_name}.#{Developer.quoted_primary_key}"
 
-    assert_match(/SELECT #{quoted_id}.* FROM developers/, query)
+    assert_match(/SELECT #{Regexp.escape(quoted_id)}.* FROM developers/, query)
   end
 
   test "using table name qualified column names unless having SELECT list explicitly" do
@@ -1487,5 +1518,120 @@ class BasicsTest < ActiveRecord::TestCase
     assert_equal ["staging", "production"], ActiveRecord::Base.protected_environments
   ensure
     ActiveRecord::Base.protected_environments = previous_protected_environments
+  end
+
+  test "creating a record raises if preventing writes" do
+    error = assert_raises ActiveRecord::ReadOnlyError do
+      ActiveRecord::Base.connection_handler.while_preventing_writes do
+        Bird.create! name: "Bluejay"
+      end
+    end
+
+    assert_match %r/\AWrite query attempted while in readonly mode: INSERT /, error.message
+  end
+
+  test "updating a record raises if preventing writes" do
+    bird = Bird.create! name: "Bluejay"
+
+    error = assert_raises ActiveRecord::ReadOnlyError do
+      ActiveRecord::Base.connection_handler.while_preventing_writes do
+        bird.update! name: "Robin"
+      end
+    end
+
+    assert_match %r/\AWrite query attempted while in readonly mode: UPDATE /, error.message
+  end
+
+  test "deleting a record raises if preventing writes" do
+    bird = Bird.create! name: "Bluejay"
+
+    error = assert_raises ActiveRecord::ReadOnlyError do
+      ActiveRecord::Base.connection_handler.while_preventing_writes do
+        bird.destroy!
+      end
+    end
+
+    assert_match %r/\AWrite query attempted while in readonly mode: DELETE /, error.message
+  end
+
+  test "selecting a record does not raise if preventing writes" do
+    bird = Bird.create! name: "Bluejay"
+
+    ActiveRecord::Base.connection_handler.while_preventing_writes do
+      assert_equal bird, Bird.where(name: "Bluejay").first
+    end
+  end
+
+  test "an explain query does not raise if preventing writes" do
+    Bird.create!(name: "Bluejay")
+
+    ActiveRecord::Base.connection_handler.while_preventing_writes do
+      assert_queries(2) { Bird.where(name: "Bluejay").explain }
+    end
+  end
+
+  test "an empty transaction does not raise if preventing writes" do
+    ActiveRecord::Base.connection_handler.while_preventing_writes do
+      assert_queries(2, ignore_none: true) do
+        Bird.transaction do
+          ActiveRecord::Base.connection.materialize_transactions
+        end
+      end
+    end
+  end
+
+  test "preventing writes applies to all connections on a handler" do
+    conn1_error = assert_raises ActiveRecord::ReadOnlyError do
+      ActiveRecord::Base.connection_handler.while_preventing_writes do
+        assert_equal ActiveRecord::Base.connection, Bird.connection
+        assert_not_equal ARUnit2Model.connection, Bird.connection
+        Bird.create!(name: "Bluejay")
+      end
+    end
+
+    assert_match %r/\AWrite query attempted while in readonly mode: INSERT /, conn1_error.message
+
+    conn2_error = assert_raises ActiveRecord::ReadOnlyError do
+      ActiveRecord::Base.connection_handler.while_preventing_writes do
+        assert_not_equal ActiveRecord::Base.connection, Professor.connection
+        assert_equal ARUnit2Model.connection, Professor.connection
+        Professor.create!(name: "Professor Bluejay")
+      end
+    end
+
+    assert_match %r/\AWrite query attempted while in readonly mode: INSERT /, conn2_error.message
+  end
+
+  unless in_memory_db?
+    test "preventing writes with multiple handlers" do
+      ActiveRecord::Base.connects_to(database: { writing: :arunit, reading: :arunit })
+
+      conn1_error = assert_raises ActiveRecord::ReadOnlyError do
+        ActiveRecord::Base.connected_to(role: :writing) do
+          assert_equal :writing, ActiveRecord::Base.current_role
+
+          ActiveRecord::Base.connection_handler.while_preventing_writes do
+            Bird.create!(name: "Bluejay")
+          end
+        end
+      end
+
+      assert_match %r/\AWrite query attempted while in readonly mode: INSERT /, conn1_error.message
+
+      conn2_error = assert_raises ActiveRecord::ReadOnlyError do
+        ActiveRecord::Base.connected_to(role: :reading) do
+          assert_equal :reading, ActiveRecord::Base.current_role
+
+          ActiveRecord::Base.connection_handler.while_preventing_writes do
+            Bird.create!(name: "Bluejay")
+          end
+        end
+      end
+
+      assert_match %r/\AWrite query attempted while in readonly mode: INSERT /, conn2_error.message
+    ensure
+      ActiveRecord::Base.connection_handlers = { writing: ActiveRecord::Base.default_connection_handler }
+      ActiveRecord::Base.establish_connection(:arunit)
+    end
   end
 end

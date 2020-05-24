@@ -26,7 +26,7 @@ module ActionController
     end
   end
 
-  # ActionController::TestCase will be deprecated and moved to a gem in Rails 5.1.
+  # ActionController::TestCase will be deprecated and moved to a gem in the future.
   # Please use ActionDispatch::IntegrationTest going forward.
   class TestRequest < ActionDispatch::TestRequest #:nodoc:
     DEFAULT_ENV = ActionDispatch::TestRequest::DEFAULT_ENV.dup
@@ -158,7 +158,6 @@ module ActionController
     end.new
 
     private
-
       def params_parsers
         super.merge @custom_param_parsers
       end
@@ -177,12 +176,12 @@ module ActionController
 
   # Methods #destroy and #load! are overridden to avoid calling methods on the
   # @store object, which does not exist for the TestSession class.
-  class TestSession < Rack::Session::Abstract::SessionHash #:nodoc:
+  class TestSession < Rack::Session::Abstract::PersistedSecure::SecureSessionHash #:nodoc:
     DEFAULT_OPTIONS = Rack::Session::Abstract::Persisted::DEFAULT_OPTIONS
 
     def initialize(session = {})
       super(nil, nil)
-      @id = SecureRandom.hex(16)
+      @id = Rack::Session::SessionId.new(SecureRandom.hex(16))
       @data = stringify_keys(session)
       @loaded = true
     end
@@ -203,12 +202,16 @@ module ActionController
       clear
     end
 
+    def dig(*keys)
+      keys = keys.map.with_index { |key, i| i.zero? ? key.to_s : key }
+      @data.dig(*keys)
+    end
+
     def fetch(key, *args, &block)
       @data.fetch(key.to_s, *args, &block)
     end
 
     private
-
       def load!
         @id
       end
@@ -275,9 +278,6 @@ module ActionController
   #      of the last HTTP response. In the above example, <tt>@response</tt> becomes valid
   #      after calling +post+. If the various assert methods are not sufficient, then you
   #      may use this object to inspect the HTTP response in detail.
-  #
-  # (Earlier versions of \Rails required each functional test to subclass
-  # Test::Unit::TestCase and define @controller, @request, @response in +setup+.)
   #
   # == Controller is automatically inferred
   #
@@ -460,7 +460,7 @@ module ActionController
       def process(action, method: "GET", params: nil, session: nil, body: nil, flash: {}, format: nil, xhr: false, as: nil)
         check_required_ivars
 
-        action = action.to_s.dup
+        action = +action.to_s
         http_method = method.to_s.upcase
 
         @html_document = nil
@@ -598,7 +598,6 @@ module ActionController
       end
 
       private
-
         def scrub_env!(env)
           env.delete_if { |k, v| k =~ /^(action_dispatch|rack)\.request/ }
           env.delete_if { |k, v| k =~ /^action_dispatch\.rescue/ }

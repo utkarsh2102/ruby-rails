@@ -1,10 +1,13 @@
 # frozen_string_literal: true
 
+require "active_storage/downloader"
+
 # A blob is a record that contains the metadata about a file and a key for where that file resides on the service.
 # Blobs can be created in two ways:
 #
-# 1. Subsequent to the file being uploaded server-side to the service via <tt>create_after_upload!</tt>.
-# 2. Ahead of the file being directly uploaded client-side to the service via <tt>create_before_direct_upload!</tt>.
+# 1. Ahead of the file being uploaded server-side to the service, via <tt>create_and_upload!</tt>. A rewindable
+#    <tt>io</tt> with the file contents must be available at the server for this operation.
+# 2. Ahead of the file being directly uploaded client-side to the service, via <tt>create_before_direct_upload!</tt>.
 #
 # The first option doesn't require any client-side JavaScript integration, and can be used by any other back-end
 # service that deals with files. The second option is faster, since you're not using your own server as a staging
@@ -14,9 +17,11 @@
 # update a blob's metadata on a subsequent pass, but you should not update the key or change the uploaded file.
 # If you need to create a derivative or otherwise change the blob, simply create a new blob and purge the old one.
 class ActiveStorage::Blob < ActiveRecord::Base
-  require_dependency "active_storage/blob/analyzable"
-  require_dependency "active_storage/blob/identifiable"
-  require_dependency "active_storage/blob/representable"
+  unless Rails.autoloaders.zeitwerk_enabled?
+    require_dependency "active_storage/blob/analyzable"
+    require_dependency "active_storage/blob/identifiable"
+    require_dependency "active_storage/blob/representable"
+  end
 
   include Analyzable
   include Identifiable
@@ -38,7 +43,7 @@ class ActiveStorage::Blob < ActiveRecord::Base
   end
 
   class << self
-    # You can used the signed ID of a blob to refer to it on the client side without fear of tampering.
+    # You can use the signed ID of a blob to refer to it on the client side without fear of tampering.
     # This is particularly helpful for direct uploads where the client-side needs to refer to the blob
     # that was created ahead of the upload itself on form submission.
     #
@@ -48,22 +53,35 @@ class ActiveStorage::Blob < ActiveRecord::Base
     end
 
     # Returns a new, unsaved blob instance after the +io+ has been uploaded to the service.
-    def build_after_upload(io:, filename:, content_type: nil, metadata: nil)
-      new.tap do |blob|
-        blob.filename     = filename
-        blob.content_type = content_type
-        blob.metadata     = metadata
-
-        blob.upload io
+    # When providing a content type, pass <tt>identify: false</tt> to bypass automatic content type inference.
+    def build_after_upload(io:, filename:, content_type: nil, metadata: nil, identify: true)
+      new(filename: filename, content_type: content_type, metadata: metadata).tap do |blob|
+        blob.upload(io, identify: identify)
       end
     end
 
-    # Returns a saved blob instance after the +io+ has been uploaded to the service. Note, the blob is first built,
-    # then the +io+ is uploaded, then the blob is saved. This is done this way to avoid uploading (which may take
-    # time), while having an open database transaction.
-    def create_after_upload!(io:, filename:, content_type: nil, metadata: nil)
-      build_after_upload(io: io, filename: filename, content_type: content_type, metadata: metadata).tap(&:save!)
+    def build_after_unfurling(io:, filename:, content_type: nil, metadata: nil, identify: true) #:nodoc:
+      new(filename: filename, content_type: content_type, metadata: metadata).tap do |blob|
+        blob.unfurl(io, identify: identify)
+      end
     end
+
+    def create_after_unfurling!(io:, filename:, content_type: nil, metadata: nil, identify: true, record: nil) #:nodoc:
+      build_after_unfurling(io: io, filename: filename, content_type: content_type, metadata: metadata, identify: identify).tap(&:save!)
+    end
+
+    # Creates a new blob instance and then uploads the contents of the given <tt>io</tt> to the
+    # service. The blob instance is saved before the upload begins to avoid clobbering another due
+    # to key collisions.
+    #
+    # When providing a content type, pass <tt>identify: false</tt> to bypass automatic content type inference.
+    def create_and_upload!(io:, filename:, content_type: nil, metadata: nil, identify: true, record: nil)
+      create_after_unfurling!(io: io, filename: filename, content_type: content_type, metadata: metadata, identify: identify).tap do |blob|
+        blob.upload_without_unfurling(io)
+      end
+    end
+
+    alias_method :create_after_upload!, :create_and_upload!
 
     # Returns a saved blob _without_ uploading a file to the service. This blob will point to a key where there is
     # no file yet. It's intended to be used together with a client-side upload, which will first create the blob
@@ -73,6 +91,15 @@ class ActiveStorage::Blob < ActiveRecord::Base
     def create_before_direct_upload!(filename:, byte_size:, checksum:, content_type: nil, metadata: nil)
       create! filename: filename, byte_size: byte_size, checksum: checksum, content_type: content_type, metadata: metadata
     end
+
+    # To prevent problems with case-insensitive filesystems, especially in combination
+    # with databases which treat indices as case-sensitive, all blob keys generated are going
+    # to only contain the base-36 character alphabet and will therefore be lowercase. To maintain
+    # the same or higher amount of entropy as in the base-58 encoding used by `has_secure_token`
+    # the number of bytes used is increased to 28 from the standard 24
+    def generate_unique_secure_token
+      SecureRandom.base36(28)
+    end
   end
 
   # Returns a signed ID for this blob that's suitable for reference on the client-side without fear of tampering.
@@ -81,9 +108,10 @@ class ActiveStorage::Blob < ActiveRecord::Base
     ActiveStorage.verifier.generate(id, purpose: :blob_id)
   end
 
-  # Returns the key pointing to the file on the service that's associated with this blob. The key is in the
-  # standard secure-token format from Rails. So it'll look like: XTAPjJCJiuDrLk3TmwyJGpUo. This key is not intended
-  # to be revealed directly to the user. Always refer to blobs using the signed_id or a verified form of the key.
+  # Returns the key pointing to the file on the service that's associated with this blob. The key is the
+  # secure-token format from Rails in lower case. So it'll look like: xtapjjcjiudrlk3tmwyjgpuobabd.
+  # This key is not intended to be revealed directly to the user.
+  # Always refer to blobs using the signed_id or a verified form of the key.
   def key
     # We can't wait until the record is first saved to have a key for it
     self[:key] ||= self.class.generate_unique_secure_token
@@ -121,7 +149,7 @@ class ActiveStorage::Blob < ActiveRecord::Base
   # with users. Instead, the +service_url+ should only be exposed as a redirect from a stable, possibly authenticated URL.
   # Hiding the +service_url+ behind a redirect also gives you the power to change services without updating all URLs. And
   # it allows permanent URLs that redirect to the +service_url+ to be cached in the view.
-  def service_url(expires_in: service.url_expires_in, disposition: :inline, filename: nil, **options)
+  def service_url(expires_in: ActiveStorage.service_urls_expire_in, disposition: :inline, filename: nil, **options)
     filename = ActiveStorage::Filename.wrap(filename || self.filename)
 
     service.url key, expires_in: expires_in, filename: filename, content_type: content_type_for_service_url,
@@ -130,7 +158,7 @@ class ActiveStorage::Blob < ActiveRecord::Base
 
   # Returns a URL that can be used to directly upload a file for this blob on the service. This URL is intended to be
   # short-lived for security and only generated on-demand by the client-side JavaScript responsible for doing the uploading.
-  def service_url_for_direct_upload(expires_in: service.url_expires_in)
+  def service_url_for_direct_upload(expires_in: ActiveStorage.service_urls_expire_in)
     service.url_for_direct_upload key, expires_in: expires_in, content_type: content_type, content_length: byte_size, checksum: checksum
   end
 
@@ -146,16 +174,25 @@ class ActiveStorage::Blob < ActiveRecord::Base
   #
   # Prior to uploading, we compute the checksum, which is sent to the service for transit integrity validation. If the
   # checksum does not match what the service receives, an exception will be raised. We also measure the size of the +io+
-  # and store that in +byte_size+ on the blob record.
+  # and store that in +byte_size+ on the blob record. The content type is automatically extracted from the +io+ unless
+  # you specify a +content_type+ and pass +identify+ as false.
   #
-  # Normally, you do not have to call this method directly at all. Use the factory class methods of +build_after_upload+
-  # and +create_after_upload!+.
-  def upload(io)
+  # Normally, you do not have to call this method directly at all. Use the +create_and_upload!+ class method instead.
+  # If you do use this method directly, make sure you are using it on a persisted Blob as otherwise another blob's
+  # data might get overwritten on the service.
+  def upload(io, identify: true)
+    unfurl io, identify: identify
+    upload_without_unfurling io
+  end
+
+  def unfurl(io, identify: true) #:nodoc:
     self.checksum     = compute_checksum_in_chunks(io)
-    self.content_type = extract_content_type(io)
+    self.content_type = extract_content_type(io) if content_type.nil? || identify
     self.byte_size    = io.size
     self.identified   = true
+  end
 
+  def upload_without_unfurling(io) #:nodoc:
     service.upload key, io, checksum: checksum, **service_metadata
   end
 
@@ -165,9 +202,27 @@ class ActiveStorage::Blob < ActiveRecord::Base
     service.download key, &block
   end
 
+  # Downloads the blob to a tempfile on disk. Yields the tempfile.
+  #
+  # The tempfile's name is prefixed with +ActiveStorage-+ and the blob's ID. Its extension matches that of the blob.
+  #
+  # By default, the tempfile is created in <tt>Dir.tmpdir</tt>. Pass +tmpdir:+ to create it in a different directory:
+  #
+  #   blob.open(tmpdir: "/path/to/tmp") do |file|
+  #     # ...
+  #   end
+  #
+  # The tempfile is automatically closed and unlinked after the given block is executed.
+  #
+  # Raises ActiveStorage::IntegrityError if the downloaded data does not match the blob's checksum.
+  def open(tmpdir: nil, &block)
+    service.open key, checksum: checksum,
+      name: [ "ActiveStorage-#{id}-", filename.extension_with_delimiter ], tmpdir: tmpdir, &block
+  end
 
-  # Deletes the file on the service that's associated with this blob. This should only be done if the blob is going to be
-  # deleted as well or you will essentially have a dead reference. It's recommended to use the +#purge+ and +#purge_later+
+
+  # Deletes the files on the service associated with the blob. This should only be done if the blob is going to be
+  # deleted as well or you will essentially have a dead reference. It's recommended to use #purge and #purge_later
   # methods in most circumstances.
   def delete
     service.delete(key)
@@ -176,15 +231,15 @@ class ActiveStorage::Blob < ActiveRecord::Base
 
   # Deletes the file on the service and then destroys the blob record. This is the recommended way to dispose of unwanted
   # blobs. Note, though, that deleting the file off the service will initiate a HTTP connection to the service, which may
-  # be slow or prevented, so you should not use this method inside a transaction or in callbacks. Use +#purge_later+ instead.
+  # be slow or prevented, so you should not use this method inside a transaction or in callbacks. Use #purge_later instead.
   def purge
     destroy
     delete
   rescue ActiveRecord::InvalidForeignKey
   end
 
-  # Enqueues an ActiveStorage::PurgeJob job that'll call +purge+. This is the recommended way to purge blobs when the call
-  # needs to be made from a transaction, a callback, or any other real-time scenario.
+  # Enqueues an ActiveStorage::PurgeJob to call #purge. This is the recommended way to purge blobs from a transaction,
+  # an Active Record callback, or in any other real-time scenario.
   def purge_later
     ActiveStorage::PurgeJob.perform_later(self)
   end
@@ -231,6 +286,6 @@ class ActiveStorage::Blob < ActiveRecord::Base
         { content_type: content_type }
       end
     end
-
-    ActiveSupport.run_load_hooks(:active_storage_blob, self)
 end
+
+ActiveSupport.run_load_hooks :active_storage_blob, ActiveStorage::Blob

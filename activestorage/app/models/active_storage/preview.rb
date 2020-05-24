@@ -22,8 +22,8 @@
 # Outside of a Rails application, modify +ActiveStorage.previewers+ instead.
 #
 # The built-in previewers rely on third-party system libraries. Specifically, the built-in video previewer requires
-# {ffmpeg}[https://www.ffmpeg.org]. Two PDF previewers are provided: one requires {Poppler}[https://poppler.freedesktop.org],
-# and the other requires {mupdf}[https://mupdf.com] (version 1.8 or newer). To preview PDFs, install either Poppler or mupdf.
+# {FFmpeg}[https://www.ffmpeg.org]. Two PDF previewers are provided: one requires {Poppler}[https://poppler.freedesktop.org],
+# and the other requires {muPDF}[https://mupdf.com] (version 1.8 or newer). To preview PDFs, install either Poppler or muPDF.
 #
 # These libraries are not provided by Rails. You must install them yourself to use the built-in previewers. Before you
 # install and use third-party software, make sure you understand the licensing implications of doing so.
@@ -38,7 +38,7 @@ class ActiveStorage::Preview
 
   # Processes the preview if it has not been processed yet. Returns the receiving Preview instance for convenience:
   #
-  #   blob.preview(resize: "100x100").processed.service_url
+  #   blob.preview(resize_to_limit: [100, 100]).processed.service_url
   #
   # Processing a preview generates an image from its blob and attaches the preview image to the blob. Because the preview
   # image is stored with the blob, it is only generated once.
@@ -59,7 +59,7 @@ class ActiveStorage::Preview
   # a stable URL that redirects to the short-lived URL returned by this method.
   def service_url(**options)
     if processed?
-      variant.service_url(options)
+      variant.service_url(**options)
     else
       raise UnprocessedError
     end
@@ -71,7 +71,11 @@ class ActiveStorage::Preview
     end
 
     def process
-      previewer.preview { |attachable| image.attach(attachable) }
+      previewer.preview do |attachable|
+        ActiveRecord::Base.connected_to(role: ActiveRecord::Base.writing_role) do
+          image.attach(attachable)
+        end
+      end
     end
 
     def variant

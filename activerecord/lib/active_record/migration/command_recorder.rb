@@ -14,6 +14,8 @@ module ActiveRecord
     # * change_column
     # * change_column_default (must supply a :from and :to option)
     # * change_column_null
+    # * change_column_comment (must supply a :from and :to option)
+    # * change_table_comment (must supply a :from and :to option)
     # * create_join_table
     # * create_table
     # * disable_extension
@@ -30,12 +32,14 @@ module ActiveRecord
     # * rename_index
     # * rename_table
     class CommandRecorder
-      ReversibleAndIrreversibleMethods = [:create_table, :create_join_table, :rename_table, :add_column, :remove_column,
+      ReversibleAndIrreversibleMethods = [
+        :create_table, :create_join_table, :rename_table, :add_column, :remove_column,
         :rename_index, :rename_column, :add_index, :remove_index, :add_timestamps, :remove_timestamps,
         :change_column_default, :add_reference, :remove_reference, :transaction,
         :drop_join_table, :drop_table, :execute_block, :enable_extension, :disable_extension,
         :change_column, :execute, :remove_columns, :change_column_null,
-        :add_foreign_key, :remove_foreign_key
+        :add_foreign_key, :remove_foreign_key,
+        :change_column_comment, :change_table_comment
       ]
       include JoinTable
 
@@ -85,7 +89,7 @@ module ActiveRecord
       # invert the +command+.
       def inverse_of(command, args, &block)
         method = :"invert_#{command}"
-        raise IrreversibleMigration, <<-MSG.strip_heredoc unless respond_to?(method, true)
+        raise IrreversibleMigration, <<~MSG unless respond_to?(method, true)
           This migration uses #{command}, which is not automatically reversible.
           To make the migration reversible you can either:
           1. Define #up and #down methods in place of the #change method.
@@ -100,25 +104,32 @@ module ActiveRecord
             record(:"#{method}", args, &block)  #   record(:create_table, args, &block)
           end                                   # end
         EOV
+        ruby2_keywords(method) if respond_to?(:ruby2_keywords, true)
       end
       alias :add_belongs_to :add_reference
       alias :remove_belongs_to :remove_reference
 
-      def change_table(table_name, options = {}) # :nodoc:
+      def change_table(table_name, **options) # :nodoc:
         yield delegate.update_table_definition(table_name, self)
       end
 
-      private
+      def replay(migration)
+        commands.each do |cmd, args, block|
+          migration.send(cmd, *args, &block)
+        end
+      end
 
+      private
         module StraightReversions # :nodoc:
           private
-            { transaction:       :transaction,
+            {
               execute_block:     :execute_block,
               create_table:      :drop_table,
               create_join_table: :drop_join_table,
               add_column:        :remove_column,
               add_timestamps:    :remove_timestamps,
               add_reference:     :remove_reference,
+              add_foreign_key:   :remove_foreign_key,
               enable_extension:  :disable_extension
             }.each do |cmd, inv|
               [[inv, cmd], [cmd, inv]].uniq.each do |method, inverse|
@@ -132,6 +143,17 @@ module ActiveRecord
         end
 
         include StraightReversions
+
+        def invert_transaction(args)
+          sub_recorder = CommandRecorder.new(delegate)
+          sub_recorder.revert { yield }
+
+          invertions_proc = proc {
+            sub_recorder.replay(self)
+          }
+
+          [:transaction, args, invertions_proc]
+        end
 
         def invert_drop_table(args, &block)
           if args.size == 1 && block == nil
@@ -198,29 +220,38 @@ module ActiveRecord
           [:change_column_null, args]
         end
 
-        def invert_add_foreign_key(args)
-          from_table, to_table, add_options = args
-          add_options ||= {}
-
-          if add_options[:name]
-            options = { name: add_options[:name] }
-          elsif add_options[:column]
-            options = { column: add_options[:column] }
-          else
-            options = to_table
-          end
-
-          [:remove_foreign_key, [from_table, options]]
-        end
-
         def invert_remove_foreign_key(args)
-          from_table, to_table, remove_options = args
-          raise ActiveRecord::IrreversibleMigration, "remove_foreign_key is only reversible if given a second table" if to_table.nil? || to_table.is_a?(Hash)
+          options = args.extract_options!
+          from_table, to_table = args
+
+          to_table ||= options.delete(:to_table)
+
+          raise ActiveRecord::IrreversibleMigration, "remove_foreign_key is only reversible if given a second table" if to_table.nil?
 
           reversed_args = [from_table, to_table]
-          reversed_args << remove_options if remove_options
+          reversed_args << options unless options.empty?
 
           [:add_foreign_key, reversed_args]
+        end
+
+        def invert_change_column_comment(args)
+          table, column, options = *args
+
+          unless options && options.is_a?(Hash) && options.has_key?(:from) && options.has_key?(:to)
+            raise ActiveRecord::IrreversibleMigration, "change_column_comment is only reversible if given a :from and :to option."
+          end
+
+          [:change_column_comment, [table, column, from: options[:to], to: options[:from]]]
+        end
+
+        def invert_change_table_comment(args)
+          table, options = *args
+
+          unless options && options.is_a?(Hash) && options.has_key?(:from) && options.has_key?(:to)
+            raise ActiveRecord::IrreversibleMigration, "change_table_comment is only reversible if given a :from and :to option."
+          end
+
+          [:change_table_comment, [table, from: options[:to], to: options[:from]]]
         end
 
         def respond_to_missing?(method, _)
@@ -235,6 +266,7 @@ module ActiveRecord
             super
           end
         end
+        ruby2_keywords(:method_missing) if respond_to?(:ruby2_keywords, true)
     end
   end
 end

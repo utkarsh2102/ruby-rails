@@ -9,7 +9,8 @@ module BackburnerJobsManager
     end
     unless can_run?
       puts "Cannot run integration tests for backburner. To be able to run integration tests for backburner you need to install and start beanstalkd.\n"
-      exit
+      status = ENV["CI"] ? false : true
+      exit status
     end
   end
 

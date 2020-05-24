@@ -44,16 +44,17 @@ module ActionDispatch
 
       # Performs a HEAD request with the given parameters. See ActionDispatch::Integration::Session#process
       # for more details.
-      def head(path, *args)
-        process(:head, path, *args)
+      def head(path, **args)
+        process(:head, path, **args)
       end
 
       # Follow a single redirect response. If the last response was not a
       # redirect, an exception will be raised. Otherwise, the redirect is
-      # performed on the location header.
-      def follow_redirect!
+      # performed on the location header. Any arguments are passed to the
+      # underlying call to `get`.
+      def follow_redirect!(**args)
         raise "not a redirect! #{status} #{status_message}" unless redirect?
-        get(response.location)
+        get(response.location, **args)
         status
       end
     end
@@ -189,6 +190,12 @@ module ActionDispatch
       #   merged into the Rack env hash.
       # - +env+: Additional env to pass, as a Hash. The headers will be
       #   merged into the Rack env hash.
+      # - +xhr+: Set to `true` if you want to make and Ajax request.
+      #   Adds request headers characteristic of XMLHttpRequest e.g. HTTP_X_REQUESTED_WITH.
+      #   The headers will be merged into the Rack env hash.
+      # - +as+: Used for encoding the request with different content type.
+      #   Supports `:json` by default and will set the appropriate request headers.
+      #   The headers will be merged into the Rack env hash.
       #
       # This method is rarely used directly. Use +#get+, +#post+, or other standard
       # HTTP methods in integration tests. +#process+ is only required when using a
@@ -210,7 +217,7 @@ module ActionDispatch
           method = :post
         end
 
-        if path =~ %r{://}
+        if %r{://}.match?(path)
           path = build_expanded_path(path) do |location|
             https! URI::HTTPS === location if location.scheme
 
@@ -303,6 +310,7 @@ module ActionDispatch
       APP_SESSIONS = {}
 
       attr_reader :app
+      attr_accessor :root_session # :nodoc:
 
       def initialize(*args, &blk)
         super(*args, &blk)
@@ -328,7 +336,7 @@ module ActionDispatch
         klass = APP_SESSIONS[app] ||= Class.new(Integration::Session) {
           # If the app is a Rails app, make url_helpers available on the session.
           # This makes app.url_for and app.foo_path available in the console.
-          if app.respond_to?(:routes)
+          if app.respond_to?(:routes) && app.routes.is_a?(ActionDispatch::Routing::RouteSet)
             include app.routes.url_helpers
             include app.routes.mounted_helpers
           end
@@ -341,15 +349,19 @@ module ActionDispatch
       end
 
       %w(get post patch put head delete cookies assigns follow_redirect!).each do |method|
-        define_method(method) do |*args|
+        define_method(method) do |*args, **options|
           # reset the html_document variable, except for cookies/assigns calls
           unless method == "cookies" || method == "assigns"
             @html_document = nil
           end
 
-          integration_session.__send__(method, *args).tap do
-            copy_session_variables!
+          result = if options.any?
+            integration_session.__send__(method, *args, **options)
+          else
+            integration_session.__send__(method, *args)
           end
+          copy_session_variables!
+          result
         end
       end
 
@@ -366,8 +378,17 @@ module ActionDispatch
       def open_session
         dup.tap do |session|
           session.reset!
+          session.root_session = self.root_session || self
           yield session if block_given?
         end
+      end
+
+      def assertions # :nodoc:
+        root_session ? root_session.assertions : super
+      end
+
+      def assertions=(assertions) # :nodoc:
+        root_session ? root_session.assertions = assertions : super
       end
 
       # Copy the instance variables from the current session instance into the
@@ -401,6 +422,7 @@ module ActionDispatch
           super
         end
       end
+      ruby2_keywords(:method_missing) if respond_to?(:ruby2_keywords, true)
     end
   end
 
@@ -633,8 +655,8 @@ module ActionDispatch
           @@app = app
         end
 
-        def register_encoder(*args)
-          RequestEncoder.register_encoder(*args)
+        def register_encoder(*args, **options)
+          RequestEncoder.register_encoder(*args, **options)
         end
       end
 

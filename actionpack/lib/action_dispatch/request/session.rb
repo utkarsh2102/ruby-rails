@@ -99,6 +99,14 @@ module ActionDispatch
         end
       end
 
+      # Returns the nested value specified by the sequence of keys, returning
+      # +nil+ if any intermediate step is +nil+.
+      def dig(*keys)
+        load_for_read!
+        keys = keys.map.with_index { |key, i| i.zero? ? key.to_s : key }
+        @delegate.dig(*keys)
+      end
+
       # Returns true if the session has the given key or false.
       def has_key?(key)
         load_for_read!
@@ -214,7 +222,6 @@ module ActionDispatch
       end
 
       private
-
         def load_for_read!
           load! if !loaded? && exists?
         end

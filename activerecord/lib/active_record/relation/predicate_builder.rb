@@ -27,7 +27,7 @@ module ActiveRecord
           key
         else
           key = key.to_s
-          key.split(".".freeze).first if key.include?(".".freeze)
+          key.split(".").first if key.include?(".")
         end
       end.compact
     end
@@ -62,15 +62,12 @@ module ActiveRecord
     end
 
     protected
-
-      attr_reader :table
-
       def expand_from_hash(attributes)
         return ["1=0"] if attributes.empty?
 
         attributes.flat_map do |key, value|
           if value.is_a?(Hash) && !table.has_column?(key)
-            associated_predicate_builder(key).expand_from_hash(value)
+            table.associated_predicate_builder(key).expand_from_hash(value)
           elsif table.associated_with?(key)
             # Find the foreign key when using queries such as:
             # Post.where(author: author)
@@ -115,18 +112,15 @@ module ActiveRecord
       end
 
     private
-
-      def associated_predicate_builder(association_name)
-        self.class.new(table.associated_table(association_name))
-      end
+      attr_reader :table
 
       def convert_dot_notation_to_hash(attributes)
         dot_notation = attributes.select do |k, v|
-          k.include?(".".freeze) && !v.is_a?(Hash)
+          k.include?(".") && !v.is_a?(Hash)
         end
 
         dot_notation.each_key do |key|
-          table_name, column_name = key.split(".".freeze)
+          table_name, column_name = key.split(".")
           value = attributes.delete(key)
           attributes[table_name] ||= {}
 

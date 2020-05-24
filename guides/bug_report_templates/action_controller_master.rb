@@ -1,24 +1,20 @@
 # frozen_string_literal: true
 
-begin
-  require "bundler/inline"
-rescue LoadError => e
-  $stderr.puts "Bundler version 1.10 or later is required. Please update your Bundler"
-  raise e
-end
+require "bundler/inline"
 
 gemfile(true) do
   source "https://rubygems.org"
 
   git_source(:github) { |repo| "https://github.com/#{repo}.git" }
 
-  gem "rails", github: "rails/rails", branch: "5-2-stable"
+  gem "rails", github: "rails/rails", branch: "6-0-stable"
 end
 
 require "action_controller/railtie"
 
 class TestApp < Rails::Application
   config.root = __dir__
+  config.hosts << "example.org"
   secrets.secret_key_base = "secret_key_base"
 
   config.logger = Logger.new($stdout)
