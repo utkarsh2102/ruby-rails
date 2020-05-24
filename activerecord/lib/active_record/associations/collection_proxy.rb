@@ -27,7 +27,7 @@ module ActiveRecord
     # is computed directly through SQL and does not trigger by itself the
     # instantiation of the actual post records.
     class CollectionProxy < Relation
-      def initialize(klass, association) #:nodoc:
+      def initialize(klass, association, **) #:nodoc:
         @association = association
         super klass
 
@@ -1101,7 +1101,6 @@ module ActiveRecord
       delegate(*delegate_methods, to: :scope)
 
       private
-
         def find_nth_with_limit(index, limit)
           load_target if find_from_target?
           super

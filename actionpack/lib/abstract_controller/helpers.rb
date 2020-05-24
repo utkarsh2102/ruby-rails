@@ -61,11 +61,12 @@ module AbstractController
         meths.flatten!
         self._helper_methods += meths
 
-        meths.each do |meth|
+        meths.each do |method|
           _helpers.class_eval <<-ruby_eval, __FILE__, __LINE__ + 1
-            def #{meth}(*args, &blk)                               # def current_user(*args, &blk)
-              controller.send(%(#{meth}), *args, &blk)             #   controller.send(:current_user, *args, &blk)
-            end                                                    # end
+            def #{method}(*args, &blk)                     # def current_user(*args, &blk)
+              controller.send(%(#{method}), *args, &blk)   #   controller.send(:current_user, *args, &blk)
+            end                                            # end
+            ruby2_keywords(%(#{method})) if respond_to?(:ruby2_keywords, true)
           ruby_eval
         end
       end

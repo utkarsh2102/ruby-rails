@@ -158,7 +158,6 @@ module ActionController
     end.new
 
     private
-
       def params_parsers
         super.merge @custom_param_parsers
       end
@@ -177,12 +176,12 @@ module ActionController
 
   # Methods #destroy and #load! are overridden to avoid calling methods on the
   # @store object, which does not exist for the TestSession class.
-  class TestSession < Rack::Session::Abstract::SessionHash #:nodoc:
+  class TestSession < Rack::Session::Abstract::PersistedSecure::SecureSessionHash #:nodoc:
     DEFAULT_OPTIONS = Rack::Session::Abstract::Persisted::DEFAULT_OPTIONS
 
     def initialize(session = {})
       super(nil, nil)
-      @id = SecureRandom.hex(16)
+      @id = Rack::Session::SessionId.new(SecureRandom.hex(16))
       @data = stringify_keys(session)
       @loaded = true
     end
@@ -203,12 +202,16 @@ module ActionController
       clear
     end
 
+    def dig(*keys)
+      keys = keys.map.with_index { |key, i| i.zero? ? key.to_s : key }
+      @data.dig(*keys)
+    end
+
     def fetch(key, *args, &block)
       @data.fetch(key.to_s, *args, &block)
     end
 
     private
-
       def load!
         @id
       end
@@ -595,7 +598,6 @@ module ActionController
       end
 
       private
-
         def scrub_env!(env)
           env.delete_if { |k, v| k =~ /^(action_dispatch|rack)\.request/ }
           env.delete_if { |k, v| k =~ /^action_dispatch\.rescue/ }

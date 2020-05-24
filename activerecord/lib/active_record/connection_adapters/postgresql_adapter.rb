@@ -156,6 +156,10 @@ module ActiveRecord
         true
       end
 
+      def supports_partitioned_indexes?
+        database_version >= 110_000
+      end
+
       def supports_partial_index?
         true
       end
@@ -463,7 +467,6 @@ module ActiveRecord
       end
 
       private
-
         # See https://www.postgresql.org/docs/current/static/errcodes-appendix.html
         VALUE_LIMIT_VIOLATION = "22001"
         NUMERIC_VALUE_OUT_OF_RANGE = "22003"
@@ -630,7 +633,7 @@ module ActiveRecord
           SQL
 
           if oids
-            query += "WHERE t.oid::integer IN (%s)" % oids.join(", ")
+            query += "WHERE t.oid IN (%s)" % oids.join(", ")
           else
             query += initializer.query_conditions_for_initial_load
           end

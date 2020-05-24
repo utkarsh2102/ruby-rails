@@ -196,7 +196,7 @@ module ActiveSupport
     #
     # Singular names are not handled correctly:
     #
-    #   classify('calculus')     # => "Calculus"
+    #   classify('calculus')     # => "Calculu"
     def classify(table_name)
       # strip out any leading schema name
       camelize(singularize(table_name.to_s.sub(/.*\./, "")))
@@ -359,7 +359,6 @@ module ActiveSupport
     end
 
     private
-
       # Mounts a regular expression, returned as a string to ease interpolation,
       # that will match part by part the given constant.
       #

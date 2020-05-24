@@ -61,6 +61,7 @@ module ActionView
 
       @details_keys = Concurrent::Map.new
       @digest_cache = Concurrent::Map.new
+      @view_context_mutex = Mutex.new
 
       def self.digest_cache(details)
         @digest_cache[details_cache_key(details)] ||= Concurrent::Map.new
@@ -89,7 +90,9 @@ module ActionView
       end
 
       def self.view_context_class(klass)
-        @view_context_class ||= klass.with_empty_template_cache
+        @view_context_mutex.synchronize do
+          @view_context_class ||= klass.with_empty_template_cache
+        end
       end
     end
 
@@ -112,7 +115,6 @@ module ActionView
       end
 
     private
-
       def _set_detail(key, value) # :doc:
         @details = @details.dup if @digest_cache || @details_key
         @digest_cache = nil
@@ -171,7 +173,6 @@ module ActionView
       end
 
     private
-
       # Whenever setting view paths, makes a copy so that we can manipulate them in
       # instance objects as we wish.
       def build_view_paths(paths)

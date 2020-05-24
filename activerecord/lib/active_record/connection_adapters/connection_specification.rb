@@ -56,7 +56,6 @@ module ActiveRecord
         end
 
         private
-
           attr_reader :uri
 
           def uri_parser
@@ -73,7 +72,7 @@ module ActiveRecord
           #   "localhost"
           #   # => {}
           def query_hash
-            Hash[(@query || "").split("&").map { |pair| pair.split("=") }]
+            Hash[(@query || "").split("&").map { |pair| pair.split("=", 2) }]
           end
 
           def raw_config

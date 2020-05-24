@@ -1,3 +1,36 @@
+## Rails 6.0.3.1 (May 18, 2020) ##
+
+*   [CVE-2020-8165] Deprecate Marshal.load on raw cache read in RedisCacheStore
+
+*   [CVE-2020-8165] Avoid Marshal.load on raw cache value in MemCacheStore
+
+## Rails 6.0.3 (May 06, 2020) ##
+
+*   `Array#to_sentence` no longer returns a frozen string.
+
+    Before:
+
+        ['one', 'two'].to_sentence.frozen?
+        # => true
+
+    After:
+
+        ['one', 'two'].to_sentence.frozen?
+        # => false
+
+    *Nicolas Dular*
+
+*   Update `ActiveSupport::Messages::Metadata#fresh?` to work for cookies with expiry set when
+    `ActiveSupport.parse_json_times = true`.
+
+    *Christian Gregg*
+
+
+## Rails 6.0.2.2 (March 19, 2020) ##
+
+*   No changes.
+
+
 ## Rails 6.0.2.1 (December 18, 2019) ##
 
 *   No changes.

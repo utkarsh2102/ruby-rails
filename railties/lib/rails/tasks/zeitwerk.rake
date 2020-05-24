@@ -14,8 +14,8 @@ end
 report_not_checked = ->(not_checked) do
   puts
   puts <<~EOS
-    WARNING: The files in these directories cannot be checked because they
-    are not eager loaded:
+    WARNING: The following directories will only be checked if you configure
+    them to be eager loaded:
   EOS
   puts
 
@@ -53,8 +53,11 @@ namespace :zeitwerk do
       end
     end
 
+    require "active_support/core_ext/object/try"
     eager_load_paths = Rails.configuration.eager_load_namespaces.map do |eln|
-      eln.config.eager_load_paths if eln.respond_to?(:config)
+      # Quick regression fix for 6.0.3 to support namespaces that do not have
+      # eager load paths, like the recently added i18n. I'll rewrite this task.
+      eln.try(:config).try(:eager_load_paths)
     end.compact.flatten
 
     not_checked = ActiveSupport::Dependencies.autoload_paths - eager_load_paths

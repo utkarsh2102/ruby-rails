@@ -18,14 +18,13 @@ module ActionView
     end
 
     private
-
       def build_template(locals)
         options = @options.merge(locals: locals)
         Template.new(
           @source,
           @identifer,
           @handler,
-          options
+          **options
         )
       end
   end

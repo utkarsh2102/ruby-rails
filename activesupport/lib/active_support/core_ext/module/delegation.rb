@@ -193,7 +193,13 @@ class Module
     method_names = methods.map do |method|
       # Attribute writer methods only accept one argument. Makes sure []=
       # methods still accept two arguments.
-      definition = /[^\]]=$/.match?(method) ? "arg" : "*args, &block"
+      definition = if /[^\]]=$/.match?(method)
+        "arg"
+      elsif RUBY_VERSION >= "2.7"
+        "..."
+      else
+        "*args, &block"
+      end
 
       # The following generated method calls the target exactly once, storing
       # the returned value in a dummy variable.
@@ -308,6 +314,7 @@ class Module
           end
         end
       end
+      ruby2_keywords(:method_missing) if respond_to?(:ruby2_keywords, true)
     RUBY
   end
 end

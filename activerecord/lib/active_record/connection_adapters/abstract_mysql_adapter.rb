@@ -45,7 +45,6 @@ module ActiveRecord
 
       class StatementPool < ConnectionAdapters::StatementPool # :nodoc:
         private
-
           def dealloc(stmt)
             stmt.close
           end
@@ -367,7 +366,7 @@ module ActiveRecord
       end
 
       def add_index(table_name, column_name, options = {}) #:nodoc:
-        index_name, index_type, index_columns, _, index_algorithm, index_using, comment = add_index_options(table_name, column_name, options)
+        index_name, index_type, index_columns, _, index_algorithm, index_using, comment = add_index_options(table_name, column_name, **options)
         sql = +"CREATE #{index_type} INDEX #{quote_column_name(index_name)} #{index_using} ON #{quote_table_name(table_name)} (#{index_columns}) #{index_algorithm}"
         execute add_sql_comment!(sql, comment)
       end
@@ -419,12 +418,13 @@ module ActiveRecord
         create_table_info = create_table_info(table_name)
 
         # strip create_definitions and partition_options
-        raw_table_options = create_table_info.sub(/\A.*\n\) /m, "").sub(/\n\/\*!.*\*\/\n\z/m, "").strip
+        # Be aware that `create_table_info` might not include any table options due to `NO_TABLE_OPTIONS` sql mode.
+        raw_table_options = create_table_info.sub(/\A.*\n\) ?/m, "").sub(/\n\/\*!.*\*\/\n\z/m, "").strip
 
         # strip AUTO_INCREMENT
         raw_table_options.sub!(/(ENGINE=\w+)(?: AUTO_INCREMENT=\d+)/, '\1')
 
-        table_options[:options] = raw_table_options
+        table_options[:options] = raw_table_options unless raw_table_options.blank?
 
         # strip COMMENT
         if raw_table_options.sub!(/ COMMENT='.+'/, "")
@@ -493,7 +493,7 @@ module ActiveRecord
       def columns_for_distinct(columns, orders) # :nodoc:
         order_columns = orders.reject(&:blank?).map { |s|
           # Convert Arel node to string
-          s = s.to_sql unless s.is_a?(String)
+          s = visitor.compile(s) unless s.is_a?(String)
           # Remove any ASC/DESC modifiers
           s.gsub(/\s+(?:ASC|DESC)\b/i, "")
         }.reject(&:blank?).map.with_index { |column, i| "#{column} AS alias_#{i}" }
@@ -530,7 +530,6 @@ module ActiveRecord
       end
 
       private
-
         def initialize_type_map(m = type_map)
           super
 
@@ -570,12 +569,12 @@ module ActiveRecord
           end
         end
 
-        def register_integer_type(mapping, key, options)
+        def register_integer_type(mapping, key, **options)
           mapping.register_type(key) do |sql_type|
             if /\bunsigned\b/.match?(sql_type)
-              Type::UnsignedInteger.new(options)
+              Type::UnsignedInteger.new(**options)
             else
-              Type::Integer.new(options)
+              Type::Integer.new(**options)
             end
           end
         end
@@ -657,7 +656,7 @@ module ActiveRecord
           end
 
           td = create_table_definition(table_name)
-          cd = td.new_column_definition(column.name, type, options)
+          cd = td.new_column_definition(column.name, type, **options)
           schema_creation.accept(ChangeColumnDefinition.new(cd, column.name))
         end
 
@@ -671,12 +670,12 @@ module ActiveRecord
 
           current_type = exec_query("SHOW COLUMNS FROM #{quote_table_name(table_name)} LIKE #{quote(column_name)}", "SCHEMA").first["Type"]
           td = create_table_definition(table_name)
-          cd = td.new_column_definition(new_column_name, current_type, options)
+          cd = td.new_column_definition(new_column_name, current_type, **options)
           schema_creation.accept(ChangeColumnDefinition.new(cd, column.name))
         end
 
         def add_index_for_alter(table_name, column_name, options = {})
-          index_name, index_type, index_columns, _, index_algorithm, index_using = add_index_options(table_name, column_name, options)
+          index_name, index_type, index_columns, _, index_algorithm, index_using = add_index_options(table_name, column_name, **options)
           index_algorithm[0, 0] = ", " if index_algorithm.present?
           "ADD #{index_type} INDEX #{quote_column_name(index_name)} #{index_using} (#{index_columns})#{index_algorithm}"
         end
@@ -684,20 +683,6 @@ module ActiveRecord
         def remove_index_for_alter(table_name, options = {})
           index_name = index_name_for_remove(table_name, options)
           "DROP INDEX #{quote_column_name(index_name)}"
-        end
-
-        def add_timestamps_for_alter(table_name, options = {})
-          options[:null] = false if options[:null].nil?
-
-          if !options.key?(:precision) && supports_datetime_with_precision?
-            options[:precision] = 6
-          end
-
-          [add_column_for_alter(table_name, :created_at, :datetime, options), add_column_for_alter(table_name, :updated_at, :datetime, options)]
-        end
-
-        def remove_timestamps_for_alter(table_name, options = {})
-          [remove_column_for_alter(table_name, :updated_at), remove_column_for_alter(table_name, :created_at)]
         end
 
         def supports_rename_index?
@@ -796,7 +781,7 @@ module ActiveRecord
             options[:primary_key_column] = column_for(match[:target_table], match[:primary_key])
           end
 
-          MismatchedForeignKey.new(options)
+          MismatchedForeignKey.new(**options)
         end
 
         def version_string(full_version_string)
@@ -813,7 +798,6 @@ module ActiveRecord
           end
 
           private
-
             def cast_value(value)
               case value
               when true then "1"

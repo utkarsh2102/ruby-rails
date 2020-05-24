@@ -324,6 +324,14 @@ module ActiveRecord
         end
       end
 
+      def test_add_column_with_not_null
+        with_example_table "id integer PRIMARY KEY AUTOINCREMENT, number integer not null" do
+          assert_nothing_raised { @conn.add_column :ex, :name, :string, null: false }
+          column = @conn.columns("ex").find { |x| x.name == "name" }
+          assert_not column.null, "column should not be null"
+        end
+      end
+
       def test_indexes_logs
         with_example_table do
           assert_logged [["PRAGMA index_list(\"ex\")", "SCHEMA", []]] do
@@ -648,13 +656,12 @@ module ActiveRecord
           @conn.execute("INSERT INTO ex (data) VALUES ('138853948594')")
 
           @connection_handler.while_preventing_writes do
-            assert_equal 1, @conn.execute("  SELECT data from ex WHERE data = '138853948594'").count
+            assert_equal 1, @conn.execute("/*action:index*/  SELECT data from ex WHERE data = '138853948594'").count
           end
         end
       end
 
       private
-
         def assert_logged(logs)
           subscriber = SQLSubscriber.new
           subscription = ActiveSupport::Notifications.subscribe("sql.active_record", subscriber)

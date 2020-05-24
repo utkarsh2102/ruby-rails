@@ -46,6 +46,14 @@ class FixturesTest < ActiveRecord::TestCase
                  movies projects subscribers topics tasks )
   MATCH_ATTRIBUTE_NAME = /[a-zA-Z][-\w]*/
 
+  def setup
+    Arel::Table.engine = nil # should not rely on the global Arel::Table.engine
+  end
+
+  def teardown
+    Arel::Table.engine = ActiveRecord::Base
+  end
+
   def test_clean_fixtures
     FIXTURES.each do |name|
       fixtures = nil
@@ -948,7 +956,6 @@ class TransactionalFixturesOnConnectionNotification < ActiveRecord::TestCase
   end
 
   private
-
     def fire_connection_notification(connection)
       assert_called_with(ActiveRecord::Base.connection_handler, :retrieve_connection, ["book"], returns: connection) do
         message_bus = ActiveSupport::Notifications.instrumenter
@@ -1360,7 +1367,6 @@ class MultipleDatabaseFixturesTest < ActiveRecord::TestCase
   end
 
   private
-
     def with_temporary_connection_pool
       old_pool = ActiveRecord::Base.connection_handler.retrieve_connection_pool(ActiveRecord::Base.connection_specification_name)
       new_pool = ActiveRecord::ConnectionAdapters::ConnectionPool.new ActiveRecord::Base.connection_pool.spec

@@ -51,7 +51,7 @@ module ActiveRecord
         if not_behaves_as_nor?(opts)
           ActiveSupport::Deprecation.warn(<<~MSG.squish)
             NOT conditions will no longer behave as NOR in Rails 6.1.
-            To continue using NOR conditions, NOT each conditions manually
+            To continue using NOR conditions, NOT each condition individually
             (`#{
               opts.flat_map { |key, value|
                 if value.is_a?(Hash) && value.size > 1
@@ -168,7 +168,7 @@ module ActiveRecord
     end
 
     def eager_load!(*args) # :nodoc:
-      self.eager_load_values += args
+      self.eager_load_values |= args
       self
     end
 
@@ -182,7 +182,7 @@ module ActiveRecord
     end
 
     def preload!(*args) # :nodoc:
-      self.preload_values += args
+      self.preload_values |= args
       self
     end
 
@@ -331,7 +331,7 @@ module ActiveRecord
     def group!(*args) # :nodoc:
       args.flatten!
 
-      self.group_values += args
+      self.group_values |= args
       self
     end
 
@@ -499,7 +499,7 @@ module ActiveRecord
     def joins!(*args) # :nodoc:
       args.compact!
       args.flatten!
-      self.joins_values += args
+      self.joins_values |= args
       self
     end
 
@@ -517,7 +517,7 @@ module ActiveRecord
     def left_outer_joins!(*args) # :nodoc:
       args.compact!
       args.flatten!
-      self.left_outer_joins_values += args
+      self.left_outer_joins_values |= args
       self
     end
 
@@ -1221,7 +1221,9 @@ module ActiveRecord
       end
 
       def table_name_matches?(from)
-        /(?:\A|(?<!FROM)\s)(?:\b#{table.name}\b|#{connection.quote_table_name(table.name)})(?!\.)/i.match?(from.to_s)
+        table_name = Regexp.escape(table.name)
+        quoted_table_name = Regexp.escape(connection.quote_table_name(table.name))
+        /(?:\A|(?<!FROM)\s)(?:\b#{table_name}\b|#{quoted_table_name})(?!\.)/i.match?(from.to_s)
       end
 
       def reverse_sql_order(order_query)

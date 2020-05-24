@@ -74,7 +74,7 @@ module ActiveRecord
             INNER JOIN pg_index d ON t.oid = d.indrelid
             INNER JOIN pg_class i ON d.indexrelid = i.oid
             LEFT JOIN pg_namespace n ON n.oid = i.relnamespace
-            WHERE i.relkind = 'i'
+            WHERE i.relkind IN ('i', 'I')
               AND i.relname = #{index[:name]}
               AND t.relname = #{table[:name]}
               AND n.nspname = #{index[:schema]}
@@ -92,7 +92,7 @@ module ActiveRecord
             INNER JOIN pg_index d ON t.oid = d.indrelid
             INNER JOIN pg_class i ON d.indexrelid = i.oid
             LEFT JOIN pg_namespace n ON n.oid = i.relnamespace
-            WHERE i.relkind = 'i'
+            WHERE i.relkind IN ('i', 'I')
               AND d.indisprimary = 'f'
               AND t.relname = #{scope[:name]}
               AND n.nspname = #{scope[:schema]}
@@ -390,7 +390,7 @@ module ActiveRecord
           rename_table_indexes(table_name, new_name)
         end
 
-        def add_column(table_name, column_name, type, options = {}) #:nodoc:
+        def add_column(table_name, column_name, type, **options) #:nodoc:
           clear_cache!
           super
           change_column_comment(table_name, column_name, options[:comment]) if options.key?(:comment)
@@ -439,7 +439,7 @@ module ActiveRecord
         end
 
         def add_index(table_name, column_name, options = {}) #:nodoc:
-          index_name, index_type, index_columns_and_opclasses, index_options, index_algorithm, index_using, comment = add_index_options(table_name, column_name, options)
+          index_name, index_type, index_columns_and_opclasses, index_options, index_algorithm, index_using, comment = add_index_options(table_name, column_name, **options)
           execute("CREATE #{index_type} INDEX #{index_algorithm} #{quote_column_name(index_name)} ON #{quote_table_name(table_name)} #{index_using} (#{index_columns_and_opclasses})#{index_options}").tap do
             execute "COMMENT ON INDEX #{quote_column_name(index_name)} IS #{quote(comment)}" if comment
           end
@@ -553,12 +553,12 @@ module ActiveRecord
         # requires that the ORDER BY include the distinct column.
         def columns_for_distinct(columns, orders) #:nodoc:
           order_columns = orders.reject(&:blank?).map { |s|
-              # Convert Arel node to string
-              s = s.to_sql unless s.is_a?(String)
-              # Remove any ASC/DESC modifiers
-              s.gsub(/\s+(?:ASC|DESC)\b/i, "")
-               .gsub(/\s+NULLS\s+(?:FIRST|LAST)\b/i, "")
-            }.reject(&:blank?).map.with_index { |column, i| "#{column} AS alias_#{i}" }
+            # Convert Arel node to string
+            s = visitor.compile(s) unless s.is_a?(String)
+            # Remove any ASC/DESC modifiers
+            s.gsub(/\s+(?:ASC|DESC)\b/i, "")
+             .gsub(/\s+NULLS\s+(?:FIRST|LAST)\b/i, "")
+          }.reject(&:blank?).map.with_index { |column, i| "#{column} AS alias_#{i}" }
 
           (order_columns << super).join(", ")
         end
@@ -613,8 +613,8 @@ module ActiveRecord
             PostgreSQL::SchemaCreation.new(self)
           end
 
-          def create_table_definition(*args)
-            PostgreSQL::TableDefinition.new(self, *args)
+          def create_table_definition(*args, **options)
+            PostgreSQL::TableDefinition.new(self, *args, **options)
           end
 
           def create_alter_table(name)
@@ -679,14 +679,14 @@ module ActiveRecord
             end
           end
 
-          def add_column_for_alter(table_name, column_name, type, options = {})
+          def add_column_for_alter(table_name, column_name, type, **options)
             return super unless options.key?(:comment)
             [super, Proc.new { change_column_comment(table_name, column_name, options[:comment]) }]
           end
 
           def change_column_for_alter(table_name, column_name, type, options = {})
             td = create_table_definition(table_name)
-            cd = td.new_column_definition(column_name, type, options)
+            cd = td.new_column_definition(column_name, type, **options)
             sqls = [schema_creation.accept(ChangeColumnDefinition.new(cd, column_name))]
             sqls << Proc.new { change_column_comment(table_name, column_name, options[:comment]) } if options.key?(:comment)
             sqls
@@ -711,20 +711,6 @@ module ActiveRecord
             "ALTER COLUMN #{quote_column_name(column_name)} #{null ? 'DROP' : 'SET'} NOT NULL"
           end
 
-          def add_timestamps_for_alter(table_name, options = {})
-            options[:null] = false if options[:null].nil?
-
-            if !options.key?(:precision) && supports_datetime_with_precision?
-              options[:precision] = 6
-            end
-
-            [add_column_for_alter(table_name, :created_at, :datetime, options), add_column_for_alter(table_name, :updated_at, :datetime, options)]
-          end
-
-          def remove_timestamps_for_alter(table_name, options = {})
-            [remove_column_for_alter(table_name, :updated_at), remove_column_for_alter(table_name, :created_at)]
-          end
-
           def add_index_opclass(quoted_columns, **options)
             opclasses = options_for_index_columns(options[:opclass])
             quoted_columns.each do |name, column|
@@ -733,7 +719,7 @@ module ActiveRecord
           end
 
           def add_options_for_index_columns(quoted_columns, **options)
-            quoted_columns = add_index_opclass(quoted_columns, options)
+            quoted_columns = add_index_opclass(quoted_columns, **options)
             super
           end
 

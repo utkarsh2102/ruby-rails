@@ -501,8 +501,16 @@ module Rails
       ordered_railties.flatten - [self]
     end
 
-  protected
+    # Eager loads the application code.
+    def eager_load!
+      if Rails.autoloaders.zeitwerk_enabled?
+        Rails.autoloaders.each(&:eager_load)
+      else
+        super
+      end
+    end
 
+  protected
     alias :build_middleware_stack :app
 
     def run_tasks_blocks(app) #:nodoc:
@@ -582,7 +590,6 @@ module Rails
     end
 
     private
-
       def generate_development_secret
         if secrets.secret_key_base.nil?
           key_file = Rails.root.join("tmp/development_secret.txt")
@@ -624,7 +631,6 @@ module Rails
         end
 
         private
-
           def convert_key(key)
             unless key.kind_of?(Symbol)
               ActiveSupport::Deprecation.warn(<<~MESSAGE.squish)

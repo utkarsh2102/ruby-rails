@@ -470,7 +470,8 @@ module Rails
     end
 
     def eager_load!
-      # Already done by Zeitwerk::Loader.eager_load_all in the finisher.
+      # Already done by Zeitwerk::Loader.eager_load_all. We need this guard to
+      # easily provide a compatible API for both zeitwerk and classic modes.
       return if Rails.autoloaders.zeitwerk_enabled?
 
       config.eager_load_paths.each do |load_path|
@@ -654,14 +655,12 @@ module Rails
     end
 
     protected
-
       def run_tasks_blocks(*) #:nodoc:
         super
         paths["lib/tasks"].existent.sort.each { |ext| load(ext) }
       end
 
     private
-
       def load_config_initializer(initializer) # :doc:
         ActiveSupport::Notifications.instrument("load_config_initializer.railties", initializer: initializer) do
           load(initializer)

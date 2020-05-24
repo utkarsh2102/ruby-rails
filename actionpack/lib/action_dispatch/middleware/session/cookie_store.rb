@@ -76,7 +76,6 @@ module ActionDispatch
       end
 
       private
-
         def extract_session_id(req)
           stale_session_check! do
             sid = unpacked_cookie_data(req)["session_id"]

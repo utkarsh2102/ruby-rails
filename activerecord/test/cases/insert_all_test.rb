@@ -10,23 +10,31 @@ end
 class InsertAllTest < ActiveRecord::TestCase
   fixtures :books
 
+  def setup
+    Arel::Table.engine = nil # should not rely on the global Arel::Table.engine
+  end
+
+  def teardown
+    Arel::Table.engine = ActiveRecord::Base
+  end
+
   def test_insert
     skip unless supports_insert_on_duplicate_skip?
 
     id = 1_000_000
 
     assert_difference "Book.count", +1 do
-      Book.insert(id: id, name: "Rework", author_id: 1)
+      Book.insert({ id: id, name: "Rework", author_id: 1 })
     end
 
-    Book.upsert(id: id, name: "Remote", author_id: 1)
+    Book.upsert({ id: id, name: "Remote", author_id: 1 })
 
     assert_equal "Remote", Book.find(id).name
   end
 
   def test_insert!
     assert_difference "Book.count", +1 do
-      Book.insert! name: "Rework", author_id: 1
+      Book.insert!({ name: "Rework", author_id: 1 })
     end
   end
 
@@ -136,7 +144,7 @@ class InsertAllTest < ActiveRecord::TestCase
     book = Book.create!(author_id: 8, name: "Refactoring", format: "EXPECTED")
 
     assert_no_difference "Book.count" do
-      Book.insert(author_id: 8, name: "Refactoring", format: "UNEXPECTED")
+      Book.insert({ author_id: 8, name: "Refactoring", format: "UNEXPECTED" })
     end
 
     assert_equal "EXPECTED", book.reload.format
@@ -185,7 +193,7 @@ class InsertAllTest < ActiveRecord::TestCase
     skip unless supports_insert_conflict_target?
 
     capture_log_output do |output|
-      Book.insert(name: "Rework", author_id: 1)
+      Book.insert({ name: "Rework", author_id: 1 })
       assert_match "Book Insert", output.string
     end
   end
@@ -203,7 +211,7 @@ class InsertAllTest < ActiveRecord::TestCase
     skip unless supports_insert_on_duplicate_update?
 
     capture_log_output do |output|
-      Book.upsert(name: "Remote", author_id: 1)
+      Book.upsert({ name: "Remote", author_id: 1 })
       assert_match "Book Upsert", output.string
     end
   end
@@ -261,8 +269,13 @@ class InsertAllTest < ActiveRecord::TestCase
     end
   end
 
-  private
+  def test_insert_all_with_enum_values
+    Book.insert_all! [{ status: :published, isbn: "1234566", name: "Rework", author_id: 1 },
+                      { status: :proposed, isbn: "1234567", name: "Remote", author_id: 2 }]
+    assert_equal ["published", "proposed"], Book.where(isbn: ["1234566", "1234567"]).order(:id).pluck(:status)
+  end
 
+  private
     def capture_log_output
       output = StringIO.new
       old_logger, ActiveRecord::Base.logger = ActiveRecord::Base.logger, ActiveSupport::Logger.new(output)

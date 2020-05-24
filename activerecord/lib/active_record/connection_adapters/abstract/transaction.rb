@@ -98,7 +98,7 @@ module ActiveRecord
       end
 
       def rollback_records
-        ite = records.uniq(&:object_id)
+        ite = records.uniq(&:__id__)
         already_run_callbacks = {}
         while record = ite.shift
           trigger_callbacks = record.trigger_transactional_callbacks?
@@ -117,7 +117,7 @@ module ActiveRecord
       end
 
       def commit_records
-        ite = records.uniq(&:object_id)
+        ite = records.uniq(&:__id__)
         already_run_callbacks = {}
         while record = ite.shift
           if @run_commit_callbacks
@@ -141,8 +141,8 @@ module ActiveRecord
     end
 
     class SavepointTransaction < Transaction
-      def initialize(connection, savepoint_name, parent_transaction, *args)
-        super(connection, *args)
+      def initialize(connection, savepoint_name, parent_transaction, *args, **options)
+        super(connection, *args, **options)
 
         parent_transaction.state.add_child(@state)
 
@@ -309,7 +309,6 @@ module ActiveRecord
       end
 
       private
-
         NULL_TRANSACTION = NullTransaction.new
 
         # Deallocate invalidated prepared statements outside of the transaction

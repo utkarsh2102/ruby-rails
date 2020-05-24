@@ -44,7 +44,6 @@ module ActionDispatch
     end
 
     private
-
       def invoke_interceptors(request, exception)
         backtrace_cleaner = request.get_header("action_dispatch.backtrace_cleaner")
         wrapper = ExceptionWrapper.new(backtrace_cleaner, exception)
@@ -137,6 +136,7 @@ module ActionDispatch
 
       def log_error(request, wrapper)
         logger = logger(request)
+
         return unless logger
 
         exception = wrapper.exception
@@ -157,10 +157,14 @@ module ActionDispatch
       end
 
       def log_array(logger, array)
+        lines = Array(array)
+
+        return if lines.empty?
+
         if logger.formatter && logger.formatter.respond_to?(:tags_text)
-          logger.fatal array.join("\n#{logger.formatter.tags_text}")
+          logger.fatal lines.join("\n#{logger.formatter.tags_text}")
         else
-          logger.fatal array.join("\n")
+          logger.fatal lines.join("\n")
         end
       end
 

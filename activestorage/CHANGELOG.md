@@ -1,3 +1,17 @@
+## Rails 6.0.3.1 (May 18, 2020) ##
+
+*   [CVE-2020-8162] Include Content-Length in signature for ActiveStorage direct upload
+
+## Rails 6.0.3 (May 06, 2020) ##
+
+*   No changes.
+
+
+## Rails 6.0.2.2 (March 19, 2020) ##
+
+*   No changes.
+
+
 ## Rails 6.0.2.1 (December 18, 2019) ##
 
 *   No changes.

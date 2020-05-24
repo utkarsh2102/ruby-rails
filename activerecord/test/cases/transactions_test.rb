@@ -77,6 +77,20 @@ class TransactionTest < ActiveRecord::TestCase
     assert_equal topic.title, topic.reload.title
   end
 
+  def test_rollback_dirty_changes_then_retry_save_on_new_record_with_autosave_association
+    author = Author.new(name: "DHH")
+    book = Book.create!
+    author.books << book
+
+    author.transaction do
+      author.save!
+      raise ActiveRecord::Rollback
+    end
+
+    author.save!
+    assert_equal author, book.reload.author
+  end
+
   def test_persisted_in_a_model_with_custom_primary_key_after_failed_save
     movie = Movie.create
     assert_not_predicate movie, :persisted?
@@ -1077,7 +1091,6 @@ class TransactionTest < ActiveRecord::TestCase
   end
 
   private
-
     %w(validation save destroy).each do |filter|
       define_method("add_cancelling_before_#{filter}_with_db_side_effect_to_topic") do |topic|
         meta = class << topic; self; end

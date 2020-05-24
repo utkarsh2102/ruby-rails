@@ -118,6 +118,7 @@ module ActionDispatch
 
     def initialize(*) # :nodoc:
       super
+      self.class.driven_by(:selenium) unless self.class.driver?
       self.class.driver.use
       @proxy_route = if ActionDispatch.test_app
         Class.new do
@@ -166,10 +167,8 @@ module ActionDispatch
     def self.driven_by(driver, using: :chrome, screen_size: [1400, 1400], options: {}, &capabilities)
       driver_options = { using: using, screen_size: screen_size, options: options }
 
-      self.driver = SystemTesting::Driver.new(driver, driver_options, &capabilities)
+      self.driver = SystemTesting::Driver.new(driver, **driver_options, &capabilities)
     end
-
-    driven_by :selenium
 
     def method_missing(method, *args, &block)
       if @proxy_route.respond_to?(method)

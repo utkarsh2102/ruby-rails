@@ -351,9 +351,21 @@ module ActiveJob
     #     assert_enqueued_with(job: MyJob, at: Date.tomorrow.noon)
     #   end
     #
+    # The +at+ and +args+ arguments also accept a proc.
     #
-    # The +args+ argument also accepts a proc which will get passed the actual
-    # job's arguments. Your proc needs to return a boolean value determining if
+    # To the +at+ proc, it will get passed the actual job's at argument.
+    #
+    #   def test_assert_enqueued_with
+    #     expected_time = ->(at) do
+    #       (Date.yesterday..Date.tomorrow).cover?(at)
+    #     end
+    #
+    #     MyJob.set(at: Date.today.noon).perform_later
+    #     assert_enqueued_with(job: MyJob, at: expected_time)
+    #   end
+    #
+    # To the +args+ proc, it will get passed the actual job's arguments
+    # Your proc needs to return a boolean value determining if
     # the job's arguments matches your expectation. This is useful to check only
     # for a subset of arguments.
     #
@@ -365,7 +377,6 @@ module ActiveJob
     #     MyJob.perform_later(foo: 'bar', other_arg: 'No need to check in the test')
     #     assert_enqueued_with(job: MyJob, args: expected_args, queue: 'low')
     #   end
-    #
     #
     # If a block is passed, asserts that the block will cause the job to be
     # enqueued with the given arguments.
@@ -425,8 +436,21 @@ module ActiveJob
     #     assert_performed_with(job: MyJob, at: Date.tomorrow.noon)
     #   end
     #
-    # The +args+ argument also accepts a proc which will get passed the actual
-    # job's arguments. Your proc needs to return a boolean value determining if
+    # The +at+ and +args+ arguments also accept a proc.
+    #
+    # To the +at+ proc, it will get passed the actual job's at argument.
+    #
+    #   def test_assert_enqueued_with
+    #     expected_time = ->(at) do
+    #       (Date.yesterday..Date.tomorrow).cover?(at)
+    #     end
+    #
+    #     MyJob.set(at: Date.today.noon).perform_later
+    #     assert_enqueued_with(job: MyJob, at: expected_time)
+    #   end
+    #
+    # To the +args+ proc, it will get passed the actual job's arguments
+    # Your proc needs to return a boolean value determining if
     # the job's arguments matches your expectation. This is useful to check only
     # for a subset of arguments.
     #
@@ -630,7 +654,10 @@ module ActiveJob
 
       def prepare_args_for_assertion(args)
         args.dup.tap do |arguments|
-          arguments[:at] = round_time_arguments(arguments[:at]) if arguments[:at]
+          if arguments[:at] && !arguments[:at].respond_to?(:call)
+            at_range = arguments[:at] - 1..arguments[:at] + 1
+            arguments[:at] = ->(at) { at_range.cover?(at) }
+          end
           arguments[:args] = round_time_arguments(arguments[:args]) if arguments[:args]
         end
       end
@@ -650,16 +677,15 @@ module ActiveJob
 
       def deserialize_args_for_assertion(job)
         job.dup.tap do |new_job|
-          new_job[:at] = round_time_arguments(Time.at(new_job[:at])) if new_job[:at]
+          new_job[:at] = Time.at(new_job[:at]) if new_job[:at]
           new_job[:args] = ActiveJob::Arguments.deserialize(new_job[:args]) if new_job[:args]
         end
       end
 
       def instantiate_job(payload)
-        args = ActiveJob::Arguments.deserialize(payload[:args])
-        job = payload[:job].new(*args)
+        job = payload[:job].deserialize(payload)
         job.scheduled_at = Time.at(payload[:at]) if payload.key?(:at)
-        job.queue_name = payload[:queue]
+        job.send(:deserialize_arguments_if_needed)
         job
       end
 

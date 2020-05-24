@@ -61,12 +61,13 @@ class Mysql2AdapterTest < ActiveRecord::Mysql2TestCase
   end
 
   def test_columns_for_distinct_with_arel_order
-    order = Object.new
-    def order.to_sql
-      "posts.created_at desc"
-    end
+    Arel::Table.engine = nil # should not rely on the global Arel::Table.engine
+
+    order = Arel.sql("posts.created_at").desc
     assert_equal "posts.created_at AS alias_0, posts.id",
       @conn.columns_for_distinct("posts.id", [order])
+  ensure
+    Arel::Table.engine = ActiveRecord::Base
   end
 
   def test_errors_for_bigint_fks_on_integer_pk_table_in_alter_table
@@ -77,11 +78,14 @@ class Mysql2AdapterTest < ActiveRecord::Mysql2TestCase
       @conn.add_foreign_key :engines, :old_cars
     end
 
-    assert_includes error.message, <<~MSG.squish
-      Column `old_car_id` on table `engines` does not match column `id` on `old_cars`,
-      which has type `int(11)`. To resolve this issue, change the type of the `old_car_id`
-      column on `engines` to be :integer. (For example `t.integer :old_car_id`).
-    MSG
+    assert_match(
+      %r/Column `old_car_id` on table `engines` does not match column `id` on `old_cars`, which has type `int(\(11\))?`\./,
+      error.message
+    )
+    assert_match(
+      %r/To resolve this issue, change the type of the `old_car_id` column on `engines` to be :integer\. \(For example `t.integer :old_car_id`\)\./,
+      error.message
+    )
     assert_not_nil error.cause
   ensure
     @conn.execute("ALTER TABLE engines DROP COLUMN old_car_id") rescue nil
@@ -101,11 +105,14 @@ class Mysql2AdapterTest < ActiveRecord::Mysql2TestCase
       SQL
     end
 
-    assert_includes error.message, <<~MSG.squish
-      Column `old_car_id` on table `foos` does not match column `id` on `old_cars`,
-      which has type `int(11)`. To resolve this issue, change the type of the `old_car_id`
-      column on `foos` to be :integer. (For example `t.integer :old_car_id`).
-    MSG
+    assert_match(
+      %r/Column `old_car_id` on table `foos` does not match column `id` on `old_cars`, which has type `int(\(11\))?`\./,
+      error.message
+    )
+    assert_match(
+      %r/To resolve this issue, change the type of the `old_car_id` column on `foos` to be :integer\. \(For example `t.integer :old_car_id`\)\./,
+      error.message
+    )
     assert_not_nil error.cause
   ensure
     @conn.drop_table :foos, if_exists: true
@@ -125,11 +132,14 @@ class Mysql2AdapterTest < ActiveRecord::Mysql2TestCase
       SQL
     end
 
-    assert_includes error.message, <<~MSG.squish
-      Column `car_id` on table `foos` does not match column `id` on `cars`,
-      which has type `bigint(20)`. To resolve this issue, change the type of the `car_id`
-      column on `foos` to be :bigint. (For example `t.bigint :car_id`).
-    MSG
+    assert_match(
+      %r/Column `car_id` on table `foos` does not match column `id` on `cars`, which has type `bigint(\(20\))?`\./,
+      error.message
+    )
+    assert_match(
+      %r/To resolve this issue, change the type of the `car_id` column on `foos` to be :bigint\. \(For example `t.bigint :car_id`\)\./,
+      error.message
+    )
     assert_not_nil error.cause
   ensure
     @conn.drop_table :foos, if_exists: true
@@ -228,7 +238,7 @@ class Mysql2AdapterTest < ActiveRecord::Mysql2TestCase
     @conn.execute("INSERT INTO `engines` (`car_id`) VALUES ('138853948594')")
 
     @connection_handler.while_preventing_writes do
-      assert_equal 1, @conn.execute("(\n( SELECT `engines`.* FROM `engines` WHERE `engines`.`car_id` = '138853948594' ) )").entries.count
+      assert_equal 1, @conn.execute("/*action:index*/(\n( SELECT `engines`.* FROM `engines` WHERE `engines`.`car_id` = '138853948594' ) )").entries.count
     end
   end
 
@@ -248,7 +258,6 @@ class Mysql2AdapterTest < ActiveRecord::Mysql2TestCase
   end
 
   private
-
     def with_example_table(definition = "id int auto_increment primary key, number int, data varchar(255)", &block)
       super(@conn, "ex", definition, &block)
     end

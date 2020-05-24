@@ -60,6 +60,7 @@ end
 %w[
   supports_savepoints?
   supports_partial_index?
+  supports_partitioned_indexes?
   supports_insert_returning?
   supports_insert_on_duplicate_skip?
   supports_insert_on_duplicate_update?
@@ -189,7 +190,6 @@ end
 
 module InTimeZone
   private
-
     def in_time_zone(zone)
       old_zone  = Time.zone
       old_tz    = ActiveRecord::Base.time_zone_aware_attributes

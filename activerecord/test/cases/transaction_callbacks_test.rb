@@ -36,6 +36,11 @@ class TransactionCallbacksTest < ActiveRecord::TestCase
 
     has_many :replies, class_name: "ReplyWithCallbacks", foreign_key: "parent_id"
 
+    attr_accessor :abort_before_update, :abort_before_destroy
+
+    before_update { throw :abort if abort_before_update }
+    before_destroy { throw :abort if abort_before_destroy }
+
     before_destroy { self.class.find(id).touch if persisted? }
 
     before_commit { |record| record.do_before_commit(nil) }
@@ -137,6 +142,26 @@ class TransactionCallbacksTest < ActiveRecord::TestCase
       assert_not @first.save
     end
     assert_equal [], @first.history
+  end
+
+  def test_dont_call_after_commit_on_update_based_on_previous_transaction
+    @first.save!
+    add_transaction_execution_blocks(@first)
+
+    @first.abort_before_update = true
+    @first.transaction { @first.save }
+
+    assert_empty @first.history
+  end
+
+  def test_dont_call_after_commit_on_destroy_based_on_previous_transaction
+    @first.destroy!
+    add_transaction_execution_blocks(@first)
+
+    @first.abort_before_destroy = true
+    @first.transaction { @first.destroy }
+
+    assert_empty @first.history
   end
 
   def test_only_call_after_commit_on_save_after_transaction_commits_for_saving_record
@@ -477,8 +502,44 @@ class TransactionCallbacksTest < ActiveRecord::TestCase
     assert flag
   end
 
-  private
+  def test_saving_two_records_that_override_object_id_should_run_after_commit_callbacks_for_both
+    klass = Class.new(TopicWithCallbacks) do
+      define_method(:object_id) { 42 }
+    end
 
+    records = [klass.new, klass.new]
+
+    klass.transaction do
+      records.each do |record|
+        record.after_commit_block { |r| r.history << :after_commit }
+        record.save!
+      end
+    end
+
+    assert_equal [:after_commit], records.first.history
+    assert_equal [:after_commit], records.second.history
+  end
+
+  def test_saving_two_records_that_override_object_id_should_run_after_rollback_callbacks_for_both
+    klass = Class.new(TopicWithCallbacks) do
+      define_method(:object_id) { 42 }
+    end
+
+    records = [klass.new, klass.new]
+
+    klass.transaction do
+      records.each do |record|
+        record.after_rollback_block { |r| r.history << :after_rollback }
+        record.save!
+      end
+      raise ActiveRecord::Rollback
+    end
+
+    assert_equal [:after_rollback], records.first.history
+    assert_equal [:after_rollback], records.second.history
+  end
+
+  private
     def add_transaction_execution_blocks(record)
       record.after_commit_block(:create) { |r| r.history << :commit_on_create }
       record.after_commit_block(:update) { |r| r.history << :commit_on_update }

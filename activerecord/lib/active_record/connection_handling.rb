@@ -96,25 +96,10 @@ module ActiveRecord
     #     # raises exception due to non-existent role
     #   end
     #
-    # For cases where you may want to connect to a database outside of the model,
-    # you can use +connected_to+ with a +database+ argument. The +database+ argument
-    # expects a symbol that corresponds to the database key in your config.
+    # The `database` kwarg is deprecated in 6.1 and will be removed in 6.2
     #
-    #   ActiveRecord::Base.connected_to(database: :animals_slow_replica) do
-    #     Dog.run_a_long_query # runs a long query while connected to the +animals_slow_replica+
-    #   end
-    #
-    # This will connect to a new database for the queries inside the block. By
-    # default the `:writing` role will be used since all connections must be assigned
-    # a role. If you would like to use a different role you can pass a hash to database:
-    #
-    #   ActiveRecord::Base.connected_to(database: { readonly_slow: :animals_slow_replica }) do
-    #     # runs a long query while connected to the +animals_slow_replica+ using the readonly_slow role.
-    #     Dog.run_a_long_query
-    #   end
-    #
-    # When using the database key a new connection will be established every time. It is not
-    # recommended to use this outside of one-off scripts.
+    # It is not recommended for use as it re-establishes a connection every
+    # time it is called.
     def connected_to(database: nil, role: nil, prevent_writes: false, &blk)
       if database && role
         raise ArgumentError, "connected_to can only accept a `database` or a `role` argument, but not both arguments."
@@ -131,12 +116,10 @@ module ActiveRecord
 
         with_handler(role, &blk)
       elsif role
-        if role == writing_role
-          with_handler(role.to_sym) do
-            connection_handler.while_preventing_writes(prevent_writes, &blk)
-          end
-        else
-          with_handler(role.to_sym, &blk)
+        prevent_writes = true if role == reading_role
+
+        with_handler(role.to_sym) do
+          connection_handler.while_preventing_writes(prevent_writes, &blk)
         end
       else
         raise ArgumentError, "must provide a `database` or a `role`."
@@ -263,10 +246,11 @@ module ActiveRecord
       :clear_all_connections!, :flush_idle_connections!, to: :connection_handler
 
     private
-
       def swap_connection_handler(handler, &blk) # :nodoc:
         old_handler, ActiveRecord::Base.connection_handler = ActiveRecord::Base.connection_handler, handler
-        yield
+        return_value = yield
+        return_value.load if return_value.is_a? ActiveRecord::Relation
+        return_value
       ensure
         ActiveRecord::Base.connection_handler = old_handler
       end

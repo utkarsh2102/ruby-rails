@@ -67,7 +67,7 @@ class MemCacheStoreTest < ActiveSupport::TestCase
     cache = ActiveSupport::Cache.lookup_store(*store, raw: true)
     cache.clear
     cache.write("foo", Marshal.dump([]))
-    assert_equal [], cache.read("foo")
+    assert_equal Marshal.dump([]), cache.read("foo")
   end
 
   def test_local_cache_raw_values
@@ -100,7 +100,7 @@ class MemCacheStoreTest < ActiveSupport::TestCase
     cache.clear
     cache.with_local_cache do
       cache.write("foo", Marshal.dump([]))
-      assert_equal [], cache.read("foo")
+      assert_equal Marshal.dump([]), cache.read("foo")
     end
   end
 
@@ -113,7 +113,6 @@ class MemCacheStoreTest < ActiveSupport::TestCase
   end
 
   private
-
     def store
       [:mem_cache_store, ENV["MEMCACHE_SERVERS"] || "localhost:11211"]
     end

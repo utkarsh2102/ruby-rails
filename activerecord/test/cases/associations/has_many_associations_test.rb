@@ -224,6 +224,18 @@ class HasManyAssociationsTest < ActiveRecord::TestCase
   def test_build_and_create_from_association_should_respect_passed_attributes_over_default_scope
     car = Car.create(name: "honda")
 
+    bulb = car.bulbs.where(name: "exotic").build
+    assert_equal "exotic", bulb.name
+    assert_nil bulb.count_after_create
+
+    bulb = car.bulbs.where(name: "exotic").create
+    assert_equal "exotic", bulb.name
+    assert_equal 1, bulb.count_after_create
+
+    bulb = car.bulbs.where(name: "exotic").create!
+    assert_equal "exotic", bulb.name
+    assert_equal 2, bulb.count_after_create
+
     bulb = car.bulbs.build(name: "exotic")
     assert_equal "exotic", bulb.name
 
@@ -1817,7 +1829,7 @@ class HasManyAssociationsTest < ActiveRecord::TestCase
 
     core = companies(:rails_core)
     assert_equal accounts(:rails_core_account), core.account
-    assert_equal companies(:leetsoft, :jadedpixel), core.companies
+    assert_equal companies(:leetsoft, :jadedpixel).sort_by(&:id), core.companies.sort_by(&:id)
     core.destroy
     assert_nil accounts(:rails_core_account).reload.firm_id
     assert_nil companies(:leetsoft).reload.client_of
@@ -2645,10 +2657,11 @@ class HasManyAssociationsTest < ActiveRecord::TestCase
 
     assert_equal [bulb1], car.bulbs
     assert_equal [bulb1, bulb2], car.all_bulbs.sort_by(&:id)
+    assert_equal [bulb1, bulb2], Car.includes(:all_bulbs).find(car.id).all_bulbs.sort_by(&:id)
+    assert_equal [bulb1, bulb2], Car.eager_load(:all_bulbs).find(car.id).all_bulbs.sort_by(&:id)
   end
 
   test "can unscope and where the default scope of the associated model" do
-    Car.has_many :other_bulbs, -> { unscope(where: [:name]).where(name: "other") }, class_name: "Bulb"
     car = Car.create!
     bulb1 = Bulb.create! name: "defaulty", car: car
     bulb2 = Bulb.create! name: "other",    car: car
@@ -2658,7 +2671,6 @@ class HasManyAssociationsTest < ActiveRecord::TestCase
   end
 
   test "can rewhere the default scope of the associated model" do
-    Car.has_many :old_bulbs, -> { rewhere(name: "old") }, class_name: "Bulb"
     car = Car.create!
     bulb1 = Bulb.create! name: "defaulty", car: car
     bulb2 = Bulb.create! name: "old",      car: car
@@ -2669,11 +2681,11 @@ class HasManyAssociationsTest < ActiveRecord::TestCase
 
   test "unscopes the default scope of associated model when used with include" do
     car = Car.create!
-    bulb = Bulb.create! name: "other", car: car
+    bulb1 = Bulb.create! name: "defaulty", car: car
+    bulb2 = Bulb.create! name: "other",    car: car
 
-    assert_equal [bulb], Car.find(car.id).all_bulbs
-    assert_equal [bulb], Car.includes(:all_bulbs).find(car.id).all_bulbs
-    assert_equal [bulb], Car.eager_load(:all_bulbs).find(car.id).all_bulbs
+    assert_equal [bulb1, bulb2], Car.includes(:all_bulbs2).find(car.id).all_bulbs2.sort_by(&:id)
+    assert_equal [bulb1, bulb2], Car.eager_load(:all_bulbs2).find(car.id).all_bulbs2.sort_by(&:id)
   end
 
   test "raises RecordNotDestroyed when replaced child can't be destroyed" do
@@ -2987,12 +2999,11 @@ class HasManyAssociationsTest < ActiveRecord::TestCase
   end
 
   def test_has_many_preloading_with_duplicate_records
-    posts = Post.joins(:comments).preload(:comments).to_a
-    assert_equal [1, 2], posts.first.comments.map(&:id)
+    posts = Post.joins(:comments).preload(:comments).order(:id).to_a
+    assert_equal [1, 2], posts.first.comments.map(&:id).sort
   end
 
   private
-
     def force_signal37_to_load_all_clients_of_firm
       companies(:first_firm).clients_of_firm.load_target
     end

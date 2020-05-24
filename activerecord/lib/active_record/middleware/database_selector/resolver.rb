@@ -44,7 +44,6 @@ module ActiveRecord
         end
 
         private
-
           def read_from_primary(&blk)
             ActiveRecord::Base.connected_to(role: ActiveRecord::Base.writing_role, prevent_writes: true) do
               instrumenter.instrument("database_selector.active_record.read_from_primary") do
@@ -54,7 +53,7 @@ module ActiveRecord
           end
 
           def read_from_replica(&blk)
-            ActiveRecord::Base.connected_to(role: ActiveRecord::Base.reading_role) do
+            ActiveRecord::Base.connected_to(role: ActiveRecord::Base.reading_role, prevent_writes: true) do
               instrumenter.instrument("database_selector.active_record.read_from_replica") do
                 yield
               end

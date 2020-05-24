@@ -183,20 +183,22 @@ module ActiveRecord
         scope_chain_items = join_scopes(table, predicate_builder)
         klass_scope       = klass_join_scope(table, predicate_builder)
 
+        if type
+          klass_scope.where!(type => foreign_klass.polymorphic_name)
+        end
+
+        scope_chain_items.inject(klass_scope, &:merge!)
+
         key         = join_keys.key
         foreign_key = join_keys.foreign_key
 
         klass_scope.where!(table[key].eq(foreign_table[foreign_key]))
 
-        if type
-          klass_scope.where!(type => foreign_klass.polymorphic_name)
-        end
-
         if klass.finder_needs_type_condition?
           klass_scope.where!(klass.send(:type_condition, table))
         end
 
-        scope_chain_items.inject(klass_scope, &:merge!)
+        klass_scope
       end
 
       def join_scopes(table, predicate_builder) # :nodoc:
@@ -590,7 +592,6 @@ module ActiveRecord
       end
 
       private
-
         def calculate_constructable(macro, options)
           true
         end
@@ -620,7 +621,7 @@ module ActiveRecord
             end
 
             if valid_inverse_reflection?(reflection)
-              return inverse_name
+              inverse_name
             end
           end
         end
@@ -704,7 +705,6 @@ module ActiveRecord
       end
 
       private
-
         def calculate_constructable(macro, options)
           !options[:through]
         end

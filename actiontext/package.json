@@ -1,6 +1,6 @@
 {
   "name": "@rails/actiontext",
-  "version": "6.0.2-1",
+  "version": "6.0.3-1",
   "description": "Edit and display rich text in Rails applications",
   "main": "app/javascript/actiontext/index.js",
   "files": [
@@ -24,6 +24,6 @@
     "@rails/activestorage": "^6.0.0-alpha"
   },
   "peerDependencies": {
-    "trix": "^1.0.0"
+    "trix": "^1.2.0"
   }
 }

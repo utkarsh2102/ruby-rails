@@ -1,3 +1,30 @@
+## Rails 6.0.3.1 (May 18, 2020) ##
+
+*   [CVE-2020-8166] HMAC raw CSRF token before masking it, so it cannot be used to reconstruct a per-form token
+
+*   [CVE-2020-8164] Return self when calling #each, #each_pair, and #each_value instead of the raw @parameters hash
+
+## Rails 6.0.3 (May 06, 2020) ##
+
+*   Include child session assertion count in ActionDispatch::IntegrationTest
+
+    `IntegrationTest#open_session` uses `dup` to create the new session, which
+    meant it had its own copy of `@assertions`. This prevented the assertions
+    from being correctly counted and reported.
+
+    Child sessions now have their `attr_accessor` overriden to delegate to the
+    root session.
+
+    Fixes #32142
+
+    *Sam Bostock*
+
+
+## Rails 6.0.2.2 (March 19, 2020) ##
+
+*   No changes.
+
+
 ## Rails 6.0.2.1 (December 18, 2019) ##
 
 *   Fix possible information leak / session hijacking vulnerability.

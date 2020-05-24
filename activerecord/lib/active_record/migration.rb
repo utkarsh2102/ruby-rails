@@ -568,7 +568,6 @@ module ActiveRecord
       end
 
       private
-
         def connection
           ActiveRecord::Base.connection
         end
@@ -619,6 +618,7 @@ module ActiveRecord
       def method_missing(name, *args, &block) #:nodoc:
         nearest_delegate.send(name, *args, &block)
       end
+      ruby2_keywords(:method_missing) if respond_to?(:ruby2_keywords, true)
 
       def migrate(direction)
         new.migrate direction
@@ -890,6 +890,7 @@ module ActiveRecord
         connection.send(method, *arguments, &block)
       end
     end
+    ruby2_keywords(:method_missing) if respond_to?(:ruby2_keywords, true)
 
     def copy(destination, sources, options = {})
       copied = []
@@ -1001,7 +1002,6 @@ module ActiveRecord
     delegate :migrate, :announce, :write, :disable_ddl_transaction, to: :migration
 
     private
-
       def migration
         @migration ||= load_migration
       end
@@ -1261,7 +1261,6 @@ module ActiveRecord
     end
 
     private
-
       # Used for running a specific migration.
       def run_without_lock
         migration = migrations.detect { |m| m.version == @target_version }
@@ -1375,7 +1374,8 @@ module ActiveRecord
 
       def with_advisory_lock
         lock_id = generate_migrator_advisory_lock_id
-        connection = Base.connection
+        AdvisoryLockBase.establish_connection(ActiveRecord::Base.connection_config) unless AdvisoryLockBase.connected?
+        connection = AdvisoryLockBase.connection
         got_lock = connection.get_advisory_lock(lock_id)
         raise ConcurrentMigrationError unless got_lock
         load_migrated # reload schema_migrations to be sure it wasn't changed by another process before we got the lock

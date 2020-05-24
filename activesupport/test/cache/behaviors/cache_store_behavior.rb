@@ -400,7 +400,7 @@ module CacheStoreBehavior
 
   def test_race_condition_protection_skipped_if_not_defined
     @cache.write("foo", "bar")
-    time = @cache.send(:read_entry, @cache.send(:normalize_key, "foo", {}), {}).expires_at
+    time = @cache.send(:read_entry, @cache.send(:normalize_key, "foo", {}), **{}).expires_at
 
     Time.stub(:now, Time.at(time)) do
       result = @cache.fetch("foo") do
@@ -456,8 +456,8 @@ module CacheStoreBehavior
   def test_crazy_key_characters
     crazy_key = "#/:*(<+=> )&$%@?;'\"\'`~-"
     assert @cache.write(crazy_key, "1", raw: true)
-    assert_equal "1", @cache.read(crazy_key)
-    assert_equal "1", @cache.fetch(crazy_key)
+    assert_equal "1", @cache.read(crazy_key, raw: true)
+    assert_equal "1", @cache.fetch(crazy_key, raw: true)
     assert @cache.delete(crazy_key)
     assert_equal "2", @cache.fetch(crazy_key, raw: true) { "2" }
     assert_equal 3, @cache.increment(crazy_key)
@@ -481,7 +481,7 @@ module CacheStoreBehavior
       @events << ActiveSupport::Notifications::Event.new(*args)
     end
     assert @cache.write(key, "1", raw: true)
-    assert @cache.fetch(key) { }
+    assert @cache.fetch(key, raw: true) { }
     assert_equal 1, @events.length
     assert_equal "cache_read.active_support", @events[0].name
     assert_equal :fetch, @events[0].payload[:super_operation]
@@ -507,7 +507,6 @@ module CacheStoreBehavior
   end
 
   private
-
     def assert_compressed(value, **options)
       assert_compression(true, value, **options)
     end
@@ -530,8 +529,8 @@ module CacheStoreBehavior
         assert_equal value, @cache.read("uncompressed")
       end
 
-      actual_entry = @cache.send(:read_entry, @cache.send(:normalize_key, "actual", {}), {})
-      uncompressed_entry = @cache.send(:read_entry, @cache.send(:normalize_key, "uncompressed", {}), {})
+      actual_entry = @cache.send(:read_entry, @cache.send(:normalize_key, "actual", {}), **{})
+      uncompressed_entry = @cache.send(:read_entry, @cache.send(:normalize_key, "uncompressed", {}), **{})
 
       actual_size = Marshal.dump(actual_entry).bytesize
       uncompressed_size = Marshal.dump(uncompressed_entry).bytesize

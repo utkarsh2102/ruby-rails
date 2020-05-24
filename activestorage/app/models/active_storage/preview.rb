@@ -59,7 +59,7 @@ class ActiveStorage::Preview
   # a stable URL that redirects to the short-lived URL returned by this method.
   def service_url(**options)
     if processed?
-      variant.service_url(options)
+      variant.service_url(**options)
     else
       raise UnprocessedError
     end
@@ -71,7 +71,11 @@ class ActiveStorage::Preview
     end
 
     def process
-      previewer.preview { |attachable| image.attach(attachable) }
+      previewer.preview do |attachable|
+        ActiveRecord::Base.connected_to(role: ActiveRecord::Base.writing_role) do
+          image.attach(attachable)
+        end
+      end
     end
 
     def variant

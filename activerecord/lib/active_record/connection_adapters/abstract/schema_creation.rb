@@ -19,7 +19,6 @@ module ActiveRecord
           to: :@conn, private: true
 
         private
-
           def visit_AlterTable(o)
             sql = +"ALTER TABLE #{quote_table_name(o.name)} "
             sql << o.adds.map { |col| accept col }.join(" ")
@@ -28,7 +27,7 @@ module ActiveRecord
           end
 
           def visit_ColumnDefinition(o)
-            o.sql_type = type_to_sql(o.type, o.options)
+            o.sql_type = type_to_sql(o.type, **o.options)
             column_sql = +"#{quote_column_name(o.name)} #{o.sql_type}"
             add_column_options!(column_sql, column_options(o)) unless o.type == :primary_key
             column_sql

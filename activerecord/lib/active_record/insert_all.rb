@@ -120,7 +120,7 @@ module ActiveRecord
         end
 
         def into
-          "INTO #{model.quoted_table_name}(#{columns_list})"
+          "INTO #{model.quoted_table_name} (#{columns_list})"
         end
 
         def values_list
@@ -130,7 +130,7 @@ module ActiveRecord
             connection.with_yaml_fallback(types[key].serialize(value))
           end
 
-          Arel::InsertManager.new.create_values_list(values_list).to_sql
+          connection.visitor.compile(Arel::Nodes::ValuesList.new(values_list))
         end
 
         def returning
@@ -164,7 +164,7 @@ module ActiveRecord
             unknown_column = (keys - columns.keys).first
             raise UnknownAttributeError.new(model.new, unknown_column) if unknown_column
 
-            keys.map { |key| [ key, connection.lookup_cast_type_from_column(columns[key]) ] }.to_h
+            keys.index_with { |key| model.type_for_attribute(key) }
           end
 
           def format_columns(columns)

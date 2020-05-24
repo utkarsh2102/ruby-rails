@@ -252,7 +252,6 @@ module ActionDispatch
       end
 
       private
-
         def upgrade_legacy_hmac_aes_cbc_cookies?
           request.secret_key_base.present? &&
             request.encrypted_signed_cookie_salt.present? &&
@@ -428,7 +427,6 @@ module ActionDispatch
       mattr_accessor :always_write_cookie, default: false
 
       private
-
         def escape(string)
           ::Rack::Utils.escape(string)
         end
@@ -573,7 +571,8 @@ module ActionDispatch
         secret = request.key_generator.generate_key(request.signed_cookie_salt)
         @verifier = ActiveSupport::MessageVerifier.new(secret, digest: signed_cookie_digest, serializer: SERIALIZER)
 
-        request.cookies_rotations.signed.each do |*secrets, **options|
+        request.cookies_rotations.signed.each do |(*secrets)|
+          options = secrets.extract_options!
           @verifier.rotate(*secrets, serializer: SERIALIZER, **options)
         end
       end
@@ -586,7 +585,7 @@ module ActionDispatch
         end
 
         def commit(name, options)
-          options[:value] = @verifier.generate(serialize(options[:value]), cookie_metadata(name, options))
+          options[:value] = @verifier.generate(serialize(options[:value]), **cookie_metadata(name, options))
 
           raise CookieOverflow if options[:value].bytesize > MAX_COOKIE_SIZE
         end
@@ -609,7 +608,8 @@ module ActionDispatch
           @encryptor = ActiveSupport::MessageEncryptor.new(secret, sign_secret, cipher: "aes-256-cbc", serializer: SERIALIZER)
         end
 
-        request.cookies_rotations.encrypted.each do |*secrets, **options|
+        request.cookies_rotations.encrypted.each do |(*secrets)|
+          options = secrets.extract_options!
           @encryptor.rotate(*secrets, serializer: SERIALIZER, **options)
         end
 
@@ -632,7 +632,7 @@ module ActionDispatch
         end
 
         def commit(name, options)
-          options[:value] = @encryptor.encrypt_and_sign(serialize(options[:value]), cookie_metadata(name, options))
+          options[:value] = @encryptor.encrypt_and_sign(serialize(options[:value]), **cookie_metadata(name, options))
 
           raise CookieOverflow if options[:value].bytesize > MAX_COOKIE_SIZE
         end

@@ -26,7 +26,7 @@ config.eager_load is set to nil. Please update your config/environments/*.rb fil
   * test - set it to false (unless you use a tool that preloads your test environment)
   * production - set it to true
 
-INFO
+          INFO
           config.eager_load = config.cache_classes
         end
       end
@@ -56,7 +56,7 @@ INFO
       # Initialize cache early in the stack so railties can make use of it.
       initializer :initialize_cache, group: :all do
         unless Rails.cache
-          Rails.cache = ActiveSupport::Cache.lookup_store(config.cache_store)
+          Rails.cache = ActiveSupport::Cache.lookup_store(*config.cache_store)
 
           if Rails.cache.respond_to?(:middleware)
             config.middleware.insert_before(::Rack::Runtime, Rails.cache.middleware)

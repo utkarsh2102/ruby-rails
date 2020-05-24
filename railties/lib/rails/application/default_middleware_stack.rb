@@ -16,7 +16,7 @@ module Rails
           middleware.use ::ActionDispatch::HostAuthorization, config.hosts, config.action_dispatch.hosts_response_app
 
           if config.force_ssl
-            middleware.use ::ActionDispatch::SSL, config.ssl_options
+            middleware.use ::ActionDispatch::SSL, **config.ssl_options
           end
 
           middleware.use ::Rack::Sendfile, config.action_dispatch.x_sendfile_header
@@ -79,7 +79,6 @@ module Rails
       end
 
       private
-
         def load_rack_cache
           rack_cache = config.action_dispatch.rack_cache
           return unless rack_cache

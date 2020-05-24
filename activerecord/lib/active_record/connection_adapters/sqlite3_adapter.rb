@@ -101,7 +101,7 @@ module ActiveRecord
       def self.database_exists?(config)
         config = config.symbolize_keys
         if config[:database] == ":memory:"
-          return true
+          true
         else
           database_file = defined?(Rails.root) ? File.expand_path(config[:database], Rails.root) : config[:database]
           File.exist?(database_file)
@@ -244,17 +244,17 @@ module ActiveRecord
         rename_table_indexes(table_name, new_name)
       end
 
-      def add_column(table_name, column_name, type, options = {}) #:nodoc:
+      def add_column(table_name, column_name, type, **options) #:nodoc:
         if invalid_alter_table_type?(type, options)
           alter_table(table_name) do |definition|
-            definition.column(column_name, type, options)
+            definition.column(column_name, type, **options)
           end
         else
           super
         end
       end
 
-      def remove_column(table_name, column_name, type = nil, options = {}) #:nodoc:
+      def remove_column(table_name, column_name, type = nil, **options) #:nodoc:
         alter_table(table_name) do |definition|
           definition.remove_column column_name
           definition.foreign_keys.delete_if do |_, fk_options|
@@ -363,7 +363,8 @@ module ActiveRecord
         # See: https://www.sqlite.org/lang_altertable.html
         # SQLite has an additional restriction on the ALTER TABLE statement
         def invalid_alter_table_type?(type, options)
-          type.to_sym == :primary_key || options[:primary_key]
+          type.to_sym == :primary_key || options[:primary_key] ||
+            options[:null] == false && options[:default].nil?
         end
 
         def alter_table(table_name, foreign_keys = foreign_keys(table_name), **options)
@@ -376,7 +377,7 @@ module ActiveRecord
                 fk.options[:column] = column
               end
               to_table = strip_table_name_prefix_and_suffix(fk.to_table)
-              definition.foreign_key(to_table, fk.options)
+              definition.foreign_key(to_table, **fk.options)
             end
 
             yield definition if block_given?
@@ -398,7 +399,7 @@ module ActiveRecord
         def copy_table(from, to, options = {})
           from_primary_key = primary_key(from)
           options[:id] = false
-          create_table(to, options) do |definition|
+          create_table(to, **options) do |definition|
             @definition = definition
             if from_primary_key.is_a?(Array)
               @definition.primary_keys from_primary_key
