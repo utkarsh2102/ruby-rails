@@ -1,3 +1,10 @@
+rails (2:6.0.3.1+dfsg-1) experimental; urgency=medium
+
+  * New upstream version 6.0.3.1+dfsg
+  * Refresh patches
+
+ -- Pirate Praveen <praveen@debian.org>  Mon, 25 May 2020 16:04:56 +0530
+
 rails (2:6.0.2.1+dfsg-4) experimental; urgency=medium
 
   * Tighten dependency on ruby-rails-html-sanitizer (for backports)
