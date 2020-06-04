@@ -14,11 +14,17 @@ class DirtyTest < ActiveModel::TestCase
       @status = "initialized"
     end
 
-    attr_reader :name, :color, :size, :status
+    def name
+      @name
+    end
 
     def name=(val)
       name_will_change!
       @name = val
+    end
+
+    def color
+      @color
     end
 
     def color=(val)
@@ -26,9 +32,17 @@ class DirtyTest < ActiveModel::TestCase
       @color = val
     end
 
+    def size
+      @size
+    end
+
     def size=(val)
       attribute_will_change!(:size) unless val == @size
       @size = val
+    end
+
+    def status
+      @status
     end
 
     def status=(val)
@@ -64,7 +78,7 @@ class DirtyTest < ActiveModel::TestCase
   end
 
   test "changes to attribute values" do
-    assert_not @model.changes["name"]
+    assert !@model.changes["name"]
     @model.name = "John"
     assert_equal [nil, "John"], @model.changes["name"]
   end
@@ -94,7 +108,7 @@ class DirtyTest < ActiveModel::TestCase
   end
 
   test "attribute mutation" do
-    @model.instance_variable_set("@name", +"Yam")
+    @model.instance_variable_set("@name", "Yam".dup)
     assert_not_predicate @model, :name_changed?
     @model.name.replace("Hadad")
     assert_not_predicate @model, :name_changed?

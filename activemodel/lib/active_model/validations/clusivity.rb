@@ -15,6 +15,7 @@ module ActiveModel
       end
 
     private
+
       def include?(record, value)
         members = if delimiter.respond_to?(:call)
           delimiter.call(record)
@@ -31,7 +32,7 @@ module ActiveModel
         @delimiter ||= options[:in] || options[:within]
       end
 
-      # After Ruby 2.2, <tt>Range#include?</tt> on non-number-or-time-ish ranges checks all
+      # In Ruby 2.2 <tt>Range#include?</tt> on non-number-or-time-ish ranges checks all
       # possible values in the range for equality, which is slower but more accurate.
       # <tt>Range#cover?</tt> uses the previous logic of comparing a value with the range
       # endpoints, which is fast but is only accurate on Numeric, Time, Date,

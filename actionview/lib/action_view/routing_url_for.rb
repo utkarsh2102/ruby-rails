@@ -84,24 +84,25 @@ module ActionView
         super(only_path: _generate_paths_by_default)
       when Hash
         options = options.symbolize_keys
-        ensure_only_path_option(options)
+        unless options.key?(:only_path)
+          options[:only_path] = only_path?(options[:host])
+        end
 
         super(options)
       when ActionController::Parameters
-        ensure_only_path_option(options)
+        unless options.key?(:only_path)
+          options[:only_path] = only_path?(options[:host])
+        end
 
         super(options)
       when :back
         _back_url
       when Array
         components = options.dup
-        options = components.extract_options!
-        ensure_only_path_option(options)
-
-        if options[:only_path]
-          polymorphic_path(components, options)
+        if _generate_paths_by_default
+          polymorphic_path(components, components.extract_options!)
         else
-          polymorphic_url(components, options)
+          polymorphic_url(components, components.extract_options!)
         end
       else
         method = _generate_paths_by_default ? :path : :url
@@ -137,10 +138,8 @@ module ActionView
         true
       end
 
-      def ensure_only_path_option(options)
-        unless options.key?(:only_path)
-          options[:only_path] = _generate_paths_by_default unless options[:host]
-        end
+      def only_path?(host)
+        _generate_paths_by_default unless host
       end
   end
 end

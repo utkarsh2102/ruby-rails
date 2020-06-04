@@ -87,6 +87,7 @@ module Rails
       end
 
     private
+
       def method_missing(name, *args, &blk)
         if name.to_s =~ /=$/
           @@options[$`.to_sym] = args.first

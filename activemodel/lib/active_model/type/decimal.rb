@@ -17,6 +17,7 @@ module ActiveModel
       end
 
       private
+
         def cast_value(value)
           casted_value = \
             case value

@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-require "active_support/deprecation"
-require "active_support/core_ext/string/filters"
 require "rails/command/environment_argument"
 
 module Rails
@@ -77,7 +75,7 @@ module Rails
         args += ["-P", "#{config['password']}"] if config["password"]
 
         if config["host"]
-          host_arg = +"#{config['host']}"
+          host_arg = "#{config['host']}".dup
           host_arg << ":#{config['port']}" if config["port"]
           args += ["-S", host_arg]
         end
@@ -91,15 +89,15 @@ module Rails
 
     def config
       @config ||= begin
-        # We need to check whether the user passed the database the
+        # We need to check whether the user passed the connection the
         # first time around to show a consistent error message to people
         # relying on 2-level database configuration.
-        if @options["database"] && configurations[database].blank?
-          raise ActiveRecord::AdapterNotSpecified, "'#{database}' database is not configured. Available configuration: #{configurations.inspect}"
-        elsif configurations[environment].blank? && configurations[database].blank?
+        if @options["connection"] && configurations[connection].blank?
+          raise ActiveRecord::AdapterNotSpecified, "'#{connection}' connection is not configured. Available configuration: #{configurations.inspect}"
+        elsif configurations[environment].blank? && configurations[connection].blank?
           raise ActiveRecord::AdapterNotSpecified, "'#{environment}' database is not configured. Available configuration: #{configurations.inspect}"
         else
-          configurations[database] || configurations[environment].presence
+          configurations[environment].presence || configurations[connection]
         end
       end
     end
@@ -108,8 +106,8 @@ module Rails
       Rails.respond_to?(:env) ? Rails.env : Rails::Command.environment
     end
 
-    def database
-      @options.fetch(:database, "primary")
+    def connection
+      @options.fetch(:connection, "primary")
     end
 
     private
@@ -158,21 +156,11 @@ module Rails
       class_option :connection, aliases: "-c", type: :string,
         desc: "Specifies the connection to use."
 
-      class_option :database, aliases: "--db", type: :string,
-        desc: "Specifies the database to use."
-
       def perform
         extract_environment_option_from_argument
 
         # RAILS_ENV needs to be set before config/application is required.
         ENV["RAILS_ENV"] = options[:environment]
-
-        if options["connection"]
-          ActiveSupport::Deprecation.warn(<<-MSG.squish)
-            `connection` option is deprecated and will be removed in Rails 6.1. Please use `database` option instead.
-          MSG
-          options["database"] = options["connection"]
-        end
 
         require_application_and_environment!
         Rails::DBConsole.start(options)

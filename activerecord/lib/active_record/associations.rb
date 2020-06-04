@@ -92,7 +92,7 @@ module ActiveRecord
         through_reflection      = reflection.through_reflection
         source_reflection_names = reflection.source_reflection_names
         source_associations     = reflection.through_reflection.klass._reflections.keys
-        super("Could not find the source association(s) #{source_reflection_names.collect(&:inspect).to_sentence(two_words_connector: ' or ', last_word_connector: ', or ')} in model #{through_reflection.klass}. Try 'has_many #{reflection.name.inspect}, :through => #{through_reflection.name.inspect}, :source => <name>'. Is it one of #{source_associations.to_sentence(two_words_connector: ' or ', last_word_connector: ', or ')}?")
+        super("Could not find the source association(s) #{source_reflection_names.collect(&:inspect).to_sentence(two_words_connector: ' or ', last_word_connector: ', or ', locale: :en)} in model #{through_reflection.klass}. Try 'has_many #{reflection.name.inspect}, :through => #{through_reflection.name.inspect}, :source => <name>'. Is it one of #{source_associations.to_sentence(two_words_connector: ' or ', last_word_connector: ', or ', locale: :en)}?")
       else
         super("Could not find the source association(s).")
       end
@@ -292,13 +292,13 @@ module ActiveRecord
       #
       # The project class now has the following methods (and more) to ease the traversal and
       # manipulation of its relationships:
-      # * <tt>Project#portfolio</tt>, <tt>Project#portfolio=(portfolio)</tt>, <tt>Project#reload_portfolio</tt>
-      # * <tt>Project#project_manager</tt>, <tt>Project#project_manager=(project_manager)</tt>, <tt>Project#reload_project_manager</tt>
-      # * <tt>Project#milestones.empty?</tt>, <tt>Project#milestones.size</tt>, <tt>Project#milestones</tt>, <tt>Project#milestones<<(milestone)</tt>,
-      #   <tt>Project#milestones.delete(milestone)</tt>, <tt>Project#milestones.destroy(milestone)</tt>, <tt>Project#milestones.find(milestone_id)</tt>,
-      #   <tt>Project#milestones.build</tt>, <tt>Project#milestones.create</tt>
-      # * <tt>Project#categories.empty?</tt>, <tt>Project#categories.size</tt>, <tt>Project#categories</tt>, <tt>Project#categories<<(category1)</tt>,
-      #   <tt>Project#categories.delete(category1)</tt>, <tt>Project#categories.destroy(category1)</tt>
+      # * <tt>Project#portfolio, Project#portfolio=(portfolio), Project#portfolio.nil?</tt>
+      # * <tt>Project#project_manager, Project#project_manager=(project_manager), Project#project_manager.nil?,</tt>
+      # * <tt>Project#milestones.empty?, Project#milestones.size, Project#milestones, Project#milestones<<(milestone),</tt>
+      #   <tt>Project#milestones.delete(milestone), Project#milestones.destroy(milestone), Project#milestones.find(milestone_id),</tt>
+      #   <tt>Project#milestones.build, Project#milestones.create</tt>
+      # * <tt>Project#categories.empty?, Project#categories.size, Project#categories, Project#categories<<(category1),</tt>
+      #   <tt>Project#categories.delete(category1), Project#categories.destroy(category1)</tt>
       #
       # === A word of warning
       #
@@ -703,9 +703,8 @@ module ActiveRecord
       # #belongs_to associations.
       #
       # Extra options on the associations, as defined in the
-      # <tt>AssociationReflection::INVALID_AUTOMATIC_INVERSE_OPTIONS</tt>
-      # constant, or a custom scope, will also prevent the association's inverse
-      # from being found automatically.
+      # <tt>AssociationReflection::INVALID_AUTOMATIC_INVERSE_OPTIONS</tt> constant, will
+      # also prevent the association's inverse from being found automatically.
       #
       # The automatic guessing of the inverse association uses a heuristic based
       # on the name of the class, so it may not work for all associations,
@@ -1294,9 +1293,8 @@ module ActiveRecord
         #
         #   * <tt>:destroy</tt> causes all the associated objects to also be destroyed.
         #   * <tt>:delete_all</tt> causes all the associated objects to be deleted directly from the database (so callbacks will not be executed).
-        #   * <tt>:nullify</tt> causes the foreign keys to be set to +NULL+. Polymorphic type will also be nullified
-        #     on polymorphic associations. Callbacks are not executed.
-        #   * <tt>:restrict_with_exception</tt> causes an <tt>ActiveRecord::DeleteRestrictionError</tt> exception to be raised if there are any associated records.
+        #   * <tt>:nullify</tt> causes the foreign keys to be set to +NULL+. Callbacks are not executed.
+        #   * <tt>:restrict_with_exception</tt> causes an exception to be raised if there are any associated records.
         #   * <tt>:restrict_with_error</tt> causes an error to be added to the owner if there are any associated objects.
         #
         #   If using with the <tt>:through</tt> option, the association on the join model must be
@@ -1438,9 +1436,8 @@ module ActiveRecord
         #
         #   * <tt>:destroy</tt> causes the associated object to also be destroyed
         #   * <tt>:delete</tt> causes the associated object to be deleted directly from the database (so callbacks will not execute)
-        #   * <tt>:nullify</tt> causes the foreign key to be set to +NULL+. Polymorphic type column is also nullified
-        #     on polymorphic associations. Callbacks are not executed.
-        #   * <tt>:restrict_with_exception</tt> causes an <tt>ActiveRecord::DeleteRestrictionError</tt> exception to be raised if there is an associated record
+        #   * <tt>:nullify</tt> causes the foreign key to be set to +NULL+. Callbacks are not executed.
+        #   * <tt>:restrict_with_exception</tt> causes an exception to be raised if there is an associated record
         #   * <tt>:restrict_with_error</tt> causes an error to be added to the owner if there is an associated object
         #
         #   Note that <tt>:dependent</tt> option is ignored when using <tt>:through</tt> option.
@@ -1527,7 +1524,6 @@ module ActiveRecord
         #   Returns the associated object. +nil+ is returned if none is found.
         # [association=(associate)]
         #   Assigns the associate object, extracts the primary key, and sets it as the foreign key.
-        #   No modification or deletion of existing records takes place.
         # [build_association(attributes = {})]
         #   Returns a new object of the associated type that has been instantiated
         #   with +attributes+ and linked to this object through a foreign key, but has not yet been saved.
@@ -1585,7 +1581,7 @@ module ActiveRecord
         #   association will use "taggable_type" as the default <tt>:foreign_type</tt>.
         # [:primary_key]
         #   Specify the method that returns the primary key of associated object used for the association.
-        #   By default this is +id+.
+        #   By default this is id.
         # [:dependent]
         #   If set to <tt>:destroy</tt>, the associated object is destroyed when this object is. If set to
         #   <tt>:delete</tt>, the associated object is deleted *without* calling its destroy method.
@@ -1765,7 +1761,6 @@ module ActiveRecord
         #   has_and_belongs_to_many :projects, -> { includes(:milestones, :manager) }
         #   has_and_belongs_to_many :categories, ->(post) {
         #     where("default_category = ?", post.default_category)
-        #   }
         #
         # === Extensions
         #
@@ -1857,7 +1852,7 @@ module ActiveRecord
             hm_options[k] = options[k] if options.key? k
           end
 
-          has_many name, scope, **hm_options, &extension
+          has_many name, scope, hm_options, &extension
           _reflections[name.to_s].parent_reflection = habtm_reflection
         end
       end

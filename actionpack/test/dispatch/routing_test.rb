@@ -115,21 +115,6 @@ class TestRoutingMapper < ActionDispatch::IntegrationTest
     assert_equal 301, status
   end
 
-  def test_accepts_a_constraint_object_responding_to_call
-    constraint = Class.new do
-      def call(*); true; end
-      def matches?(*); false; end
-    end
-
-    draw do
-      get "/", to: "home#show", constraints: constraint.new
-    end
-
-    assert_nothing_raised do
-      get "/"
-    end
-  end
-
   def test_namespace_with_controller_segment
     assert_raise(ArgumentError) do
       draw do
@@ -2200,37 +2185,6 @@ class TestRoutingMapper < ActionDispatch::IntegrationTest
     assert_equal "cards#destroy", @response.body
   end
 
-  def test_shallow_false_inside_nested_shallow_resource
-    draw do
-      resources :blogs, shallow: true do
-        resources :posts do
-          resources :comments, shallow: false
-          resources :tags
-        end
-      end
-    end
-
-    get "/posts/1/comments"
-    assert_equal "comments#index", @response.body
-    assert_equal "/posts/1/comments", post_comments_path("1")
-
-    get "/posts/1/comments/new"
-    assert_equal "comments#new", @response.body
-    assert_equal "/posts/1/comments/new", new_post_comment_path("1")
-
-    get "/posts/1/comments/2"
-    assert_equal "comments#show", @response.body
-    assert_equal "/posts/1/comments/2", post_comment_path("1", "2")
-
-    get "/posts/1/comments/2/edit"
-    assert_equal "comments#edit", @response.body
-    assert_equal "/posts/1/comments/2/edit", edit_post_comment_path("1", "2")
-
-    get "/tags/3"
-    assert_equal "tags#show", @response.body
-    assert_equal "/tags/3", tag_path("3")
-  end
-
   def test_shallow_deeply_nested_resources
     draw do
       resources :blogs do
@@ -3215,7 +3169,7 @@ class TestRoutingMapper < ActionDispatch::IntegrationTest
       after = has_named_route?(:hello)
     end
 
-    assert_not before, "expected to not have named route :hello before route definition"
+    assert !before, "expected to not have named route :hello before route definition"
     assert after, "expected to have named route :hello after route definition"
   end
 
@@ -3228,7 +3182,7 @@ class TestRoutingMapper < ActionDispatch::IntegrationTest
       end
     end
 
-    assert_not respond_to?(:routes_no_collision_path)
+    assert !respond_to?(:routes_no_collision_path)
   end
 
   def test_controller_name_with_leading_slash_raise_error
@@ -3369,23 +3323,13 @@ class TestRoutingMapper < ActionDispatch::IntegrationTest
     assert_equal "0c0c0b68-d24b-11e1-a861-001ff3fffe6f", @request.params[:download]
   end
 
-  def test_colon_containing_custom_param
-    ex = assert_raises(ArgumentError) {
-      draw do
-        resources :profiles, param: "username/:is_admin"
-      end
-    }
-
-    assert_match(/:param option can't contain colon/, ex.message)
-  end
-
-  def test_action_from_path_is_frozen
+  def test_action_from_path_is_not_frozen
     draw do
       get "search" => "search"
     end
 
     get "/search"
-    assert_predicate @request.params[:action], :frozen?
+    assert_not_predicate @request.params[:action], :frozen?
   end
 
   def test_multiple_positional_args_with_the_same_name
@@ -3739,25 +3683,15 @@ class TestRoutingMapper < ActionDispatch::IntegrationTest
     end
   end
 
-  def test_multiple_roots_raises_error
-    ex = assert_raises(ArgumentError) {
-      draw do
-        root "pages#index", constraints: { host: "www.example.com" }
-        root "admin/pages#index", constraints: { host: "admin.example.com" }
-      end
-    }
-    assert_match(/Invalid route name, already in use: 'root'/, ex.message)
-  end
-
-  def test_multiple_named_roots
+  def test_multiple_roots
     draw do
       namespace :foo do
         root "pages#index", constraints: { host: "www.example.com" }
-        root "admin/pages#index", constraints: { host: "admin.example.com" }, as: :admin_root
+        root "admin/pages#index", constraints: { host: "admin.example.com" }
       end
 
       root "pages#index", constraints: { host: "www.example.com" }
-      root "admin/pages#index", constraints: { host: "admin.example.com" },  as: :admin_root
+      root "admin/pages#index", constraints: { host: "admin.example.com" }
     end
 
     get "http://www.example.com/foo"
@@ -3810,6 +3744,7 @@ class TestRoutingMapper < ActionDispatch::IntegrationTest
   end
 
 private
+
   def draw(&block)
     self.class.stub_controllers do |routes|
       routes.default_url_options = { host: "www.example.com" }
@@ -4422,7 +4357,7 @@ class TestNamedRouteUrlHelpers < ActionDispatch::IntegrationTest
 
   include Routes.url_helpers
 
-  test "URL helpers do not ignore nil parameters when using non-optimized routes" do
+  test "url helpers do not ignore nil parameters when using non-optimized routes" do
     Routes.stub :optimize_routes_generation?, false do
       get "/categories/1"
       assert_response :success
@@ -4581,7 +4516,7 @@ class TestPortConstraints < ActionDispatch::IntegrationTest
 
       get "/integer", to: ok, constraints: { port: 8080  }
       get "/string",  to: ok, constraints: { port: "8080" }
-      get "/array/:idx",   to: ok, constraints: { port: [8080], idx: %w[first last] }
+      get "/array",   to: ok, constraints: { port: [8080] }
       get "/regexp",  to: ok, constraints: { port: /8080/ }
     end
   end
@@ -4610,10 +4545,7 @@ class TestPortConstraints < ActionDispatch::IntegrationTest
     get "http://www.example.com/array"
     assert_response :not_found
 
-    get "http://www.example.com:8080/array/middle"
-    assert_response :not_found
-
-    get "http://www.example.com:8080/array/first"
+    get "http://www.example.com:8080/array"
     assert_response :success
   end
 
@@ -4794,7 +4726,7 @@ class TestUrlGenerationErrors < ActionDispatch::IntegrationTest
 
   include Routes.url_helpers
 
-  test "URL helpers raise a 'missing keys' error for a nil param with optimized helpers" do
+  test "url helpers raise a 'missing keys' error for a nil param with optimized helpers" do
     url, missing = { action: "show", controller: "products", id: nil }, [:id]
     message = "No route matches #{url.inspect}, missing required keys: #{missing.inspect}"
 
@@ -4802,7 +4734,7 @@ class TestUrlGenerationErrors < ActionDispatch::IntegrationTest
     assert_equal message, error.message
   end
 
-  test "URL helpers raise a 'constraint failure' error for a nil param with non-optimized helpers" do
+  test "url helpers raise a 'constraint failure' error for a nil param with non-optimized helpers" do
     url, missing = { action: "show", controller: "products", id: nil }, [:id]
     message = "No route matches #{url.inspect}, possible unmatched constraints: #{missing.inspect}"
 
@@ -4810,15 +4742,15 @@ class TestUrlGenerationErrors < ActionDispatch::IntegrationTest
     assert_equal message, error.message
   end
 
-  test "URL helpers raise message with mixed parameters when generation fails" do
+  test "url helpers raise message with mixed parameters when generation fails" do
     url, missing = { action: "show", controller: "products", id: nil, "id" => "url-tested" }, [:id]
     message = "No route matches #{url.inspect}, possible unmatched constraints: #{missing.inspect}"
 
-    # Optimized URL helper
+    # Optimized url helper
     error = assert_raises(ActionController::UrlGenerationError) { product_path(nil, "id" => "url-tested") }
     assert_equal message, error.message
 
-    # Non-optimized URL helper
+    # Non-optimized url helper
     error = assert_raises(ActionController::UrlGenerationError, message) { product_path(id: nil, "id" => "url-tested") }
     assert_equal message, error.message
   end
@@ -4952,50 +4884,10 @@ class TestPartialDynamicPathSegments < ActionDispatch::IntegrationTest
   end
 
   private
+
     def assert_params(params)
       assert_equal(params, request.path_parameters)
     end
-end
-
-class TestOptionalScopesWithOrWithoutParams < ActionDispatch::IntegrationTest
-  Routes = ActionDispatch::Routing::RouteSet.new.tap do |app|
-    app.draw do
-      scope module: "test_optional_scopes_with_or_without_params" do
-        scope "(:locale)", locale: /en|es/ do
-          get "home", controller: :home, action: :index
-          get "with_param/:foo", to: "home#with_param", as: "with_param"
-          get "without_param", to: "home#without_param"
-        end
-      end
-    end
-  end
-
-  class HomeController < ActionController::Base
-    include Routes.url_helpers
-
-    def index
-      render inline: "<%= with_param_path(foo: 'bar') %> | <%= without_param_path %>"
-    end
-
-    def with_param; end
-    def without_param; end
-  end
-
-  APP = build_app Routes
-
-  def app
-    APP
-  end
-
-  def test_stays_unscoped_with_or_without_params
-    get "/home"
-    assert_equal "/with_param/bar | /without_param", response.body
-  end
-
-  def test_preserves_scope_with_or_without_params
-    get "/es/home"
-    assert_equal "/es/with_param/bar | /es/without_param", response.body
-  end
 end
 
 class TestPathParameters < ActionDispatch::IntegrationTest
@@ -5071,12 +4963,8 @@ end
 
 class FlashRedirectTest < ActionDispatch::IntegrationTest
   SessionKey = "_myapp_session"
-  Generator = ActiveSupport::CachingKeyGenerator.new(
-    ActiveSupport::KeyGenerator.new("b3c631c314c0bbca50c1b2843150fe33", iterations: 1000)
-  )
-  Rotations = ActiveSupport::Messages::RotationConfiguration.new
-  SIGNED_COOKIE_SALT = "signed cookie"
-  ENCRYPTED_SIGNED_COOKIE_SALT = "signed encrypted cookie"
+  Generator  = ActiveSupport::LegacyKeyGenerator.new("b3c631c314c0bbca50c1b2843150fe33")
+  Rotations  = ActiveSupport::Messages::RotationConfiguration.new
 
   class KeyGeneratorMiddleware
     def initialize(app)
@@ -5086,8 +4974,6 @@ class FlashRedirectTest < ActionDispatch::IntegrationTest
     def call(env)
       env["action_dispatch.key_generator"] ||= Generator
       env["action_dispatch.cookies_rotations"] ||= Rotations
-      env["action_dispatch.signed_cookie_salt"] = SIGNED_COOKIE_SALT
-      env["action_dispatch.encrypted_signed_cookie_salt"] = ENCRYPTED_SIGNED_COOKIE_SALT
 
       @app.call(env)
     end
@@ -5182,6 +5068,7 @@ class TestRecognizePath < ActionDispatch::IntegrationTest
   end
 
   private
+
     def recognize_path(*args)
       Routes.recognize_path(*args)
     end

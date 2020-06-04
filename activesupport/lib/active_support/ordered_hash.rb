@@ -16,7 +16,7 @@ module ActiveSupport
   #   oh.keys # => [:a, :b], this order is guaranteed
   #
   # Also, maps the +omap+ feature for YAML files
-  # (See https://yaml.org/type/omap.html) to support ordered items
+  # (See http://yaml.org/type/omap.html) to support ordered items
   # when loading from yaml.
   #
   # <tt>ActiveSupport::OrderedHash</tt> is namespaced to prevent conflicts

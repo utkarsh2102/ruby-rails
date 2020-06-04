@@ -56,6 +56,7 @@ module ActionDispatch
       end
 
       def simulator
+        return if ast.nil?
         @simulator ||= begin
           gtg = GTG::Builder.new(ast).transition_table
           GTG::Simulator.new(gtg)
@@ -71,6 +72,7 @@ module ActionDispatch
       end
 
       private
+
         def clear_cache!
           @ast                = nil
           @simulator          = nil

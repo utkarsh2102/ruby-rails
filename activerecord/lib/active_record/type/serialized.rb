@@ -56,6 +56,7 @@ module ActiveRecord
       end
 
       private
+
         def default_value?(value)
           value == coder.load(nil)
         end

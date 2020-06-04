@@ -18,19 +18,16 @@ module ActionController
 
     def process_action(event)
       info do
-        payload = event.payload
+        payload   = event.payload
         additions = ActionController::Base.log_process_action(payload)
-        status = payload[:status]
 
+        status = payload[:status]
         if status.nil? && payload[:exception].present?
           exception_class_name = payload[:exception].first
           status = ActionDispatch::ExceptionWrapper.status_code_for_exception(exception_class_name)
         end
-
-        additions << "Allocations: #{event.allocations}"
-
-        message = +"Completed #{status} #{Rack::Utils::HTTP_STATUS_CODES[status]} in #{event.duration.round}ms"
-        message << " (#{additions.join(" | ")})" unless additions.empty?
+        message = "Completed #{status} #{Rack::Utils::HTTP_STATUS_CODES[status]} in #{event.duration.round}ms".dup
+        message << " (#{additions.join(" | ".freeze)})" unless additions.empty?
         message << "\n\n" if defined?(Rails.env) && Rails.env.development?
 
         message
@@ -56,7 +53,7 @@ module ActionController
     def unpermitted_parameters(event)
       debug do
         unpermitted_keys = event.payload[:keys]
-        color("Unpermitted parameter#{'s' if unpermitted_keys.size > 1}: #{unpermitted_keys.map { |e| ":#{e}" }.join(", ")}", RED)
+        "Unpermitted parameter#{'s' if unpermitted_keys.size > 1}: #{unpermitted_keys.map { |e| ":#{e}" }.join(", ")}"
       end
     end
 

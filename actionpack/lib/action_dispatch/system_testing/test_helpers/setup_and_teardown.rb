@@ -7,6 +7,7 @@ module ActionDispatch
         DEFAULT_HOST = "http://127.0.0.1"
 
         def host!(host)
+          super
           Capybara.app_host = host
         end
 
@@ -15,14 +16,12 @@ module ActionDispatch
           super
         end
 
-        def before_teardown
-          take_failed_screenshot
-        ensure
-          super
-        end
-
         def after_teardown
-          Capybara.reset_sessions!
+          begin
+            take_failed_screenshot
+          ensure
+            Capybara.reset_sessions!
+          end
         ensure
           super
         end

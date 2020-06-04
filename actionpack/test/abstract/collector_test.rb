@@ -30,7 +30,7 @@ module AbstractController
       end
 
       test "register mime types on method missing" do
-        AbstractController::Collector.remove_method :js
+        AbstractController::Collector.send(:remove_method, :js)
         begin
           collector = MyCollector.new
           assert_not_respond_to collector, :js

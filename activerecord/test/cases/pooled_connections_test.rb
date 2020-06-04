@@ -25,12 +25,14 @@ class PooledConnectionsTest < ActiveRecord::TestCase
     @timed_out = 0
     threads.times do
       Thread.new do
-        conn = ActiveRecord::Base.connection_pool.checkout
-        sleep 0.1
-        ActiveRecord::Base.connection_pool.checkin conn
-        @connection_count += 1
-      rescue ActiveRecord::ConnectionTimeoutError
-        @timed_out += 1
+        begin
+          conn = ActiveRecord::Base.connection_pool.checkout
+          sleep 0.1
+          ActiveRecord::Base.connection_pool.checkin conn
+          @connection_count += 1
+        rescue ActiveRecord::ConnectionTimeoutError
+          @timed_out += 1
+        end
       end.join
     end
   end
@@ -40,12 +42,14 @@ class PooledConnectionsTest < ActiveRecord::TestCase
     @connection_count = 0
     @timed_out = 0
     loops.times do
-      conn = ActiveRecord::Base.connection_pool.checkout
-      ActiveRecord::Base.connection_pool.checkin conn
-      @connection_count += 1
-      ActiveRecord::Base.connection.data_sources
-    rescue ActiveRecord::ConnectionTimeoutError
-      @timed_out += 1
+      begin
+        conn = ActiveRecord::Base.connection_pool.checkout
+        ActiveRecord::Base.connection_pool.checkin conn
+        @connection_count += 1
+        ActiveRecord::Base.connection.data_sources
+      rescue ActiveRecord::ConnectionTimeoutError
+        @timed_out += 1
+      end
     end
   end
 
@@ -72,6 +76,7 @@ class PooledConnectionsTest < ActiveRecord::TestCase
   end
 
   private
+
     def add_record(name)
       ActiveRecord::Base.connection_pool.with_connection { Project.create! name: name }
     end

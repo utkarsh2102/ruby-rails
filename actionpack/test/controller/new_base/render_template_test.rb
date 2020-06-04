@@ -67,6 +67,7 @@ module RenderTemplate
     end
 
     private
+
       def show_detailed_exceptions?
         request.local?
       end

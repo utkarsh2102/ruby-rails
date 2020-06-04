@@ -4,6 +4,7 @@ require "active_support/core_ext/array/conversions"
 require "active_support/core_ext/module/delegation"
 require "active_support/core_ext/object/acts_like"
 require "active_support/core_ext/string/filters"
+require "active_support/deprecation"
 
 module ActiveSupport
   # Provides accurate date and time measurements using Date#advance and
@@ -182,15 +183,15 @@ module ActiveSupport
       #
       def build(value)
         parts = {}
-        remainder = value.round(9)
+        remainder = value.to_f
 
         PARTS.each do |part|
           unless part == :seconds
             part_in_seconds = PARTS_IN_SECONDS[part]
             parts[part] = remainder.div(part_in_seconds)
-            remainder %= part_in_seconds
+            remainder = (remainder % part_in_seconds).round(9)
           end
-        end unless value == 0
+        end
 
         parts[:seconds] = remainder
 
@@ -198,6 +199,7 @@ module ActiveSupport
       end
 
       private
+
         def calculate_total_seconds(parts)
           parts.inject(0) do |total, (part, value)|
             total + value * PARTS_IN_SECONDS[part]
@@ -208,15 +210,12 @@ module ActiveSupport
     def initialize(value, parts) #:nodoc:
       @value, @parts = value, parts.to_h
       @parts.default = 0
-      @parts.reject! { |k, v| v.zero? } unless value == 0
+      @parts.reject! { |k, v| v.zero? }
     end
 
     def coerce(other) #:nodoc:
-      case other
-      when Scalar
+      if Scalar === other
         [other, self]
-      when Duration
-        [Scalar.new(other.value), self]
       else
         [Scalar.new(other), self]
       end
@@ -337,8 +336,8 @@ module ActiveSupport
     #   1.year.to_i     # => 31556952
     #
     # In such cases, Ruby's core
-    # Date[https://ruby-doc.org/stdlib/libdoc/date/rdoc/Date.html] and
-    # Time[https://ruby-doc.org/stdlib/libdoc/time/rdoc/Time.html] should be used for precision
+    # Date[http://ruby-doc.org/stdlib/libdoc/date/rdoc/Date.html] and
+    # Time[http://ruby-doc.org/stdlib/libdoc/time/rdoc/Time.html] should be used for precision
     # date and time arithmetic.
     def to_i
       @value.to_i
@@ -371,9 +370,10 @@ module ActiveSupport
     alias :before :ago
 
     def inspect #:nodoc:
-      return "#{value} seconds" if parts.empty?
+      return "0 seconds" if parts.empty?
 
       parts.
+        reduce(::Hash.new(0)) { |h, (l, r)| h[l] += r; h }.
         sort_by { |unit,  _ | PARTS.index(unit) }.
         map     { |unit, val| "#{val} #{val == 1 ? unit.to_s.chop : unit.to_s}" }.
         to_sentence(locale: ::I18n.default_locale)
@@ -398,15 +398,10 @@ module ActiveSupport
     end
 
     private
-      def sum(sign, time = ::Time.current)
-        unless time.acts_like?(:time) || time.acts_like?(:date)
-          raise ::ArgumentError, "expected a time or date, got #{time.inspect}"
-        end
 
-        if parts.empty?
-          time.since(sign * value)
-        else
-          parts.inject(time) do |t, (type, number)|
+      def sum(sign, time = ::Time.current)
+        parts.inject(time) do |t, (type, number)|
+          if t.acts_like?(:time) || t.acts_like?(:date)
             if type == :seconds
               t.since(sign * number)
             elsif type == :minutes
@@ -416,6 +411,8 @@ module ActiveSupport
             else
               t.advance(type => sign * number)
             end
+          else
+            raise ::ArgumentError, "expected a time or date, got #{time.inspect}"
           end
         end
       end

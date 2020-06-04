@@ -13,7 +13,12 @@ module ActiveModel
         :datetime
       end
 
+      def serialize(value)
+        super(cast(value))
+      end
+
       private
+
         def cast_value(value)
           return apply_seconds_precision(value) unless value.is_a?(::String)
           return if value.empty?
@@ -35,9 +40,9 @@ module ActiveModel
         end
 
         def value_from_multiparameter_assignment(values_hash)
-          missing_parameters = (1..3).select { |key| !values_hash.key?(key) }
-          if missing_parameters.any?
-            raise ArgumentError, "Provided hash #{values_hash} doesn't contain necessary keys: #{missing_parameters}"
+          missing_parameter = (1..3).detect { |key| !values_hash.key?(key) }
+          if missing_parameter
+            raise ArgumentError, missing_parameter
           end
           super
         end

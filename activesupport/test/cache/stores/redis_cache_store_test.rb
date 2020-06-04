@@ -104,7 +104,9 @@ module ActiveSupport::Cache::RedisCacheStoreTests
 
     private
       def build(**kwargs)
-        ActiveSupport::Cache::RedisCacheStore.new(driver: DRIVER, **kwargs).tap(&:redis)
+        ActiveSupport::Cache::RedisCacheStore.new(driver: DRIVER, **kwargs).tap do |cache|
+          cache.redis
+        end
       end
   end
 
@@ -140,58 +142,13 @@ module ActiveSupport::Cache::RedisCacheStoreTests
         end
       end
     end
-
-    def test_fetch_multi_without_names
-      assert_not_called(@cache.redis, :mget) do
-        @cache.fetch_multi() { }
-      end
-    end
-
-    def test_increment_expires_in
-      assert_called_with @cache.redis, :incrby, [ "#{@namespace}:foo", 1 ] do
-        assert_called_with @cache.redis, :expire, [ "#{@namespace}:foo", 60 ] do
-          @cache.increment "foo", 1, expires_in: 60
-        end
-      end
-
-      # key and ttl exist
-      @cache.redis.setex "#{@namespace}:bar", 120, 1
-      assert_not_called @cache.redis, :expire do
-        @cache.increment "bar", 1, expires_in: 2.minutes
-      end
-
-      # key exist but not have expire
-      @cache.redis.set "#{@namespace}:dar", 10
-      assert_called_with @cache.redis, :expire, [ "#{@namespace}:dar", 60 ] do
-        @cache.increment "dar", 1, expires_in: 60
-      end
-    end
-
-    def test_decrement_expires_in
-      assert_called_with @cache.redis, :decrby, [ "#{@namespace}:foo", 1 ] do
-        assert_called_with @cache.redis, :expire, [ "#{@namespace}:foo", 60 ] do
-          @cache.decrement "foo", 1, expires_in: 60
-        end
-      end
-
-      # key and ttl exist
-      @cache.redis.setex "#{@namespace}:bar", 120, 1
-      assert_not_called @cache.redis, :expire do
-        @cache.decrement "bar", 1, expires_in: 2.minutes
-      end
-
-      # key exist but not have expire
-      @cache.redis.set "#{@namespace}:dar", 10
-      assert_called_with @cache.redis, :expire, [ "#{@namespace}:dar", 60 ] do
-        @cache.decrement "dar", 1, expires_in: 60
-      end
-    end
   end
 
   class ConnectionPoolBehaviourTest < StoreTest
     include ConnectionPoolBehavior
 
     private
+
       def store
         [:redis_cache_store]
       end
@@ -234,34 +191,14 @@ module ActiveSupport::Cache::RedisCacheStoreTests
     end
   end
 
-  class MaxClientsReachedRedisClient < Redis::Client
-    def ensure_connected
-      raise Redis::CommandError
-    end
-  end
-
-  class FailureSafetyFromUnavailableClientTest < StoreTest
+  class FailureSafetyTest < StoreTest
     include FailureSafetyBehavior
 
     private
+
       def emulating_unavailability
         old_client = Redis.send(:remove_const, :Client)
         Redis.const_set(:Client, UnavailableRedisClient)
-
-        yield ActiveSupport::Cache::RedisCacheStore.new
-      ensure
-        Redis.send(:remove_const, :Client)
-        Redis.const_set(:Client, old_client)
-      end
-  end
-
-  class FailureSafetyFromMaxClientsReachedErrorTest < StoreTest
-    include FailureSafetyBehavior
-
-    private
-      def emulating_unavailability
-        old_client = Redis.send(:remove_const, :Client)
-        Redis.const_set(:Client, MaxClientsReachedRedisClient)
 
         yield ActiveSupport::Cache::RedisCacheStore.new
       ensure
@@ -275,7 +212,7 @@ module ActiveSupport::Cache::RedisCacheStoreTests
       @cache.write("foo", "bar")
       @cache.write("fu", "baz")
       @cache.delete_matched("foo*")
-      assert_not @cache.exist?("foo")
+      assert !@cache.exist?("foo")
       assert @cache.exist?("fu")
     end
 
@@ -291,15 +228,15 @@ module ActiveSupport::Cache::RedisCacheStoreTests
       @cache.write("foo", "bar")
       @cache.write("fu", "baz")
       @cache.clear
-      assert_not @cache.exist?("foo")
-      assert_not @cache.exist?("fu")
+      assert !@cache.exist?("foo")
+      assert !@cache.exist?("fu")
     end
 
     test "only clear namespace cache key" do
       @cache.write("foo", "bar")
       @cache.redis.set("fu", "baz")
       @cache.clear
-      assert_not @cache.exist?("foo")
+      assert !@cache.exist?("foo")
       assert @cache.redis.exists("fu")
     end
   end

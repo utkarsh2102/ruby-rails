@@ -115,7 +115,7 @@ class ReloaderTest < ActiveSupport::TestCase
     reloader.to_complete { completed = true }
 
     body = call_and_return_body
-    assert_not completed
+    assert !completed
 
     body.close
     assert completed
@@ -129,7 +129,7 @@ class ReloaderTest < ActiveSupport::TestCase
     prepared = false
 
     body.close
-    assert_not prepared
+    assert !prepared
   end
 
   def test_complete_callbacks_are_called_on_exceptions

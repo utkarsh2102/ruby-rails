@@ -5,23 +5,16 @@ class Bulb < ActiveRecord::Base
   belongs_to :car, touch: true
   scope :awesome, -> { where(frickinawesome: true) }
 
-  attr_reader :scope_after_initialize, :attributes_after_initialize, :count_after_create
+  attr_reader :scope_after_initialize, :attributes_after_initialize
 
   after_initialize :record_scope_after_initialize
   def record_scope_after_initialize
-    @scope_after_initialize = self.class.unscoped.all
+    @scope_after_initialize = self.class.all
   end
 
   after_initialize :record_attributes_after_initialize
   def record_attributes_after_initialize
     @attributes_after_initialize = attributes.dup
-  end
-
-  after_create :record_count_after_create
-  def record_count_after_create
-    @count_after_create = Bulb.unscoped do
-      car&.bulbs&.count
-    end
   end
 
   def color=(color)

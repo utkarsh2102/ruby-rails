@@ -8,16 +8,11 @@ end
 
 AppRoutes = ActionDispatch::Routing::RouteSet.new
 
-AppRoutes.draw do
-  get "/welcome" => "foo#bar", as: "welcome"
-  get "/dummy_model" => "foo#baz", as: "dummy_model"
-  get "/welcome/greeting", to: "welcome#greeting"
-  get "/a/b(/:id)", to: "a#b"
+class ActionMailer::Base
+  include AppRoutes.url_helpers
 end
 
 class UrlTestMailer < ActionMailer::Base
-  include AppRoutes.url_helpers
-
   default_url_options[:host] = "www.basecamphq.com"
 
   configure do |c|
@@ -85,6 +80,14 @@ class ActionMailerUrlTest < ActionMailer::TestCase
   def test_url_for
     UrlTestMailer.delivery_method = :test
 
+    AppRoutes.draw do
+      ActiveSupport::Deprecation.silence do
+        get ":controller(/:action(/:id))"
+        get "/welcome" => "foo#bar", as: "welcome"
+        get "/dummy_model" => "foo#baz", as: "dummy_model"
+      end
+    end
+
     # string
     assert_url_for "http://foo/", "http://foo/"
 
@@ -107,6 +110,13 @@ class ActionMailerUrlTest < ActionMailer::TestCase
 
   def test_signed_up_with_url
     UrlTestMailer.delivery_method = :test
+
+    AppRoutes.draw do
+      ActiveSupport::Deprecation.silence do
+        get ":controller(/:action(/:id))"
+        get "/welcome" => "foo#bar", as: "welcome"
+      end
+    end
 
     expected = new_mail
     expected.to      = @recipient

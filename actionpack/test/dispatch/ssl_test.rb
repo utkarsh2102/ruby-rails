@@ -9,7 +9,7 @@ class SSLTest < ActionDispatch::IntegrationTest
 
   def build_app(headers: {}, ssl_options: {})
     headers = HEADERS.merge(headers)
-    ActionDispatch::SSL.new lambda { |env| [200, headers, []] }, **ssl_options.reverse_merge(hsts: { subdomains: true })
+    ActionDispatch::SSL.new lambda { |env| [200, headers, []] }, ssl_options.reverse_merge(hsts: { subdomains: true })
   end
 end
 
@@ -222,7 +222,7 @@ class SecureCookiesTest < SSLTest
   end
 
   def test_keeps_original_headers_behavior
-    get headers: { "Connection" => "close" }
+    get headers: { "Connection" => %w[close] }
     assert_equal "close", response.headers["Connection"]
   end
 end

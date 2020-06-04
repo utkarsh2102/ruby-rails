@@ -114,6 +114,7 @@ module ActiveModel
       end
 
       private
+
         # Convenience method for types which do not need separate type casting
         # behavior for user and database inputs. Called by Value#cast for
         # values except +nil+.

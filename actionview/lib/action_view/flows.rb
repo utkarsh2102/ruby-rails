@@ -68,6 +68,7 @@ module ActionView
     end
 
     private
+
       def inside_fiber?
         Fiber.current.object_id != @root
       end

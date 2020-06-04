@@ -29,6 +29,7 @@ module ActionView
         end
 
         private
+
           # Grouped choices look like this:
           #
           #   [nil, []]

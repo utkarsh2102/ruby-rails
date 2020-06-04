@@ -95,20 +95,6 @@ class RelationScopingTest < ActiveRecord::TestCase
     end
   end
 
-  def test_scoped_unscoped
-    DeveloperOrderedBySalary.where("salary = 9000").scoping do
-      assert_equal 11, DeveloperOrderedBySalary.first.id
-      assert_equal 1, DeveloperOrderedBySalary.unscoped.first.id
-    end
-  end
-
-  def test_scoped_default_scoped
-    DeveloperOrderedBySalary.where("salary = 9000").scoping do
-      assert_equal 11, DeveloperOrderedBySalary.first.id
-      assert_equal 2, DeveloperOrderedBySalary.default_scoped.first.id
-    end
-  end
-
   def test_scoped_find_all
     Developer.where("name = 'David'").scoping do
       assert_equal [developers(:david)], Developer.all
@@ -119,7 +105,7 @@ class RelationScopingTest < ActiveRecord::TestCase
     Developer.select("id, name").scoping do
       developer = Developer.where("name = 'David'").first
       assert_equal "David", developer.name
-      assert_not developer.has_attribute?(:salary)
+      assert !developer.has_attribute?(:salary)
     end
   end
 
@@ -142,44 +128,6 @@ class RelationScopingTest < ActiveRecord::TestCase
       assert_equal 8, Developer.count
       assert_equal 1, Developer.where("name LIKE 'fixture_1%'").count
     end
-  end
-
-  def test_scoped_find_with_annotation
-    Developer.annotate("scoped").scoping do
-      developer = nil
-      assert_sql(%r{/\* scoped \*/}) do
-        developer = Developer.where("name = 'David'").first
-      end
-      assert_equal "David", developer.name
-    end
-  end
-
-  def test_find_with_annotation_unscoped
-    Developer.annotate("scoped").unscoped do
-      developer = nil
-      log = capture_sql do
-        developer = Developer.where("name = 'David'").first
-      end
-
-      assert_not_predicate log, :empty?
-      assert_predicate log.select { |query| query.match?(%r{/\* scoped \*/}) }, :empty?
-
-      assert_equal "David", developer.name
-    end
-  end
-
-  def test_find_with_annotation_unscope
-    developer = nil
-    log = capture_sql do
-      developer = Developer.annotate("unscope").
-        where("name = 'David'").
-        unscope(:annotate).first
-    end
-
-    assert_not_predicate log, :empty?
-    assert_predicate log.select { |query| query.match?(%r{/\* unscope \*/}) }, :empty?
-
-    assert_equal "David", developer.name
   end
 
   def test_scoped_find_include
@@ -288,8 +236,8 @@ class RelationScopingTest < ActiveRecord::TestCase
       SpecialComment.unscoped.created
     end
 
-    assert_nil Comment.send(:current_scope)
-    assert_nil SpecialComment.send(:current_scope)
+    assert_nil Comment.current_scope
+    assert_nil SpecialComment.current_scope
   end
 
   def test_scoping_respects_current_class
@@ -425,19 +373,7 @@ class HasManyScopingTest < ActiveRecord::TestCase
 
   def test_nested_scope_finder
     Comment.where("1=0").scoping do
-      assert_equal 2, @welcome.comments.count
-      assert_equal "a comment...", @welcome.comments.what_are_you
-    end
-
-    Comment.where("1=1").scoping do
-      assert_equal 2, @welcome.comments.count
-      assert_equal "a comment...", @welcome.comments.what_are_you
-    end
-  end
-
-  def test_none_scoping
-    Comment.none.scoping do
-      assert_equal 2, @welcome.comments.count
+      assert_equal 0, @welcome.comments.count
       assert_equal "a comment...", @welcome.comments.what_are_you
     end
 
@@ -478,19 +414,7 @@ class HasAndBelongsToManyScopingTest < ActiveRecord::TestCase
 
   def test_nested_scope_finder
     Category.where("1=0").scoping do
-      assert_equal 2, @welcome.categories.count
-      assert_equal "a category...", @welcome.categories.what_are_you
-    end
-
-    Category.where("1=1").scoping do
-      assert_equal 2, @welcome.categories.count
-      assert_equal "a category...", @welcome.categories.what_are_you
-    end
-  end
-
-  def test_none_scoping
-    Category.none.scoping do
-      assert_equal 2, @welcome.categories.count
+      assert_equal 0, @welcome.categories.count
       assert_equal "a category...", @welcome.categories.what_are_you
     end
 

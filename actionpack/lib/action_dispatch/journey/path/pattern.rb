@@ -90,7 +90,7 @@ module ActionDispatch
             return @separator_re unless @matchers.key?(node)
 
             re = @matchers[node]
-            "(#{Regexp.union(re)})"
+            "(#{re})"
           end
 
           def visit_GROUP(node)
@@ -137,10 +137,6 @@ module ActionDispatch
             Array.new(length - 1) { |i| self[i + 1] }
           end
 
-          def named_captures
-            @names.zip(captures).to_h
-          end
-
           def [](x)
             idx = @offsets[x - 1] + x
             @match[idx]
@@ -174,6 +170,7 @@ module ActionDispatch
         end
 
         private
+
           def regexp_visitor
             @anchored ? AnchoredRegexp : UnanchoredRegexp
           end
@@ -187,7 +184,7 @@ module ActionDispatch
               node = node.to_sym
 
               if @requirements.key?(node)
-                re = /#{Regexp.union(@requirements[node])}|/
+                re = /#{@requirements[node]}|/
                 @offsets.push((re.match("").length - 1) + @offsets.last)
               else
                 @offsets << @offsets.last

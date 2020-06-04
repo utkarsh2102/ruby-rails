@@ -8,23 +8,13 @@ class OptionMergerTest < ActiveSupport::TestCase
     @options = { hello: "world" }
   end
 
-  def test_method_with_options_merges_string_options
-    local_options = { "cool" => true }
-
-    with_options(@options) do |o|
-      assert_equal local_options, method_with_options(local_options)
-      assert_equal @options.merge(local_options), o.method_with_options(local_options)
-    end
-  end
-
   def test_method_with_options_merges_options_when_options_are_present
     local_options = { cool: true }
 
     with_options(@options) do |o|
       assert_equal local_options, method_with_options(local_options)
-      assert_equal @options.merge(local_options), o.method_with_options(local_options)
-      assert_equal @options.merge(local_options), o.method_with_kwargs(local_options)
-      assert_equal @options.merge(local_options), o.method_with_kwargs_only(local_options)
+      assert_equal @options.merge(local_options),
+        o.method_with_options(local_options)
     end
   end
 
@@ -32,8 +22,6 @@ class OptionMergerTest < ActiveSupport::TestCase
     with_options(@options) do |o|
       assert_equal Hash.new, method_with_options
       assert_equal @options, o.method_with_options
-      assert_equal @options, o.method_with_kwargs
-      assert_equal @options, o.method_with_kwargs_only
     end
   end
 
@@ -43,11 +31,13 @@ class OptionMergerTest < ActiveSupport::TestCase
 
     with_options(@options) do |o|
       assert_equal local_options, method_with_options(local_options)
-      assert_equal @options.merge(local_options), o.method_with_options(local_options)
+      assert_equal @options.merge(local_options),
+        o.method_with_options(local_options)
       assert_equal local_options, o.method_with_options(local_options)
     end
     with_options(local_options) do |o|
-      assert_equal local_options.merge(@options), o.method_with_options(@options)
+      assert_equal local_options.merge(@options),
+        o.method_with_options(@options)
     end
   end
 
@@ -81,7 +71,8 @@ class OptionMergerTest < ActiveSupport::TestCase
   def test_nested_method_with_options_using_lambda
     local_lambda = lambda { { lambda: true } }
     with_options(@options) do |o|
-      assert_equal @options.merge(local_lambda.call), o.method_with_options(local_lambda).call
+      assert_equal @options.merge(local_lambda.call),
+        o.method_with_options(local_lambda).call
     end
   end
 
@@ -101,14 +92,6 @@ class OptionMergerTest < ActiveSupport::TestCase
 
   private
     def method_with_options(options = {})
-      options
-    end
-
-    def method_with_kwargs(*args, **options)
-      options
-    end
-
-    def method_with_kwargs_only(**options)
       options
     end
 end

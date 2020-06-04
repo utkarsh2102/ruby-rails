@@ -12,13 +12,12 @@ class ActiveStorage::Previewer::VideoPreviewerTest < ActiveSupport::TestCase
 
   test "previewing an MP4 video" do
     ActiveStorage::Previewer::VideoPreviewer.new(@blob).preview do |attachable|
-      assert_equal "image/jpeg", attachable[:content_type]
-      assert_equal "video.jpg", attachable[:filename]
+      assert_equal "image/png", attachable[:content_type]
+      assert_equal "video.png", attachable[:filename]
 
       image = MiniMagick::Image.read(attachable[:io])
       assert_equal 640, image.width
       assert_equal 480, image.height
-      assert_equal "image/jpeg", image.mime_type
     end
   end
 end

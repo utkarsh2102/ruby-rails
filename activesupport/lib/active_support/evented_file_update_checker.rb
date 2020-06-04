@@ -52,17 +52,16 @@ module ActiveSupport
       @pid        = Process.pid
       @boot_mutex = Mutex.new
 
-      dtw = directories_to_watch
-      @dtw, @missing = dtw.partition(&:exist?)
-
-      if @dtw.any?
+      if (@dtw = directories_to_watch).any?
         # Loading listen triggers warnings. These are originated by a legit
         # usage of attr_* macros for private attributes, but adds a lot of noise
         # to our test suite. Thus, we lazy load it and disable warnings locally.
         silence_warnings do
-          require "listen"
-        rescue LoadError => e
-          raise LoadError, "Could not load the 'listen' gem. Add `gem 'listen'` to the development group of your Gemfile", e.backtrace
+          begin
+            require "listen"
+          rescue LoadError => e
+            raise LoadError, "Could not load the 'listen' gem. Add `gem 'listen'` to the development group of your Gemfile", e.backtrace
+          end
         end
       end
       boot!
@@ -76,19 +75,6 @@ module ActiveSupport
           @updated.make_true
         end
       end
-
-      if @missing.any?(&:exist?)
-        @boot_mutex.synchronize do
-          appeared, @missing = @missing.partition(&:exist?)
-          shutdown!
-
-          @dtw += appeared
-          boot!
-
-          @updated.make_true
-        end
-      end
-
       @updated.true?
     end
 
@@ -107,21 +93,7 @@ module ActiveSupport
 
     private
       def boot!
-        normalize_dirs!
-
-        unless @dtw.empty?
-          Listen.to(*@dtw, &method(:changed)).start
-        end
-      end
-
-      def shutdown!
-        Listen.stop
-      end
-
-      def normalize_dirs!
-        @dirs.transform_keys! do |dir|
-          dir.exist? ? dir.realpath : dir
-        end
+        Listen.to(*@dtw, &method(:changed)).start
       end
 
       def changed(modified, added, removed)
@@ -141,9 +113,7 @@ module ActiveSupport
           ext = @ph.normalize_extension(file.extname)
 
           file.dirname.ascend do |dir|
-            matching = @dirs[dir]
-
-            if matching && (matching.empty? || matching.include?(ext))
+            if @dirs.fetch(dir, []).include?(ext)
               break true
             elsif dir == @lcsp || dir.root?
               break false
@@ -153,7 +123,7 @@ module ActiveSupport
       end
 
       def directories_to_watch
-        dtw = @files.map(&:dirname) + @dirs.keys
+        dtw = (@files + @dirs.keys).map { |f| @ph.existing_parent(f) }
         dtw.compact!
         dtw.uniq!
 
@@ -224,6 +194,7 @@ module ActiveSupport
         end
 
         private
+
           def ascendant_of?(base, other)
             base != other && other.ascend do |ascendant|
               break true if base == ascendant

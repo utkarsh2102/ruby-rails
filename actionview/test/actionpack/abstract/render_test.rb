@@ -26,7 +26,7 @@ module AbstractController
       end
 
       def file
-        ActiveSupport::Deprecation.silence { render file: "some/file" }
+        render file: "some/file"
       end
 
       def inline

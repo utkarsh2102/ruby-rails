@@ -3,6 +3,7 @@
 require "abstract_unit"
 require "active_support/time"
 require "time_zone_test_helpers"
+require "active_support/core_ext/string/strip"
 require "yaml"
 
 class TimeWithZoneTest < ActiveSupport::TestCase
@@ -162,7 +163,7 @@ class TimeWithZoneTest < ActiveSupport::TestCase
   end
 
   def test_to_yaml
-    yaml = <<~EOF
+    yaml = <<-EOF.strip_heredoc
       --- !ruby/object:ActiveSupport::TimeWithZone
       utc: 2000-01-01 00:00:00.000000000 Z
       zone: !ruby/object:ActiveSupport::TimeZone
@@ -174,7 +175,7 @@ class TimeWithZoneTest < ActiveSupport::TestCase
   end
 
   def test_ruby_to_yaml
-    yaml = <<~EOF
+    yaml = <<-EOF.strip_heredoc
       ---
       twz: !ruby/object:ActiveSupport::TimeWithZone
         utc: 2000-01-01 00:00:00.000000000 Z
@@ -187,7 +188,7 @@ class TimeWithZoneTest < ActiveSupport::TestCase
   end
 
   def test_yaml_load
-    yaml = <<~EOF
+    yaml = <<-EOF.strip_heredoc
       --- !ruby/object:ActiveSupport::TimeWithZone
       utc: 2000-01-01 00:00:00.000000000 Z
       zone: !ruby/object:ActiveSupport::TimeZone
@@ -199,7 +200,7 @@ class TimeWithZoneTest < ActiveSupport::TestCase
   end
 
   def test_ruby_yaml_load
-    yaml = <<~EOF
+    yaml = <<-EOF.strip_heredoc
       ---
       twz: !ruby/object:ActiveSupport::TimeWithZone
         utc: 2000-01-01 00:00:00.000000000 Z
@@ -287,20 +288,6 @@ class TimeWithZoneTest < ActiveSupport::TestCase
       assert_equal false, ActiveSupport::TimeWithZone.new(nil, @time_zone, Time.local(2005, 2, 10, 15, 30, 45)).future?
       assert_equal true, ActiveSupport::TimeWithZone.new(nil, @time_zone, Time.local(2005, 2, 10, 15, 30, 46)).future?
     end
-  end
-
-  def test_before
-    twz = ActiveSupport::TimeWithZone.new(Time.utc(2017, 3, 6, 12, 0, 0), @time_zone)
-    assert_equal false, twz.before?(ActiveSupport::TimeWithZone.new(Time.utc(2017, 3, 6, 11, 59, 59), @time_zone))
-    assert_equal false, twz.before?(ActiveSupport::TimeWithZone.new(Time.utc(2017, 3, 6, 12, 0, 0), @time_zone))
-    assert_equal true, twz.before?(ActiveSupport::TimeWithZone.new(Time.utc(2017, 3, 6, 12, 00, 1), @time_zone))
-  end
-
-  def test_after
-    twz = ActiveSupport::TimeWithZone.new(Time.utc(2017, 3, 6, 12, 0, 0), @time_zone)
-    assert_equal true, twz.after?(ActiveSupport::TimeWithZone.new(Time.utc(2017, 3, 6, 11, 59, 59), @time_zone))
-    assert_equal false, twz.after?(ActiveSupport::TimeWithZone.new(Time.utc(2017, 3, 6, 12, 0, 0), @time_zone))
-    assert_equal false, twz.after?(ActiveSupport::TimeWithZone.new(Time.utc(2017, 3, 6, 12, 00, 1), @time_zone))
   end
 
   def test_eql?
@@ -1105,7 +1092,7 @@ class TimeWithZoneMethodsForTimeAndDateTimeTest < ActiveSupport::TestCase
   def test_use_zone_raises_on_invalid_timezone
     Time.zone = "Alaska"
     assert_raise ArgumentError do
-      Time.use_zone("No such timezone exists") { }
+      Time.use_zone("No such timezone exists") {}
     end
     assert_equal ActiveSupport::TimeZone["Alaska"], Time.zone
   end

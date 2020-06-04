@@ -16,22 +16,19 @@ module ActiveRecord
 
       def ==(other)
         other.is_a?(SqlTypeMetadata) &&
-          sql_type == other.sql_type &&
-          type == other.type &&
-          limit == other.limit &&
-          precision == other.precision &&
-          scale == other.scale
+          attributes_for_hash == other.attributes_for_hash
       end
       alias eql? ==
 
       def hash
-        SqlTypeMetadata.hash ^
-          sql_type.hash ^
-          type.hash ^
-          limit.hash ^
-          precision.hash >> 1 ^
-          scale.hash >> 2
+        attributes_for_hash.hash
       end
+
+      protected
+
+        def attributes_for_hash
+          [self.class, sql_type, type, limit, precision, scale]
+        end
     end
   end
 end

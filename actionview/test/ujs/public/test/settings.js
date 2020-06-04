@@ -1,5 +1,4 @@
 var App = App || {}
-var Turbolinks = Turbolinks || {}
 
 App.assertCallbackInvoked = function(callbackName) {
   ok(true, callbackName + ' callback should have been invoked')
@@ -18,7 +17,7 @@ App.assertPostRequest = function(requestEnv) {
 }
 
 App.assertRequestPath = function(requestEnv, path) {
-  equal(requestEnv['PATH_INFO'], path, 'request should be sent to right URL')
+  equal(requestEnv['PATH_INFO'], path, 'request should be sent to right url')
 }
 
 App.getVal = function(el) {
@@ -117,6 +116,3 @@ $.fn.extend({
     return this
   }
 })
-
-Turbolinks.clearCache = function() {}
-Turbolinks.visit = function() {}

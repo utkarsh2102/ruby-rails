@@ -10,7 +10,7 @@ module AbstractController
     # <tt>I18n.translate("people.index.foo")</tt>. This makes it less repetitive
     # to translate many keys within the same controller / action and gives you a
     # simple framework for scoping them consistently.
-    def translate(key, **options)
+    def translate(key, options = {})
       if key.to_s.first == "."
         path = controller_path.tr("/", ".")
         defaults = [:"#{path}#{key}"]
@@ -18,13 +18,13 @@ module AbstractController
         options[:default] = defaults.flatten
         key = "#{path}.#{action_name}#{key}"
       end
-      I18n.translate(key, **options)
+      I18n.translate(key, options)
     end
     alias :t :translate
 
     # Delegates to <tt>I18n.localize</tt>. Also aliased as <tt>l</tt>.
-    def localize(object, **options)
-      I18n.localize(object, **options)
+    def localize(*args)
+      I18n.localize(*args)
     end
     alias :l :localize
   end

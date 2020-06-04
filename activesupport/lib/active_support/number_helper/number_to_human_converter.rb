@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-require "active_support/number_helper/number_converter"
-
 module ActiveSupport
   module NumberHelper
     class NumberToHumanConverter < NumberConverter # :nodoc:
@@ -27,10 +25,11 @@ module ActiveSupport
 
         rounded_number = NumberToRoundedConverter.convert(number, options)
         unit = determine_unit(units, exponent)
-        format.gsub("%n", rounded_number).gsub("%u", unit).strip
+        format.gsub("%n".freeze, rounded_number).gsub("%u".freeze, unit).strip
       end
 
       private
+
         def format
           options[:format] || translate_in_locale("human.decimal_units.format")
         end

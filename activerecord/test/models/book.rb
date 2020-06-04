@@ -24,9 +24,3 @@ class Book < ActiveRecord::Base
     "do publish work..."
   end
 end
-
-class PublishedBook < ActiveRecord::Base
-  self.table_name = "books"
-
-  validates_uniqueness_of :isbn
-end

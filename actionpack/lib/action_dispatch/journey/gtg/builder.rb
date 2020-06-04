@@ -128,6 +128,7 @@ module ActionDispatch
         end
 
         private
+
           def followpos_table
             @followpos ||= build_followpos
           end

@@ -211,11 +211,9 @@ module ActiveRecord
       def size
         if !find_target? || loaded?
           target.size
-        elsif @association_ids
-          @association_ids.size
         elsif !association_scope.group_values.empty?
           load_target.size
-        elsif !association_scope.distinct_value && !target.empty?
+        elsif !association_scope.distinct_value && target.is_a?(Array)
           unsaved_records = target.select(&:new_record?)
           unsaved_records.size + count_records
         else
@@ -232,10 +230,10 @@ module ActiveRecord
       # loaded and you are going to fetch the records anyway it is better to
       # check <tt>collection.length.zero?</tt>.
       def empty?
-        if loaded? || @association_ids || reflection.has_cached_counter?
+        if loaded?
           size.zero?
         else
-          target.empty? && !scope.exists?
+          @target.blank? && !scope.exists?
         end
       end
 
@@ -302,6 +300,23 @@ module ActiveRecord
       end
 
       private
+
+        def find_target
+          scope = self.scope
+          return scope.to_a if skip_statement_cache?(scope)
+
+          conn = klass.connection
+          sc = reflection.association_scope_cache(conn, owner) do |params|
+            as = AssociationScope.create { params.bind }
+            target_scope.merge!(as.scope(self))
+          end
+
+          binds = AssociationScope.get_bind_values(owner, reflection.chain)
+          sc.execute(binds, conn) do |record|
+            set_inverse_instance(record)
+          end
+        end
+
         # We have some records loaded from the database (persisted) and some that are
         # in-memory (memory). The same record may be represented in the persisted array
         # and in the memory array.
@@ -378,12 +393,10 @@ module ActiveRecord
         end
 
         def remove_records(existing_records, records, method)
-          catch(:abort) do
-            records.each { |record| callback(:before_remove, record) }
-          end || return
+          records.each { |record| callback(:before_remove, record) }
 
           delete_records(existing_records, method) if existing_records.any?
-          @target -= records
+          records.each { |record| target.delete(record) }
           @association_ids = nil
 
           records.each { |record| callback(:after_remove, record) }
@@ -436,9 +449,7 @@ module ActiveRecord
         end
 
         def replace_on_target(record, index, skip_callbacks)
-          catch(:abort) do
-            callback(:before_add, record)
-          end || return unless skip_callbacks
+          callback(:before_add, record) unless skip_callbacks
 
           set_inverse_instance(record)
 

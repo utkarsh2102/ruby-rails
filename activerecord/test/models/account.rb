@@ -38,9 +38,8 @@ class Account < ActiveRecord::Base
 end
 
 class SubAccount < Account
-  def self.instantiate_instance_of(klass, attributes, column_types = {}, &block)
-    klass = superclass
-    super
+  def self.discriminate_class_for_record(record)
+    superclass
   end
-  private_class_method :instantiate_instance_of
+  private_class_method :discriminate_class_for_record
 end

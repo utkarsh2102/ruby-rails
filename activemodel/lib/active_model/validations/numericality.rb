@@ -13,8 +13,6 @@ module ActiveModel
 
       INTEGER_REGEX = /\A[+-]?\d+\z/
 
-      HEXADECIMAL_REGEX = /\A[+-]?0[xX]/
-
       def check_validity!
         keys = CHECKS.keys - [:odd, :even]
         options.slice(*keys).each do |option, value|
@@ -81,6 +79,7 @@ module ActiveModel
       end
 
     private
+
       def is_number?(raw_value)
         !parse_as_number(raw_value).nil?
       rescue ArgumentError, TypeError
@@ -100,11 +99,11 @@ module ActiveModel
       end
 
       def is_integer?(raw_value)
-        INTEGER_REGEX.match?(raw_value.to_s)
+        INTEGER_REGEX === raw_value.to_s
       end
 
       def is_hexadecimal_literal?(raw_value)
-        HEXADECIMAL_REGEX.match?(raw_value.to_s)
+        /\A0[xX]/ === raw_value.to_s
       end
 
       def filtered_options(value)

@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-require "active_support/dependencies/autoload"
-
 module ActiveSupport
   module NumberHelper
     extend ActiveSupport::Autoload
@@ -87,9 +85,6 @@ module ActiveSupport
     #   number given by <tt>:format</tt>).  Accepts the same fields
     #   than <tt>:format</tt>, except <tt>%n</tt> is here the
     #   absolute value of the number.
-    # * <tt>:strip_insignificant_zeros</tt> - If +true+ removes
-    #   insignificant zeros after the decimal separator (defaults to
-    #   +false+).
     #
     # ==== Examples
     #
@@ -99,18 +94,12 @@ module ActiveSupport
     #   number_to_currency(1234567890.506, locale: :fr)  # => "1 234 567 890,51 €"
     #   number_to_currency('123a456')                    # => "$123a456"
     #
-    #   number_to_currency("123a456", raise: true)       # => InvalidNumberError
-    #
-    #   number_to_currency(-0.456789, precision: 0)
-    #   # => "$0"
     #   number_to_currency(-1234567890.50, negative_format: '(%u%n)')
     #   # => "($1,234,567,890.50)"
     #   number_to_currency(1234567890.50, unit: '&pound;', separator: ',', delimiter: '')
     #   # => "&pound;1234567890,50"
     #   number_to_currency(1234567890.50, unit: '&pound;', separator: ',', delimiter: '', format: '%n %u')
     #   # => "1234567890,50 &pound;"
-    #   number_to_currency(1234567890.50, strip_insignificant_zeros: true)
-    #   # => "$1,234,567,890.5"
     def number_to_currency(number, options = {})
       NumberToCurrencyConverter.convert(number, options)
     end

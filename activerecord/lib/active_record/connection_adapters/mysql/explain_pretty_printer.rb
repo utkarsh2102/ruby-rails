@@ -37,6 +37,7 @@ module ActiveRecord
         end
 
         private
+
           def compute_column_widths(result)
             [].tap do |widths|
               result.columns.each_with_index do |column, i|

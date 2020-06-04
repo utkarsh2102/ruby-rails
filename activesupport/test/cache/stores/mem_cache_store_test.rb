@@ -113,6 +113,7 @@ class MemCacheStoreTest < ActiveSupport::TestCase
   end
 
   private
+
     def store
       [:mem_cache_store, ENV["MEMCACHE_SERVERS"] || "localhost:11211"]
     end

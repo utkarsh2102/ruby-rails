@@ -38,7 +38,7 @@ module ActionController
       self.response_body = ""
 
       if include_content?(response_code)
-        self.content_type = content_type || (Mime[formats.first] if formats) || Mime[:html]
+        self.content_type = content_type || (Mime[formats.first] if formats)
         response.charset = false
       end
 

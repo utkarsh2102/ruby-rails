@@ -9,27 +9,21 @@ Gem::Specification.new do |s|
   s.summary     = "WebSocket framework for Rails."
   s.description = "Structure many real-time application concerns into channels over a single WebSocket connection."
 
-  s.required_ruby_version = ">= 2.5.0"
+  s.required_ruby_version = ">= 2.2.2"
 
   s.license = "MIT"
 
   s.author   = ["Pratik Naik", "David Heinemeier Hansson"]
   s.email    = ["pratiknaik@gmail.com", "david@loudthinking.com"]
-  s.homepage = "https://rubyonrails.org"
+  s.homepage = "http://rubyonrails.org"
 
-  s.files        = Dir["CHANGELOG.md", "MIT-LICENSE", "README.md", "lib/**/*", "app/assets/javascripts/action_cable.js"]
+  s.files        = Dir["CHANGELOG.md", "MIT-LICENSE", "README.md", "lib/**/*"]
   s.require_path = "lib"
 
   s.metadata = {
-    "bug_tracker_uri"   => "https://github.com/rails/rails/issues",
-    "changelog_uri"     => "https://github.com/rails/rails/blob/v#{version}/actioncable/CHANGELOG.md",
-    "documentation_uri" => "https://api.rubyonrails.org/v#{version}/",
-    "mailing_list_uri"  => "https://discuss.rubyonrails.org/c/rubyonrails-talk",
-    "source_code_uri"   => "https://github.com/rails/rails/tree/v#{version}/actioncable",
+    "source_code_uri" => "https://github.com/rails/rails/tree/v#{version}/actioncable",
+    "changelog_uri"   => "https://github.com/rails/rails/blob/v#{version}/actioncable/CHANGELOG.md"
   }
-
-  # NOTE: Please read our dependency guidelines before updating versions:
-  # https://edgeguides.rubyonrails.org/security.html#dependency-management-and-cves
 
   s.add_dependency "actionpack", version
 

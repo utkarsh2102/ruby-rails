@@ -8,15 +8,13 @@ require "digest/sha1"
 module ActionCable
   module SubscriptionAdapter
     class PostgreSQL < Base # :nodoc:
-      prepend ChannelPrefix
-
       def initialize(*)
         super
         @listener = nil
       end
 
       def broadcast(channel, payload)
-        with_broadcast_connection do |pg_conn|
+        with_connection do |pg_conn|
           pg_conn.exec("NOTIFY #{pg_conn.escape_identifier(channel_identifier(channel))}, '#{pg_conn.escape_string(payload)}'")
         end
       end
@@ -33,24 +31,14 @@ module ActionCable
         listener.shutdown
       end
 
-      def with_subscriptions_connection(&block) # :nodoc:
-        ar_conn = ActiveRecord::Base.connection_pool.checkout.tap do |conn|
-          # Action Cable is taking ownership over this database connection, and
-          # will perform the necessary cleanup tasks
-          ActiveRecord::Base.connection_pool.remove(conn)
-        end
-        pg_conn = ar_conn.raw_connection
-
-        verify!(pg_conn)
-        yield pg_conn
-      ensure
-        ar_conn.disconnect!
-      end
-
-      def with_broadcast_connection(&block) # :nodoc:
+      def with_connection(&block) # :nodoc:
         ActiveRecord::Base.connection_pool.with_connection do |ar_conn|
           pg_conn = ar_conn.raw_connection
-          verify!(pg_conn)
+
+          unless pg_conn.is_a?(PG::Connection)
+            raise "The Active Record database must be PostgreSQL in order to use the PostgreSQL Action Cable storage adapter"
+          end
+
           yield pg_conn
         end
       end
@@ -62,12 +50,6 @@ module ActionCable
 
         def listener
           @listener || @server.mutex.synchronize { @listener ||= Listener.new(self, @server.event_loop) }
-        end
-
-        def verify!(pg_conn)
-          unless pg_conn.is_a?(PG::Connection)
-            raise "The Active Record database must be PostgreSQL in order to use the PostgreSQL Action Cable storage adapter"
-          end
         end
 
         class Listener < SubscriberMap
@@ -85,7 +67,7 @@ module ActionCable
           end
 
           def listen
-            @adapter.with_subscriptions_connection do |pg_conn|
+            @adapter.with_connection do |pg_conn|
               catch :shutdown do
                 loop do
                   until @queue.empty?

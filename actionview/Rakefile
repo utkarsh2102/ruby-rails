@@ -29,7 +29,6 @@ namespace :test do
     t.ruby_opts = ["--dev"] if defined?(JRUBY_VERSION)
   end
 
-  desc "Run tests for rails-ujs"
   task :ujs do
     system("npm run lint")
     exit $?.exitstatus unless $?.success?
@@ -78,7 +77,7 @@ namespace :test do
   end
 
   namespace :integration do
-    # Active Record Integration Tests
+    desc "ActiveRecord Integration Tests"
     Rake::TestTask.new(:active_record) do |t|
       t.libs << "test"
       t.test_files = Dir.glob("test/activerecord/*_test.rb")
@@ -87,7 +86,7 @@ namespace :test do
       t.ruby_opts = ["--dev"] if defined?(JRUBY_VERSION)
     end
 
-    # Action Pack Integration Tests
+    desc "ActionPack Integration Tests"
     Rake::TestTask.new(:action_pack) do |t|
       t.libs << "test"
       t.test_files = Dir.glob("test/actionpack/**/*_test.rb")
@@ -128,7 +127,7 @@ namespace :assets do
     end
 
     print "[verify] #{file} is a UMD module "
-    if /module\.exports.*define\.amd/m.match?(pathname.read)
+    if pathname.read =~ /module\.exports.*define\.amd/m
       puts "[OK]"
     else
       $stderr.puts "[FAIL]"
@@ -152,7 +151,7 @@ namespace :assets do
 end
 
 task :lines do
-  load File.expand_path("../tools/line_statistics", __dir__)
+  load File.join(File.expand_path("..", __dir__), "/tools/line_statistics")
   files = FileList["lib/**/*.rb"]
   CodeTools::LineStatistics.new(files).print_loc
 end

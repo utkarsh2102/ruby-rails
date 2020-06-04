@@ -6,10 +6,7 @@ class ResolverPatternsTest < ActiveSupport::TestCase
   def setup
     path = File.expand_path("../fixtures", __dir__)
     pattern = ":prefix/{:formats/,}:action{.:formats,}{+:variants,}{.:handlers,}"
-
-    assert_deprecated do
-      @resolver = ActionView::FileSystemResolver.new(path, pattern)
-    end
+    @resolver = ActionView::FileSystemResolver.new(path, pattern)
   end
 
   def test_should_return_empty_list_for_unknown_path
@@ -22,7 +19,7 @@ class ResolverPatternsTest < ActiveSupport::TestCase
     assert_equal 1, templates.size, "expected one template"
     assert_equal "Hello custom patterns!", templates.first.source
     assert_equal "custom_pattern/path",    templates.first.virtual_path
-    assert_nil templates.first.format
+    assert_equal [:html],                  templates.first.formats
   end
 
   def test_should_return_all_templates_when_ambiguous_pattern

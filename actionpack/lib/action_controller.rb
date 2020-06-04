@@ -3,6 +3,7 @@
 require "active_support/rails"
 require "abstract_controller"
 require "action_dispatch"
+require "action_controller/metal/live"
 require "action_controller/metal/strong_parameters"
 
 module ActionController
@@ -20,15 +21,10 @@ module ActionController
   end
 
   autoload_under "metal" do
-    eager_autoload do
-      autoload :Live
-    end
-
     autoload :ConditionalGet
     autoload :ContentSecurityPolicy
     autoload :Cookies
     autoload :DataStreaming
-    autoload :DefaultHeaders
     autoload :EtagWithTemplateDigest
     autoload :EtagWithFlash
     autoload :Flash

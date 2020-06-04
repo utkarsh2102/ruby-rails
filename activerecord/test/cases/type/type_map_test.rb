@@ -32,7 +32,7 @@ module ActiveRecord
       end
 
       def test_fuzzy_lookup
-        string = +""
+        string = String.new
         mapping = TypeMap.new
 
         mapping.register_type(/varchar/i, string)
@@ -41,7 +41,7 @@ module ActiveRecord
       end
 
       def test_aliasing_types
-        string = +""
+        string = String.new
         mapping = TypeMap.new
 
         mapping.register_type(/string/i, string)
@@ -73,7 +73,7 @@ module ActiveRecord
       end
 
       def test_register_proc
-        string = +""
+        string = String.new
         binary = Binary.new
         mapping = TypeMap.new
 

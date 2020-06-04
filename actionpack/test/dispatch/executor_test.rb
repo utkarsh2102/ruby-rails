@@ -81,7 +81,7 @@ class ExecutorTest < ActiveSupport::TestCase
 
     running = false
     body.close
-    assert_not running
+    assert !running
   end
 
   def test_complete_callbacks_are_called_on_close
@@ -89,7 +89,7 @@ class ExecutorTest < ActiveSupport::TestCase
     executor.to_complete { completed = true }
 
     body = call_and_return_body
-    assert_not completed
+    assert !completed
 
     body.close
     assert completed
@@ -116,7 +116,7 @@ class ExecutorTest < ActiveSupport::TestCase
 
     call_and_return_body.close
     assert result
-    assert_not defined?(@in_shared_context) # it's not in the test itself
+    assert !defined?(@in_shared_context) # it's not in the test itself
   end
 
   private

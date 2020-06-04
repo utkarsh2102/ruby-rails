@@ -2,7 +2,7 @@
 
 module ActiveRecord
   class AssociationRelation < Relation
-    def initialize(klass, association, **)
+    def initialize(klass, association)
       super(klass)
       @association = association
     end
@@ -15,23 +15,21 @@ module ActiveRecord
       other == records
     end
 
-    def build(attributes = nil, &block)
-      block = _deprecated_scope_block("new", &block)
-      scoping { @association.build(attributes, &block) }
+    def build(*args, &block)
+      scoping { @association.build(*args, &block) }
     end
     alias new build
 
-    def create(attributes = nil, &block)
-      block = _deprecated_scope_block("create", &block)
-      scoping { @association.create(attributes, &block) }
+    def create(*args, &block)
+      scoping { @association.create(*args, &block) }
     end
 
-    def create!(attributes = nil, &block)
-      block = _deprecated_scope_block("create!", &block)
-      scoping { @association.create!(attributes, &block) }
+    def create!(*args, &block)
+      scoping { @association.create!(*args, &block) }
     end
 
     private
+
       def exec_queries
         super do |record|
           @association.set_inverse_instance_from_queries(record)

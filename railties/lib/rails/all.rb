@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-# rubocop:disable Style/RedundantBegin
-
 require "rails"
 
 %w(
@@ -12,8 +10,6 @@ require "rails"
   action_mailer/railtie
   active_job/railtie
   action_cable/engine
-  action_mailbox/engine
-  action_text/engine
   rails/test_unit/railtie
   sprockets/railtie
 ).each do |railtie|

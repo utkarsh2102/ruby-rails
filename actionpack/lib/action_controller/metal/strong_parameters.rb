@@ -1,9 +1,11 @@
 # frozen_string_literal: true
 
 require "active_support/core_ext/hash/indifferent_access"
+require "active_support/core_ext/hash/transform_values"
 require "active_support/core_ext/array/wrap"
 require "active_support/core_ext/string/filters"
 require "active_support/core_ext/object/to_query"
+require "active_support/rescuable"
 require "action_dispatch/http/upload"
 require "rack/test"
 require "stringio"
@@ -57,7 +59,7 @@ module ActionController
 
   # == Action Controller \Parameters
   #
-  # Allows you to choose which attributes should be permitted for mass updating
+  # Allows you to choose which attributes should be whitelisted for mass updating
   # and thus prevent accidentally exposing that which shouldn't be exposed.
   # Provides two methods for this purpose: #require and #permit. The former is
   # used to mark parameters as required. The latter is used to set the parameter
@@ -132,15 +134,6 @@ module ActionController
     # Returns a hash that can be used as the JSON representation for the parameters.
 
     ##
-    # :method: each_key
-    #
-    # :call-seq:
-    #   each_key()
-    #
-    # Calls block once for each key in the parameters, passing the key.
-    # If no block is given, an enumerator is returned instead.
-
-    ##
     # :method: empty?
     #
     # :call-seq:
@@ -212,7 +205,7 @@ module ActionController
     #
     # Returns a new array of the values of the parameters.
     delegate :keys, :key?, :has_key?, :values, :has_value?, :value?, :empty?, :include?,
-      :as_json, :to_s, :each_key, to: :@parameters
+      :as_json, :to_s, to: :@parameters
 
     # By default, never raise an UnpermittedParameters exception if these
     # params are present. The default includes both 'controller' and 'action'
@@ -348,16 +341,6 @@ module ActionController
       self
     end
     alias_method :each, :each_pair
-
-    # Convert all hashes in values into parameters, then yield each value in
-    # the same way as <tt>Hash#each_value</tt>.
-    def each_value(&block)
-      @parameters.each_pair do |key, value|
-        yield convert_hashes_to_parameters(key, value)
-      end
-
-      self
-    end
 
     # Attribute that keeps track of converted arrays, if any, to avoid double
     # looping in the common use case permit + mass-assignment. Defined in a
@@ -525,7 +508,7 @@ module ActionController
     #
     # Note that if you use +permit+ in a key that points to a hash,
     # it won't allow all the hash. You also need to specify which
-    # attributes inside the hash should be permitted.
+    # attributes inside the hash should be whitelisted.
     #
     #   params = ActionController::Parameters.new({
     #     person: {
@@ -602,18 +585,20 @@ module ActionController
       )
     end
 
-    # Extracts the nested parameter from the given +keys+ by calling +dig+
-    # at each step. Returns +nil+ if any intermediate step is +nil+.
-    #
-    #   params = ActionController::Parameters.new(foo: { bar: { baz: 1 } })
-    #   params.dig(:foo, :bar, :baz) # => 1
-    #   params.dig(:foo, :zot, :xyz) # => nil
-    #
-    #   params2 = ActionController::Parameters.new(foo: [10, 11, 12])
-    #   params2.dig(:foo, 1) # => 11
-    def dig(*keys)
-      convert_hashes_to_parameters(keys.first, @parameters[keys.first])
-      @parameters.dig(*keys)
+    if Hash.method_defined?(:dig)
+      # Extracts the nested parameter from the given +keys+ by calling +dig+
+      # at each step. Returns +nil+ if any intermediate step is +nil+.
+      #
+      #   params = ActionController::Parameters.new(foo: { bar: { baz: 1 } })
+      #   params.dig(:foo, :bar, :baz) # => 1
+      #   params.dig(:foo, :zot, :xyz) # => nil
+      #
+      #   params2 = ActionController::Parameters.new(foo: [10, 11, 12])
+      #   params2.dig(:foo, 1) # => 11
+      def dig(*keys)
+        convert_hashes_to_parameters(keys.first, @parameters[keys.first])
+        @parameters.dig(*keys)
+      end
     end
 
     # Returns a new <tt>ActionController::Parameters</tt> instance that
@@ -677,16 +662,18 @@ module ActionController
     # Returns a new <tt>ActionController::Parameters</tt> instance with the
     # results of running +block+ once for every key. The values are unchanged.
     def transform_keys(&block)
-      return to_enum(:transform_keys) unless block_given?
-      new_instance_with_inherited_permitted_status(
-        @parameters.transform_keys(&block)
-      )
+      if block
+        new_instance_with_inherited_permitted_status(
+          @parameters.transform_keys(&block)
+        )
+      else
+        @parameters.transform_keys
+      end
     end
 
     # Performs keys transformation and returns the altered
     # <tt>ActionController::Parameters</tt> instance.
     def transform_keys!(&block)
-      return to_enum(:transform_keys!) unless block_given?
       @parameters.transform_keys!(&block)
       self
     end
@@ -796,7 +783,7 @@ module ActionController
         @permitted  = coder.map["ivars"][:@permitted]
       when "!ruby/object:ActionController::Parameters"
         # YAML's Object format. Only needed because of the format
-        # backwards compatibility above, otherwise equivalent to YAML's initialization.
+        # backwardscompability above, otherwise equivalent to YAML's initialization.
         @parameters, @permitted = coder.map["parameters"], coder.map["permitted"]
       end
     end
@@ -811,7 +798,9 @@ module ActionController
     protected
       attr_reader :parameters
 
-      attr_writer :permitted
+      def permitted=(new_permitted)
+        @permitted = new_permitted
+      end
 
       def fields_for_style?
         @parameters.all? { |k, v| k =~ /\A-?\d+\z/ && (v.is_a?(Hash) || v.is_a?(Parameters)) }
@@ -922,28 +911,15 @@ module ActionController
         PERMITTED_SCALAR_TYPES.any? { |type| value.is_a?(type) }
       end
 
-      # Adds existing keys to the params if their values are scalar.
-      #
-      # For example:
-      #
-      #   puts self.keys #=> ["zipcode(90210i)"]
-      #   params = {}
-      #
-      #   permitted_scalar_filter(params, "zipcode")
-      #
-      #   puts params.keys # => ["zipcode"]
-      def permitted_scalar_filter(params, permitted_key)
-        permitted_key = permitted_key.to_s
-
-        if has_key?(permitted_key) && permitted_scalar?(self[permitted_key])
-          params[permitted_key] = self[permitted_key]
+      def permitted_scalar_filter(params, key)
+        if has_key?(key) && permitted_scalar?(self[key])
+          params[key] = self[key]
         end
 
-        each_key do |key|
-          next unless key =~ /\(\d+[if]?\)\z/
-          next unless $~.pre_match == permitted_key
-
-          params[key] = self[key] if permitted_scalar?(self[key])
+        keys.grep(/\A#{Regexp.escape(key)}\(\d+[if]?\)\z/) do |k|
+          if permitted_scalar?(self[k])
+            params[k] = self[k]
+          end
         end
       end
 
@@ -1028,8 +1004,8 @@ module ActionController
   #
   # It provides an interface for protecting attributes from end-user
   # assignment. This makes Action Controller parameters forbidden
-  # to be used in Active Model mass assignment until they have been explicitly
-  # enumerated.
+  # to be used in Active Model mass assignment until they have been
+  # whitelisted.
   #
   # In addition, parameters can be marked as required and flow through a
   # predefined raise/rescue flow to end up as a <tt>400 Bad Request</tt> with no
@@ -1065,7 +1041,7 @@ module ActionController
   #   end
   #
   # In order to use <tt>accepts_nested_attributes_for</tt> with Strong \Parameters, you
-  # will need to specify which nested attributes should be permitted. You might want
+  # will need to specify which nested attributes should be whitelisted. You might want
   # to allow +:id+ and +:_destroy+, see ActiveRecord::NestedAttributes for more information.
   #
   #   class Person
@@ -1083,7 +1059,7 @@ module ActionController
   #     private
   #
   #       def person_params
-  #         # It's mandatory to specify the nested attributes that should be permitted.
+  #         # It's mandatory to specify the nested attributes that should be whitelisted.
   #         # If you use `permit` with just the key that points to the nested attributes hash,
   #         # it will return an empty hash.
   #         params.require(:person).permit(:name, :age, pets_attributes: [ :id, :name, :category ])
@@ -1093,6 +1069,9 @@ module ActionController
   # See ActionController::Parameters.require and ActionController::Parameters.permit
   # for more information.
   module StrongParameters
+    extend ActiveSupport::Concern
+    include ActiveSupport::Rescuable
+
     # Returns a new ActionController::Parameters object that
     # has been instantiated with the <tt>request.parameters</tt>.
     def params

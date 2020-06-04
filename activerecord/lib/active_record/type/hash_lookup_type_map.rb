@@ -16,6 +16,7 @@ module ActiveRecord
       end
 
       private
+
         def perform_fetch(type, *args, &block)
           @mapping.fetch(type, block).call(type, *args)
         end

@@ -169,6 +169,7 @@ class NamedBaseTest < Rails::Generators::TestCase
   end
 
   private
+
     def assert_name(generator, value, method)
       assert_equal value, generator.send(method)
     end

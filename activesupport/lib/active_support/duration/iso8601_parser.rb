@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require "strscan"
+require "active_support/core_ext/regexp"
 
 module ActiveSupport
   class Duration
@@ -13,8 +14,8 @@ module ActiveSupport
       class ParsingError < ::ArgumentError; end
 
       PERIOD_OR_COMMA = /\.|,/
-      PERIOD = "."
-      COMMA = ","
+      PERIOD = ".".freeze
+      COMMA = ",".freeze
 
       SIGN_MARKER = /\A\-|\+|/
       DATE_MARKER = /P/
@@ -80,6 +81,7 @@ module ActiveSupport
       end
 
       private
+
         def finished?
           scanner.eos?
         end

@@ -27,6 +27,7 @@ module Rails
         end
 
         private
+
           def method_missing(*args, &block)
             instance.send(*args, &block)
           end

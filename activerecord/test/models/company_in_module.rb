@@ -91,6 +91,7 @@ module MyApplication
       validate :check_empty_credit_limit
 
       private
+
         def check_empty_credit_limit
           errors.add("credit_card", :blank) if credit_card.blank?
         end

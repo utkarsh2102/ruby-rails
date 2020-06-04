@@ -56,7 +56,10 @@ module ActiveRecord
         end
 
         private
-          attr_reader :uri
+
+          def uri
+            @uri
+          end
 
           def uri_parser
             @uri_parser ||= URI::Parser.new
@@ -72,7 +75,7 @@ module ActiveRecord
           #   "localhost"
           #   # => {}
           def query_hash
-            Hash[(@query || "").split("&").map { |pair| pair.split("=", 2) }]
+            Hash[(@query || "").split("&").map { |pair| pair.split("=") }]
           end
 
           def raw_config
@@ -113,7 +116,8 @@ module ActiveRecord
       class Resolver # :nodoc:
         attr_reader :configurations
 
-        # Accepts a list of db config objects.
+        # Accepts a hash two layers deep, keys on the first layer represent
+        # environments such as "production". Keys must be strings.
         def initialize(configurations)
           @configurations = configurations
         end
@@ -134,12 +138,32 @@ module ActiveRecord
         #   Resolver.new(configurations).resolve(:production)
         #   # => { "host" => "localhost", "database" => "foo", "adapter" => "postgresql" }
         #
-        def resolve(config_or_env, pool_name = nil)
-          if config_or_env
-            resolve_connection config_or_env, pool_name
+        def resolve(config)
+          if config
+            resolve_connection config
+          elsif env = ActiveRecord::ConnectionHandling::RAILS_ENV.call
+            resolve_symbol_connection env.to_sym
           else
             raise AdapterNotSpecified
           end
+        end
+
+        # Expands each key in @configurations hash into fully resolved hash
+        def resolve_all
+          config = configurations.dup
+
+          if env = ActiveRecord::ConnectionHandling::DEFAULT_ENV.call
+            env_config = config[env] if config[env].is_a?(Hash) && !(config[env].key?("adapter") || config[env].key?("url"))
+          end
+
+          config.reject! { |k, v| v.is_a?(Hash) && !(v.key?("adapter") || v.key?("url")) }
+          config.merge! env_config if env_config
+
+          config.each do |key, value|
+            config[key] = resolve(value) if value
+          end
+
+          config
         end
 
         # Returns an instance of ConnectionSpecification for a given adapter.
@@ -155,9 +179,7 @@ module ActiveRecord
         #   # => { "host" => "localhost", "database" => "foo", "adapter" => "sqlite3" }
         #
         def spec(config)
-          pool_name = config if config.is_a?(Symbol)
-
-          spec = resolve(config, pool_name).symbolize_keys
+          spec = resolve(config).symbolize_keys
 
           raise(AdapterNotSpecified, "database configuration does not specify adapter") unless spec.key?(:adapter)
 
@@ -185,13 +207,14 @@ module ActiveRecord
           adapter_method = "#{spec[:adapter]}_connection"
 
           unless ActiveRecord::Base.respond_to?(adapter_method)
-            raise AdapterNotFound, "database configuration specifies nonexistent #{spec[:adapter]} adapter"
+            raise AdapterNotFound, "database configuration specifies nonexistent #{spec.config[:adapter]} adapter"
           end
 
           ConnectionSpecification.new(spec.delete(:name) || "primary", spec, adapter_method)
         end
 
         private
+
           # Returns fully resolved connection, accepts hash, string or symbol.
           # Always returns a hash.
           #
@@ -212,62 +235,30 @@ module ActiveRecord
           #   Resolver.new({}).resolve_connection("postgresql://localhost/foo")
           #   # => { "host" => "localhost", "database" => "foo", "adapter" => "postgresql" }
           #
-          def resolve_connection(config_or_env, pool_name = nil)
-            case config_or_env
+          def resolve_connection(spec)
+            case spec
             when Symbol
-              resolve_symbol_connection config_or_env, pool_name
+              resolve_symbol_connection spec
             when String
-              resolve_url_connection config_or_env
+              resolve_url_connection spec
             when Hash
-              resolve_hash_connection config_or_env
-            else
-              raise TypeError, "Invalid type for configuration. Expected Symbol, String, or Hash. Got #{config_or_env.inspect}"
+              resolve_hash_connection spec
             end
           end
 
-          # Takes the environment such as +:production+ or +:development+ and a
-          # pool name the corresponds to the name given by the connection pool
-          # to the connection. That pool name is merged into the hash with the
-          # name key.
-          #
+          # Takes the environment such as +:production+ or +:development+.
           # This requires that the @configurations was initialized with a key that
           # matches.
           #
-          #   configurations = #<ActiveRecord::DatabaseConfigurations:0x00007fd9fdace3e0
-          #     @configurations=[
-          #       #<ActiveRecord::DatabaseConfigurations::HashConfig:0x00007fd9fdace250
-          #         @env_name="production", @spec_name="primary", @config={"database"=>"my_db"}>
-          #       ]>
+          #   Resolver.new("production" => {}).resolve_symbol_connection(:production)
+          #   # => {}
           #
-          #   Resolver.new(configurations).resolve_symbol_connection(:production, "primary")
-          #   # => { "database" => "my_db" }
-          def resolve_symbol_connection(env_name, pool_name)
-            db_config = configurations.find_db_config(env_name)
-
-            if db_config
-              resolve_connection(db_config.config).merge("name" => pool_name.to_s)
+          def resolve_symbol_connection(spec)
+            if config = configurations[spec.to_s]
+              resolve_connection(config).merge("name" => spec.to_s)
             else
-              raise AdapterNotSpecified, <<~MSG
-                The `#{env_name}` database is not configured for the `#{ActiveRecord::ConnectionHandling::DEFAULT_ENV.call}` environment.
-
-                Available databases configurations are:
-
-                #{build_configuration_sentence}
-              MSG
+              raise(AdapterNotSpecified, "'#{spec}' database is not configured. Available: #{configurations.keys.inspect}")
             end
-          end
-
-          def build_configuration_sentence # :nodoc:
-            configs = configurations.configs_for(include_replicas: true)
-
-            configs.group_by(&:env_name).map do |env, config|
-              namespaces = config.map(&:spec_name)
-              if namespaces.size > 1
-                "#{env}: #{namespaces.join(", ")}"
-              else
-                env
-              end
-            end.join("\n")
           end
 
           # Accepts a hash. Expands the "url" key that contains a

@@ -89,6 +89,7 @@ module ActiveRecord
       end
 
       private
+
         def merge_preloads
           return if other.preload_values.empty? && other.includes_values.empty?
 
@@ -116,16 +117,18 @@ module ActiveRecord
           if other.klass == relation.klass
             relation.joins!(*other.joins_values)
           else
-            associations, others = other.joins_values.partition do |join|
+            joins_dependency = other.joins_values.map do |join|
               case join
-              when Hash, Symbol, Array; true
+              when Hash, Symbol, Array
+                ActiveRecord::Associations::JoinDependency.new(
+                  other.klass, other.table, join
+                )
+              else
+                join
               end
             end
 
-            join_dependency = other.construct_join_dependency(
-              associations, Arel::Nodes::InnerJoin
-            )
-            relation.joins!(join_dependency, *others)
+            relation.joins!(*joins_dependency)
           end
         end
 
@@ -135,11 +138,18 @@ module ActiveRecord
           if other.klass == relation.klass
             relation.left_outer_joins!(*other.left_outer_joins_values)
           else
-            associations = other.left_outer_joins_values
-            join_dependency = other.construct_join_dependency(
-              associations, Arel::Nodes::OuterJoin
-            )
-            relation.joins!(join_dependency)
+            joins_dependency = other.left_outer_joins_values.map do |join|
+              case join
+              when Hash, Symbol, Array
+                ActiveRecord::Associations::JoinDependency.new(
+                  other.klass, other.table, join
+                )
+              else
+                join
+              end
+            end
+
+            relation.left_outer_joins!(*joins_dependency)
           end
         end
 

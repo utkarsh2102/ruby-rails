@@ -20,7 +20,7 @@ class AlwaysPermittedParametersTest < ActiveSupport::TestCase
     end
   end
 
-  test "allows both explicitly listed and always-permitted parameters" do
+  test "permits parameters that are whitelisted" do
     params = ActionController::Parameters.new(
       book: { pages: 65 },
       format: "json")

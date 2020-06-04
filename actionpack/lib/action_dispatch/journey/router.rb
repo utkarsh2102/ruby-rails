@@ -15,6 +15,9 @@ require "action_dispatch/journey/path/pattern"
 module ActionDispatch
   module Journey # :nodoc:
     class Router # :nodoc:
+      class RoutingError < ::StandardError # :nodoc:
+      end
+
       attr_accessor :routes
 
       def initialize(routes)
@@ -81,6 +84,7 @@ module ActionDispatch
       end
 
       private
+
         def partitioned_routes
           routes.partition { |r|
             r.path.anchored && r.ast.grep(Nodes::Symbol).all? { |n| n.default_regexp?  }

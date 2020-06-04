@@ -11,13 +11,14 @@ module ActiveRecord
       end
 
       private
+
         def registration_klass
           Registration
         end
 
-        def find_registration(symbol, *args, **kwargs)
+        def find_registration(symbol, *args)
           registrations
-            .select { |registration| registration.matches?(symbol, *args, **kwargs) }
+            .select { |registration| registration.matches?(symbol, *args) }
             .max
         end
     end
@@ -51,7 +52,10 @@ module ActiveRecord
         priority <=> other.priority
       end
 
+      # TODO Change this to private once we've dropped Ruby 2.2 support.
+      # Workaround for Ruby 2.2 "private attribute?" warning.
       protected
+
         attr_reader :name, :block, :adapter, :override
 
         def priority
@@ -70,6 +74,7 @@ module ActiveRecord
         end
 
       private
+
         def matches_adapter?(adapter: nil, **)
           (self.adapter.nil? || adapter == self.adapter)
         end
@@ -109,8 +114,13 @@ module ActiveRecord
         super | 4
       end
 
-      private
+      # TODO Change this to private once we've dropped Ruby 2.2 support.
+      # Workaround for Ruby 2.2 "private attribute?" warning.
+      protected
+
         attr_reader :options, :klass
+
+      private
 
         def matches_options?(**kwargs)
           options.all? do |key, value|

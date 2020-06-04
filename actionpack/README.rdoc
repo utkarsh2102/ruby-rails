@@ -23,7 +23,6 @@ by default and Action View rendering is implicitly triggered by Action
 Controller. However, these modules are designed to function on their own and
 can be used outside of Rails.
 
-You can read more about Action Pack in the {Action Controller Overview}[https://guides.rubyonrails.org/action_controller_overview.html] guide.
 
 == Download and installation
 
@@ -33,7 +32,7 @@ The latest version of Action Pack can be installed with RubyGems:
 
 Source code can be downloaded as part of the Rails project on GitHub:
 
-* https://github.com/rails/rails/tree/master/actionpack
+* https://github.com/rails/rails/tree/5-2-stable/actionpack
 
 
 == License
@@ -47,7 +46,7 @@ Action Pack is released under the MIT license:
 
 API documentation is at:
 
-* https://api.rubyonrails.org
+* http://api.rubyonrails.org
 
 Bug reports for the Ruby on Rails project can be filed here:
 
@@ -55,4 +54,4 @@ Bug reports for the Ruby on Rails project can be filed here:
 
 Feature requests should be discussed on the rails-core mailing list here:
 
-* https://discuss.rubyonrails.org/c/rubyonrails-core
+* https://groups.google.com/forum/?fromgroups#!forum/rubyonrails-core

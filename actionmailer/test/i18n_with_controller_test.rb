@@ -67,6 +67,7 @@ class ActionMailerI18nWithControllerTest < ActionDispatch::IntegrationTest
   end
 
   private
+
     def with_translation(locale, data)
       I18n.backend.store_translations(locale, data)
       yield

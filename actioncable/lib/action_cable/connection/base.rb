@@ -95,12 +95,7 @@ module ActionCable
       end
 
       # Close the WebSocket connection.
-      def close(reason: nil, reconnect: true)
-        transmit(
-          type: ActionCable::INTERNAL[:message_types][:disconnect],
-          reason: reason,
-          reconnect: reconnect
-        )
+      def close
         websocket.close
       end
 
@@ -141,10 +136,13 @@ module ActionCable
         send_async :handle_close
       end
 
-      private
+      # TODO Change this to private once we've dropped Ruby 2.2 support.
+      # Workaround for Ruby 2.2 "private attribute?" warning.
+      protected
         attr_reader :websocket
         attr_reader :message_buffer
 
+      private
         # The request that initiated the WebSocket connection is available here. This gives access to the environment, cookies, etc.
         def request # :doc:
           @request ||= begin
@@ -175,7 +173,7 @@ module ActionCable
           message_buffer.process!
           server.add_connection(self)
         rescue ActionCable::Connection::Authorization::UnauthorizedError
-          close(reason: ActionCable::INTERNAL[:disconnect_reasons][:unauthorized], reconnect: false) if websocket.alive?
+          respond_to_invalid_request
         end
 
         def handle_close
@@ -216,7 +214,7 @@ module ActionCable
         end
 
         def respond_to_invalid_request
-          close(reason: ActionCable::INTERNAL[:disconnect_reasons][:invalid_request]) if websocket.alive?
+          close if websocket.alive?
 
           logger.error invalid_request_message
           logger.info finished_request_message
@@ -260,5 +258,3 @@ module ActionCable
     end
   end
 end
-
-ActiveSupport.run_load_hooks(:action_cable_connection, ActionCable::Connection::Base)

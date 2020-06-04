@@ -24,21 +24,13 @@ module ActiveRecord
         # You can define a scope that applies to all finders using
         # {default_scope}[rdoc-ref:Scoping::Default::ClassMethods#default_scope].
         def all
-          scope = current_scope
+          current_scope = self.current_scope
 
-          if scope
-            if scope._deprecated_scope_source
-              ActiveSupport::Deprecation.warn(<<~MSG.squish)
-                Class level methods will no longer inherit scoping from `#{scope._deprecated_scope_source}`
-                in Rails 6.1. To continue using the scoped relation, pass it into the block directly.
-                To instead access the full set of models, as Rails 6.1 will, use `#{name}.default_scoped`.
-              MSG
-            end
-
-            if self == scope.klass
-              scope.clone
+          if current_scope
+            if self == current_scope.klass
+              current_scope.clone
             else
-              relation.merge!(scope)
+              relation.merge!(current_scope)
             end
           else
             default_scoped
@@ -46,20 +38,21 @@ module ActiveRecord
         end
 
         def scope_for_association(scope = relation) # :nodoc:
-          if current_scope&.empty_scope?
+          current_scope = self.current_scope
+
+          if current_scope && current_scope.empty_scope?
             scope
           else
             default_scoped(scope)
           end
         end
 
-        # Returns a scope for the model with default scopes.
-        def default_scoped(scope = relation)
+        def default_scoped(scope = relation) # :nodoc:
           build_default_scope(scope) || scope
         end
 
         def default_extensions # :nodoc:
-          if scope = scope_for_association || build_default_scope
+          if scope = current_scope || build_default_scope
             scope.extensions
           else
             []
@@ -188,14 +181,16 @@ module ActiveRecord
           extension = Module.new(&block) if block
 
           if body.respond_to?(:to_proc)
-            singleton_class.define_method(name) do |*args|
-              scope = all._exec_scope(name, *args, &body)
+            singleton_class.send(:define_method, name) do |*args|
+              scope = all
+              scope = scope._exec_scope(*args, &body)
               scope = scope.extending(extension) if extension
               scope
             end
           else
-            singleton_class.define_method(name) do |*args|
-              scope = body.call(*args) || all
+            singleton_class.send(:define_method, name) do |*args|
+              scope = all
+              scope = scope.scoping { body.call(*args) || scope }
               scope = scope.extending(extension) if extension
               scope
             end
@@ -205,6 +200,7 @@ module ActiveRecord
         end
 
         private
+
           def valid_scope_name?(name)
             if respond_to?(name, true) && logger
               logger.warn "Creating scope :#{name}. " \

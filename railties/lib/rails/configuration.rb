@@ -41,39 +41,34 @@ module Rails
       end
 
       def insert_before(*args, &block)
-        @operations << -> middleware { middleware.send(__method__, *args, &block) }
+        @operations << [__method__, args, block]
       end
-      ruby2_keywords(:insert_before) if respond_to?(:ruby2_keywords, true)
 
       alias :insert :insert_before
 
       def insert_after(*args, &block)
-        @operations << -> middleware { middleware.send(__method__, *args, &block) }
+        @operations << [__method__, args, block]
       end
-      ruby2_keywords(:insert_after) if respond_to?(:ruby2_keywords, true)
 
       def swap(*args, &block)
-        @operations << -> middleware { middleware.send(__method__, *args, &block) }
+        @operations << [__method__, args, block]
       end
-      ruby2_keywords(:swap) if respond_to?(:ruby2_keywords, true)
 
       def use(*args, &block)
-        @operations << -> middleware { middleware.send(__method__, *args, &block) }
+        @operations << [__method__, args, block]
       end
-      ruby2_keywords(:use) if respond_to?(:ruby2_keywords, true)
 
       def delete(*args, &block)
-        @delete_operations << -> middleware { middleware.send(__method__, *args, &block) }
+        @delete_operations << [__method__, args, block]
       end
 
       def unshift(*args, &block)
-        @operations << -> middleware { middleware.send(__method__, *args, &block) }
+        @operations << [__method__, args, block]
       end
-      ruby2_keywords(:unshift) if respond_to?(:ruby2_keywords, true)
 
       def merge_into(other) #:nodoc:
-        (@operations + @delete_operations).each do |operation|
-          operation.call(other)
+        (@operations + @delete_operations).each do |operation, args, block|
+          other.send(operation, *args, &block)
         end
 
         other
@@ -84,7 +79,13 @@ module Rails
       end
 
       protected
-        attr_reader :operations, :delete_operations
+        def operations
+          @operations
+        end
+
+        def delete_operations
+          @delete_operations
+        end
     end
 
     class Generators #:nodoc:

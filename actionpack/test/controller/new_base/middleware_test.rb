@@ -4,7 +4,7 @@ require "abstract_unit"
 
 module MiddlewareTest
   class MyMiddleware
-    def initialize(app, kw: nil)
+    def initialize(app)
       @app = app
     end
 
@@ -17,7 +17,7 @@ module MiddlewareTest
   end
 
   class ExclaimerMiddleware
-    def initialize(app, kw: nil)
+    def initialize(app)
       @app = app
     end
 
@@ -46,8 +46,8 @@ module MiddlewareTest
     use BlockMiddleware do |config|
       config.configurable_message = "Configured by block."
     end
-    use MyMiddleware, kw: 1
-    middleware.insert_before MyMiddleware, ExclaimerMiddleware, kw: 1
+    use MyMiddleware
+    middleware.insert_before MyMiddleware, ExclaimerMiddleware
 
     def index
       self.response_body = "Hello World"
@@ -58,8 +58,8 @@ module MiddlewareTest
   end
 
   class ActionsController < ActionController::Metal
-    use MyMiddleware, only: :show, kw: 1
-    middleware.insert_before MyMiddleware, ExclaimerMiddleware, except: :index, kw: 1
+    use MyMiddleware, only: :show
+    middleware.insert_before MyMiddleware, ExclaimerMiddleware, except: :index
 
     def index
       self.response_body = "index"

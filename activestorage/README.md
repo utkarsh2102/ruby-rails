@@ -4,21 +4,17 @@ Active Storage makes it simple to upload and reference files in cloud services l
 
 Files can be uploaded from the server to the cloud or directly from the client to the cloud.
 
-Image files can furthermore be transformed using on-demand variants for quality, aspect ratio, size, or any other [MiniMagick](https://github.com/minimagick/minimagick) or [Vips](https://www.rubydoc.info/gems/ruby-vips/Vips/Image) supported transformation.
-
-You can read more about Active Storage in the [Active Storage Overview](https://edgeguides.rubyonrails.org/active_storage_overview.html) guide.
+Image files can furthermore be transformed using on-demand variants for quality, aspect ratio, size, or any other [MiniMagick](https://github.com/minimagick/minimagick) supported transformation.
 
 ## Compared to other storage solutions
 
-A key difference to how Active Storage works compared to other attachment solutions in Rails is through the use of built-in [Blob](https://github.com/rails/rails/blob/master/activestorage/app/models/active_storage/blob.rb) and [Attachment](https://github.com/rails/rails/blob/master/activestorage/app/models/active_storage/attachment.rb) models (backed by Active Record). This means existing application models do not need to be modified with additional columns to associate with files. Active Storage uses polymorphic associations via the `Attachment` join model, which then connects to the actual `Blob`.
+A key difference to how Active Storage works compared to other attachment solutions in Rails is through the use of built-in [Blob](https://github.com/rails/rails/blob/5-2-stable/activestorage/app/models/active_storage/blob.rb) and [Attachment](https://github.com/rails/rails/blob/5-2-stable/activestorage/app/models/active_storage/attachment.rb) models (backed by Active Record). This means existing application models do not need to be modified with additional columns to associate with files. Active Storage uses polymorphic associations via the `Attachment` join model, which then connects to the actual `Blob`.
 
 `Blob` models store attachment metadata (filename, content-type, etc.), and their identifier key in the storage service. Blob models do not store the actual binary data. They are intended to be immutable in spirit. One file, one blob. You can associate the same blob with multiple application models as well. And if you want to do transformations of a given `Blob`, the idea is that you'll simply create a new one, rather than attempt to mutate the existing one (though of course you can delete the previous version later if you don't need it).
 
 ## Installation
 
 Run `rails active_storage:install` to copy over active_storage migrations.
-
-NOTE: If the task cannot be found, verify that `require "active_storage/engine"` is present in `config/application.rb`.
 
 ## Examples
 
@@ -103,7 +99,7 @@ Variation of image attachment:
 
 ```erb
 <%# Hitting the variant URL will lazy transform the original blob and then redirect to its new service location %>
-<%= image_tag user.avatar.variant(resize_to_limit: [100, 100]) %>
+<%= image_tag user.avatar.variant(resize: "100x100") %>
 ```
 
 ## Direct uploads
@@ -120,7 +116,8 @@ Active Storage, with its included JavaScript library, supports uploading directl
     ```
     Using the npm package:
     ```js
-    require("@rails/activestorage").start()
+    import * as ActiveStorage from "activestorage"
+    ActiveStorage.start()
     ```
 2. Annotate file inputs with the direct upload URL.
 
@@ -151,7 +148,7 @@ Active Storage is released under the [MIT License](https://opensource.org/licens
 
 API documentation is at:
 
-* https://api.rubyonrails.org
+* http://api.rubyonrails.org
 
 Bug reports for the Ruby on Rails project can be filed here:
 
@@ -159,4 +156,4 @@ Bug reports for the Ruby on Rails project can be filed here:
 
 Feature requests should be discussed on the rails-core mailing list here:
 
-* https://discuss.rubyonrails.org/c/rubyonrails-core
+* https://groups.google.com/forum/?fromgroups#!forum/rubyonrails-core

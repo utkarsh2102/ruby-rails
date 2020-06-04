@@ -38,6 +38,7 @@ class DispatcherTest < ActiveSupport::TestCase
   end
 
   private
+
     def dispatch(&block)
       ActionDispatch::Callbacks.new(block || DummyApp.new).call(
         "rack.input" => StringIO.new("")

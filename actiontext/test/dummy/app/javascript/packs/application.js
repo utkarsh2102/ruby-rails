@@ -1,1 +1,0 @@
-import "@rails/actiontext"

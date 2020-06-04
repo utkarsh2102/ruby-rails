@@ -101,11 +101,12 @@ class PostgreSQLReferentialIntegrityTest < ActiveRecord::PostgreSQLTestCase
     @connection.extend ProgrammerMistake
 
     assert_raises ArgumentError do
-      @connection.disable_referential_integrity { }
+      @connection.disable_referential_integrity {}
     end
   end
 
   private
+
     def assert_transaction_is_not_broken
       assert_equal 1, @connection.select_value("SELECT 1")
     end

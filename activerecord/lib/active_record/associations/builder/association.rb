@@ -27,32 +27,40 @@ module ActiveRecord::Associations::Builder # :nodoc:
                              "Please choose a different association name."
       end
 
-      reflection = create_reflection(model, name, scope, options, &block)
+      extension = define_extensions model, name, &block
+      reflection = create_reflection model, name, scope, options, extension
       define_accessors model, reflection
       define_callbacks model, reflection
       define_validations model, reflection
       reflection
     end
 
-    def self.create_reflection(model, name, scope, options, &block)
+    def self.create_reflection(model, name, scope, options, extension = nil)
       raise ArgumentError, "association names must be a Symbol" unless name.kind_of?(Symbol)
 
       validate_options(options)
 
-      extension = define_extensions(model, name, &block)
-      options[:extend] = [*options[:extend], extension] if extension
-
-      scope = build_scope(scope)
+      scope = build_scope(scope, extension)
 
       ActiveRecord::Reflection.create(macro, name, scope, options, model)
     end
 
-    def self.build_scope(scope)
+    def self.build_scope(scope, extension)
+      new_scope = scope
+
       if scope && scope.arity == 0
-        proc { instance_exec(&scope) }
-      else
-        scope
+        new_scope = proc { instance_exec(&scope) }
       end
+
+      if extension
+        new_scope = wrap_scope new_scope, extension
+      end
+
+      new_scope
+    end
+
+    def self.wrap_scope(scope, extension)
+      scope
     end
 
     def self.macro
@@ -128,9 +136,5 @@ module ActiveRecord::Associations::Builder # :nodoc:
       name = reflection.name
       model.before_destroy lambda { |o| o.association(name).handle_dependency }
     end
-
-    private_class_method :build_scope, :macro, :valid_options, :validate_options, :define_extensions,
-      :define_callbacks, :define_accessors, :define_readers, :define_writers, :define_validations,
-      :valid_dependent_options, :check_dependent_options, :add_destroy_callbacks
   end
 end

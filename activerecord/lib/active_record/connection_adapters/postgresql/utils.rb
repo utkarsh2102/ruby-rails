@@ -37,6 +37,7 @@ module ActiveRecord
         end
 
         protected
+
           def parts
             @parts ||= [@schema, @identifier].compact
           end

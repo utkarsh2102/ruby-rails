@@ -43,12 +43,6 @@ class ActionController::TestSessionTest < ActiveSupport::TestCase
     assert_equal %w(1 2), session.values
   end
 
-  def test_dig
-    session = ActionController::TestSession.new(one: { two: { three: "3" } })
-    assert_equal("3", session.dig(:one, :two, :three))
-    assert_nil(session.dig(:ruby, :on, :rails))
-  end
-
   def test_fetch_returns_default
     session = ActionController::TestSession.new(one: "1")
     assert_equal("2", session.fetch(:two, "2"))
@@ -67,11 +61,5 @@ class ActionController::TestSessionTest < ActiveSupport::TestCase
   def test_fetch_returns_block_value
     session = ActionController::TestSession.new(one: "1")
     assert_equal(2, session.fetch("2") { |key| key.to_i })
-  end
-
-  def test_session_id
-    session = ActionController::TestSession.new
-    assert_instance_of String, session.id.public_id
-    assert_equal(session.id.public_id, session["session_id"])
   end
 end

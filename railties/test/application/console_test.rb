@@ -25,7 +25,7 @@ class ConsoleTest < ActiveSupport::TestCase
   end
 
   def test_app_method_should_return_integration_session
-    TestHelpers::Rack.remove_method :app
+    TestHelpers::Rack.send :remove_method, :app
     load_environment
     console_session = irb_context.app
     assert_instance_of ActionDispatch::Integration::Session, console_session
@@ -109,7 +109,7 @@ class FullStackConsoleTest < ActiveSupport::TestCase
     CODE
     system "#{app_path}/bin/rails runner 'Post.connection.create_table :posts'"
 
-    @primary, @replica = PTY.open
+    @master, @slave = PTY.open
   end
 
   def teardown
@@ -117,61 +117,42 @@ class FullStackConsoleTest < ActiveSupport::TestCase
   end
 
   def write_prompt(command, expected_output = nil)
-    @primary.puts command
-    assert_output command, @primary
-    assert_output expected_output, @primary if expected_output
-    assert_output "> ", @primary
+    @master.puts command
+    assert_output command, @master
+    assert_output expected_output, @master if expected_output
+    assert_output "> ", @master
   end
 
-  def spawn_console(options, wait_for_prompt: true)
-    pid = Process.spawn(
+  def spawn_console(options)
+    Process.spawn(
       "#{app_path}/bin/rails console #{options}",
-      in: @replica, out: @replica, err: @replica
+      in: @slave, out: @slave, err: @slave
     )
 
-    if wait_for_prompt
-      assert_output "> ", @primary, 30
-    end
-
-    pid
+    assert_output "> ", @master, 30
   end
 
   def test_sandbox
-    options = "--sandbox"
-    options += " -- --singleline --nocolorize" if RUBY_VERSION >= "2.7"
-    spawn_console(options)
+    spawn_console("--sandbox")
 
     write_prompt "Post.count", "=> 0"
     write_prompt "Post.create"
     write_prompt "Post.count", "=> 1"
-    @primary.puts "quit"
+    @master.puts "quit"
 
-    spawn_console(options)
+    spawn_console("--sandbox")
 
     write_prompt "Post.count", "=> 0"
     write_prompt "Post.transaction { Post.create; raise }"
     write_prompt "Post.count", "=> 0"
-    @primary.puts "quit"
-  end
-
-  def test_sandbox_when_sandbox_is_disabled
-    add_to_config <<-RUBY
-      config.disable_sandbox = true
-    RUBY
-
-    output = `#{app_path}/bin/rails console --sandbox`
-
-    assert_includes output, "sandbox mode is disabled"
-    assert_equal 1, $?.exitstatus
+    @master.puts "quit"
   end
 
   def test_environment_option_and_irb_option
-    options = "-e test -- --verbose"
-    options += " --singleline --nocolorize" if RUBY_VERSION >= "2.7"
-    spawn_console(options)
+    spawn_console("test -- --verbose")
 
     write_prompt "a = 1", "a = 1"
     write_prompt "puts Rails.env", "puts Rails.env\r\ntest"
-    @primary.puts "quit"
+    @master.puts "quit"
   end
 end

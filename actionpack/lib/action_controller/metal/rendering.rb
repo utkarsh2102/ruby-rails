@@ -40,7 +40,7 @@ module ActionController
     def render_to_string(*)
       result = super
       if result.respond_to?(:each)
-        string = +""
+        string = "".dup
         result.each { |r| string << r }
         string
       else
@@ -53,6 +53,7 @@ module ActionController
     end
 
     private
+
       def _process_variant(options)
         if defined?(request) && !request.nil? && request.variant.present?
           options[:variant] = request.variant
@@ -72,7 +73,7 @@ module ActionController
       end
 
       def _set_rendered_content_type(format)
-        if format && !response.media_type
+        if format && !response.content_type
           self.content_type = format.to_s
         end
       end

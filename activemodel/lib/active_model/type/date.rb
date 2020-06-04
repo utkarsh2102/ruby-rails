@@ -10,11 +10,16 @@ module ActiveModel
         :date
       end
 
+      def serialize(value)
+        cast(value)
+      end
+
       def type_cast_for_schema(value)
         value.to_s(:db).inspect
       end
 
       private
+
         def cast_value(value)
           if value.is_a?(::String)
             return if value.empty?

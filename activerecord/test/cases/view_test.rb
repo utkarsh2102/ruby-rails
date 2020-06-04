@@ -20,7 +20,7 @@ module ViewBehavior
   def setup
     super
     @connection = ActiveRecord::Base.connection
-    create_view "ebooks'", <<~SQL
+    create_view "ebooks'", <<-SQL
       SELECT id, name, status FROM books WHERE format = 'ebook'
     SQL
   end
@@ -106,7 +106,7 @@ if ActiveRecord::Base.connection.supports_views?
 
     setup do
       @connection = ActiveRecord::Base.connection
-      @connection.execute <<~SQL
+      @connection.execute <<-SQL
         CREATE VIEW paperbacks
           AS SELECT name, status FROM books WHERE format = 'paperback'
       SQL
@@ -156,7 +156,8 @@ if ActiveRecord::Base.connection.supports_views?
   end
 
   # sqlite dose not support CREATE, INSERT, and DELETE for VIEW
-  if current_adapter?(:Mysql2Adapter, :SQLServerAdapter, :PostgreSQLAdapter)
+  if current_adapter?(:Mysql2Adapter, :SQLServerAdapter) ||
+      current_adapter?(:PostgreSQLAdapter) && ActiveRecord::Base.connection.postgresql_version >= 90300
 
     class UpdateableViewTest < ActiveRecord::TestCase
       self.use_transactional_tests = false
@@ -168,7 +169,7 @@ if ActiveRecord::Base.connection.supports_views?
 
       setup do
         @connection = ActiveRecord::Base.connection
-        @connection.execute <<~SQL
+        @connection.execute <<-SQL
           CREATE VIEW printed_books
             AS SELECT id, name, status, format FROM books WHERE format = 'paperback'
         SQL
@@ -206,7 +207,8 @@ if ActiveRecord::Base.connection.supports_views?
   end # end of `if current_adapter?(:Mysql2Adapter, :PostgreSQLAdapter, :SQLServerAdapter)`
 end # end of `if ActiveRecord::Base.connection.supports_views?`
 
-if ActiveRecord::Base.connection.supports_materialized_views?
+if ActiveRecord::Base.connection.respond_to?(:supports_materialized_views?) &&
+    ActiveRecord::Base.connection.supports_materialized_views?
   class MaterializedViewTest < ActiveRecord::PostgreSQLTestCase
     include ViewBehavior
 

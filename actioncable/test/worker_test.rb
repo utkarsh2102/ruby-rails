@@ -2,7 +2,7 @@
 
 require "test_helper"
 
-class WorkerTest < ActionCable::TestCase
+class WorkerTest < ActiveSupport::TestCase
   class Receiver
     attr_accessor :last_action
 

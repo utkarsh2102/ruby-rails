@@ -12,6 +12,7 @@ class Rails::ApplicationController < ActionController::Base # :nodoc:
   end
 
   private
+
     def require_local!
       unless local_request?
         render html: "<p>For security purposes, this information is only available to local requests.</p>".html_safe, status: :forbidden

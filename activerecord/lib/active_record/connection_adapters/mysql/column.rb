@@ -11,7 +11,7 @@ module ActiveRecord
         end
 
         def case_sensitive?
-          collation && !collation.end_with?("_ci")
+          collation && !/_ci\z/.match?(collation)
         end
 
         def auto_increment?

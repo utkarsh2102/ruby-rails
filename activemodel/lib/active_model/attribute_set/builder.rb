@@ -90,6 +90,9 @@ module ActiveModel
     end
 
     protected
+
+      attr_reader :types, :values, :additional_types, :delegate_hash, :default_attributes
+
       def materialize
         unless @materialized
           values.each_key { |key| self[key] }
@@ -102,7 +105,6 @@ module ActiveModel
       end
 
     private
-      attr_reader :types, :values, :additional_types, :delegate_hash, :default_attributes
 
       def assign_default_value(name)
         type = additional_types.fetch(name, types[name])

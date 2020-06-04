@@ -147,8 +147,9 @@ module ActiveRecord
 
     module ClassMethods # :nodoc:
       private
+
         def define_non_cyclic_method(name, &block)
-          return if instance_methods(false).include?(name)
+          return if method_defined?(name)
           define_method(name) do |*args|
             result = true; @_already_called ||= {}
             # Loop prevention for validation of associations
@@ -266,6 +267,7 @@ module ActiveRecord
     end
 
     private
+
       # Returns the record for an association collection that should be validated
       # or saved. If +autosave+ is +false+ only new records will be returned,
       # unless the parent is/was a new record itself.
@@ -361,7 +363,7 @@ module ActiveRecord
       # Is used as a before_save callback to check while saving a collection
       # association whether or not the parent was a new record before saving.
       def before_save_collection_association
-        @new_record_before_save ||= new_record?
+        @new_record_before_save = new_record?
       end
 
       def after_save_collection_association
@@ -414,7 +416,7 @@ module ActiveRecord
                 saved = record.save(validate: false)
               end
 
-              raise(RecordInvalid.new(association.owner)) unless saved
+              raise ActiveRecord::Rollback unless saved
             end
           end
         end

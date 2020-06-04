@@ -32,17 +32,12 @@ class Deprecatee
   deprecate :f=
 
   deprecate :g
-  def g(h) h end
+  def g ;end
 
   module B
     C = 1
   end
   A = ActiveSupport::Deprecation::DeprecatedConstantProxy.new("Deprecatee::A", "Deprecatee::B::C")
-
-  module New
-    class Descendant; end
-  end
-  Old = ActiveSupport::Deprecation::DeprecatedConstantProxy.new("Deprecatee::Old", "Deprecatee::New")
 end
 
 class DeprecateeWithAccessor
@@ -85,7 +80,7 @@ class DeprecationTest < ActiveSupport::TestCase
     end
   end
 
-  def test_deprecate_method_on_class
+  def test_deprecate_class_method
     assert_deprecated(/none is deprecated/) do
       assert_equal 1, @dtc.none
     end
@@ -96,18 +91,6 @@ class DeprecationTest < ActiveSupport::TestCase
 
     assert_deprecated(/multi is deprecated/) do
       assert_equal [1, 2, 3], @dtc.multi(1, 2, 3)
-    end
-  end
-
-  def test_deprecate_method_doesnt_expand_positional_argument_hash
-    hash = { k: 1 }
-
-    assert_deprecated(/one is deprecated/) do
-      assert_same hash, @dtc.one(hash)
-    end
-
-    assert_deprecated(/g is deprecated/) do
-      assert_same hash, @dtc.g(hash)
     end
   end
 
@@ -187,8 +170,8 @@ class DeprecationTest < ActiveSupport::TestCase
 
     begin
       events = []
-      ActiveSupport::Notifications.subscribe("deprecation.my_gem_custom") { |*args|
-        events << args.extract_options!
+      ActiveSupport::Notifications.subscribe("deprecation.my_gem_custom") { |_, **args|
+        events << args
       }
 
       assert_nil behavior.call("Some error!", ["call stack!"], "horizon", "MyGem::Custom")
@@ -225,18 +208,6 @@ class DeprecationTest < ActiveSupport::TestCase
     assert_not_deprecated { Deprecatee::B::C }
     assert_deprecated("Deprecatee::A") { assert_equal Deprecatee::B::C, Deprecatee::A }
     assert_not_deprecated { assert_equal Deprecatee::B::C.class, Deprecatee::A.class }
-  end
-
-  def test_deprecated_constant_descendant
-    assert_not_deprecated { Deprecatee::New::Descendant }
-
-    assert_deprecated("Deprecatee::Old") do
-      assert_equal Deprecatee::Old::Descendant, Deprecatee::New::Descendant
-    end
-
-    assert_raises(NameError) do
-      assert_deprecated("Deprecatee::Old") { Deprecatee::Old::NON_EXISTENCE }
-    end
   end
 
   def test_deprecated_constant_accessor
@@ -458,7 +429,7 @@ class DeprecationTest < ActiveSupport::TestCase
   end
 
   def test_deprecate_work_before_define_method
-    assert_deprecated(/g is deprecated/) { @dtc.g(1) }
+    assert_deprecated { @dtc.g }
   end
 
   private

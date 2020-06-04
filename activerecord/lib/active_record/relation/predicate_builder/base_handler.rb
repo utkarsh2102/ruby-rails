@@ -11,7 +11,8 @@ module ActiveRecord
         predicate_builder.build(attribute, value.id)
       end
 
-      private
+      protected
+
         attr_reader :predicate_builder
     end
   end

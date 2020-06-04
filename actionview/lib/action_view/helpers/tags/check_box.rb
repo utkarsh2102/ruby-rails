@@ -39,6 +39,7 @@ module ActionView
         end
 
         private
+
           def checked?(value)
             case value
             when TrueClass, FalseClass

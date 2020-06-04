@@ -13,11 +13,9 @@ module ActiveRecord
             :uuid
           end
 
-          private
-            def cast_value(value)
-              casted = value.to_s
-              casted if casted.match?(ACCEPTABLE_UUID)
-            end
+          def cast(value)
+            value.to_s[ACCEPTABLE_UUID, 0]
+          end
         end
       end
     end

@@ -2,6 +2,8 @@
 
 require "active_support/concern"
 require "active_support/ordered_options"
+require "active_support/core_ext/array/extract_options"
+require "active_support/core_ext/regexp"
 
 module ActiveSupport
   # Configurable provides a <tt>config</tt> method to store and retrieve
@@ -67,8 +69,8 @@ module ActiveSupport
       #   end
       #   # => NameError: invalid config attribute name
       #
-      # To omit the instance writer method, pass <tt>instance_writer: false</tt>.
-      # To omit the instance reader method, pass <tt>instance_reader: false</tt>.
+      # To opt out of the instance writer method, pass <tt>instance_writer: false</tt>.
+      # To opt out of the instance reader method, pass <tt>instance_reader: false</tt>.
       #
       #   class User
       #     include ActiveSupport::Configurable
@@ -81,7 +83,7 @@ module ActiveSupport
       #   User.new.allowed_access = true # => NoMethodError
       #   User.new.allowed_access        # => NoMethodError
       #
-      # Or pass <tt>instance_accessor: false</tt>, to omit both instance methods.
+      # Or pass <tt>instance_accessor: false</tt>, to opt out both instance methods.
       #
       #   class User
       #     include ActiveSupport::Configurable
@@ -104,7 +106,9 @@ module ActiveSupport
       #   end
       #
       #   User.hair_colors # => [:brown, :black, :blonde, :red]
-      def config_accessor(*names, instance_reader: true, instance_writer: true, instance_accessor: true) # :doc:
+      def config_accessor(*names)
+        options = names.extract_options!
+
         names.each do |name|
           raise NameError.new("invalid config attribute name") unless /\A[_A-Za-z]\w*\z/.match?(name)
 
@@ -114,9 +118,9 @@ module ActiveSupport
           singleton_class.class_eval reader, __FILE__, reader_line
           singleton_class.class_eval writer, __FILE__, writer_line
 
-          if instance_accessor
-            class_eval reader, __FILE__, reader_line if instance_reader
-            class_eval writer, __FILE__, writer_line if instance_writer
+          unless options[:instance_accessor] == false
+            class_eval reader, __FILE__, reader_line unless options[:instance_reader] == false
+            class_eval writer, __FILE__, writer_line unless options[:instance_writer] == false
           end
           send("#{name}=", yield) if block_given?
         end

@@ -85,6 +85,7 @@ module ActionDispatch
       end
 
       private
+
         def set_binary_encoding(params, controller, action)
           return params unless controller && controller.valid_encoding?
 
@@ -98,7 +99,7 @@ module ActionDispatch
 
         def binary_params_for?(controller, action)
           controller_class_for(controller).binary_params_for?(action)
-        rescue MissingController
+        rescue NameError
           false
         end
 
@@ -110,20 +111,10 @@ module ActionDispatch
           begin
             strategy.call(raw_post)
           rescue # JSON or Ruby code block errors.
-            log_parse_error_once
+            my_logger = logger || ActiveSupport::Logger.new($stderr)
+            my_logger.debug "Error occurred while parsing request parameters.\nContents:\n\n#{raw_post}"
+
             raise ParseError
-          end
-        end
-
-        def log_parse_error_once
-          @parse_error_logged ||= begin
-            parse_logger = logger || ActiveSupport::Logger.new($stderr)
-            parse_logger.debug <<~MSG.chomp
-              Error occurred while parsing request parameters.
-              Contents:
-
-              #{raw_post}
-            MSG
           end
         end
 

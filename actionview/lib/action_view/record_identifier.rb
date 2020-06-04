@@ -59,8 +59,8 @@ module ActionView
 
     include ModelNaming
 
-    JOIN = "_"
-    NEW = "new"
+    JOIN = "_".freeze
+    NEW = "new".freeze
 
     # The DOM class convention is to use the singular form of an object or class.
     #
@@ -95,6 +95,7 @@ module ActionView
     end
 
   private
+
     # Returns a string representation of the key attribute(s) that is suitable for use in an HTML DOM id.
     # This can be overwritten to customize the default generated string representation if desired.
     # If you need to read back a key from a dom_id in order to query for the underlying database record,

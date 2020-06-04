@@ -1,24 +1,28 @@
 # frozen_string_literal: true
 
+require "concurrent/map"
 require "action_view/dependency_tracker"
+require "monitor"
 
 module ActionView
   class Digestor
     @@digest_mutex = Mutex.new
 
+    module PerExecutionDigestCacheExpiry
+      def self.before(target)
+        ActionView::LookupContext::DetailsKey.clear
+      end
+    end
+
     class << self
       # Supported options:
       #
-      # * <tt>name</tt>         - Template name
-      # * <tt>format</tt>       - Template format
-      # * <tt>finder</tt>       - An instance of <tt>ActionView::LookupContext</tt>
-      # * <tt>dependencies</tt> - An array of dependent views
-      def digest(name:, format: nil, finder:, dependencies: nil)
-        if dependencies.nil? || dependencies.empty?
-          cache_key = "#{name}.#{format}"
-        else
-          cache_key = [ name, format, dependencies ].flatten.compact.join(".")
-        end
+      # * <tt>name</tt>   - Template name
+      # * <tt>finder</tt>  - An instance of <tt>ActionView::LookupContext</tt>
+      # * <tt>dependencies</tt>  - An array of dependent views
+      def digest(name:, finder:, dependencies: [])
+        dependencies ||= []
+        cache_key = [ name, finder.rendered_format, dependencies ].flatten.compact.join(".")
 
         # this is a correctly done double-checked locking idiom
         # (Concurrent::Map's lookups have volatile semantics)
@@ -28,7 +32,7 @@ module ActionView
             root = tree(name, finder, partial)
             dependencies.each do |injected_dep|
               root.children << Injected.new(injected_dep, nil, nil)
-            end if dependencies
+            end
             finder.digest_cache[cache_key] = root.digest(finder)
           end
         end
@@ -43,6 +47,8 @@ module ActionView
         logical_name = name.gsub(%r|/_|, "/")
 
         if template = find_template(finder, logical_name, [], partial, [])
+          finder.rendered_format ||= template.formats.first
+
           if node = seen[template.identifier] # handle cycles in the tree
             node
           else
@@ -66,7 +72,9 @@ module ActionView
       private
         def find_template(finder, name, prefixes, partial, keys)
           finder.disable_cache do
-            finder.find_all(name, prefixes, partial, keys).first
+            format = finder.rendered_format
+            result = finder.find_all(name, prefixes, partial, keys, formats: [format]).first if format
+            result || finder.find_all(name, prefixes, partial, keys).first
           end
         end
     end

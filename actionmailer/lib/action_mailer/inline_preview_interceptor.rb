@@ -40,7 +40,9 @@ module ActionMailer
     end
 
     private
-      attr_reader :message
+      def message
+        @message
+      end
 
       def html_part
         @html_part ||= message.html_part

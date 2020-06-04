@@ -18,22 +18,21 @@ module QueJobsManager
     user = uri.user || ENV["USER"]
     pass = uri.password
     db   = uri.path[1..-1]
-    %x{#{"PGPASSWORD=\"#{pass}\"" if pass} psql -X -c 'drop database if exists "#{db}"' -U #{user} -t template1}
-    %x{#{"PGPASSWORD=\"#{pass}\"" if pass} psql -X -c 'create database "#{db}"' -U #{user} -t template1}
+    %x{#{"PGPASSWORD=\"#{pass}\"" if pass} psql -c 'drop database if exists "#{db}"' -U #{user} -t template1}
+    %x{#{"PGPASSWORD=\"#{pass}\"" if pass} psql -c 'create database "#{db}"' -U #{user} -t template1}
     Que.connection = Sequel.connect(que_url)
     Que.migrate!
 
     @thread = Thread.new do
       loop do
-        Que::Job.work("integration_tests")
+        Que::Job.work
         sleep 0.5
       end
     end
 
   rescue Sequel::DatabaseConnectionError
     puts "Cannot run integration tests for que. To be able to run integration tests for que you need to install and start postgresql.\n"
-    status = ENV["CI"] ? false : true
-    exit status
+    exit
   end
 
   def stop_workers

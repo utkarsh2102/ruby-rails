@@ -2,7 +2,6 @@
 
 require "active_record/migration/join_table"
 require "active_support/core_ext/string/access"
-require "active_support/deprecation"
 require "digest/sha2"
 
 module ActiveRecord
@@ -130,11 +129,11 @@ module ActiveRecord
       #   column_exists?(:suppliers, :name, :string, null: false)
       #   column_exists?(:suppliers, :tax, :decimal, precision: 8, scale: 2)
       #
-      def column_exists?(table_name, column_name, type = nil, **options)
+      def column_exists?(table_name, column_name, type = nil, options = {})
         column_name = column_name.to_s
         checks = []
         checks << lambda { |c| c.name == column_name }
-        checks << lambda { |c| c.type == type.to_sym rescue nil } if type
+        checks << lambda { |c| c.type == type } if type
         column_options_keys.each do |attr|
           checks << lambda { |c| c.send(attr) == options[attr] } if options.key?(attr)
         end
@@ -206,22 +205,19 @@ module ActiveRecord
       #   Set to true to drop the table before creating it.
       #   Set to +:cascade+ to drop dependent objects as well.
       #   Defaults to false.
-      # [<tt>:if_not_exists</tt>]
-      #   Set to true to avoid raising an error when the table already exists.
-      #   Defaults to false.
       # [<tt>:as</tt>]
       #   SQL to use to generate the table. When this option is used, the block is
       #   ignored, as are the <tt>:id</tt> and <tt>:primary_key</tt> options.
       #
       # ====== Add a backend specific option to the generated SQL (MySQL)
       #
-      #   create_table(:suppliers, options: 'ENGINE=InnoDB DEFAULT CHARSET=utf8mb4')
+      #   create_table(:suppliers, options: 'ENGINE=InnoDB DEFAULT CHARSET=utf8')
       #
       # generates:
       #
       #   CREATE TABLE suppliers (
       #     id bigint auto_increment PRIMARY KEY
-      #   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+      #   ) ENGINE=InnoDB DEFAULT CHARSET=utf8
       #
       # ====== Rename the primary key column
       #
@@ -291,8 +287,8 @@ module ActiveRecord
       #     SELECT * FROM orders INNER JOIN line_items ON order_id=orders.id
       #
       # See also TableDefinition#column for details on how to create columns.
-      def create_table(table_name, **options)
-        td = create_table_definition(table_name, **options)
+      def create_table(table_name, comment: nil, **options)
+        td = create_table_definition table_name, options[:temporary], options[:options], options[:as], comment: comment
 
         if options[:id] != false && !options[:as]
           pk = options.fetch(:primary_key) do
@@ -302,14 +298,14 @@ module ActiveRecord
           if pk.is_a?(Array)
             td.primary_keys pk
           else
-            td.primary_key pk, options.fetch(:id, :primary_key), **options.except(:comment)
+            td.primary_key pk, options.fetch(:id, :primary_key), options
           end
         end
 
         yield td if block_given?
 
         if options[:force]
-          drop_table(table_name, **options, if_exists: true)
+          drop_table(table_name, options.merge(if_exists: true))
         end
 
         result = execute schema_creation.accept td
@@ -321,9 +317,7 @@ module ActiveRecord
         end
 
         if supports_comments? && !supports_comments_in_create?
-          if table_comment = options[:comment].presence
-            change_table_comment(table_name, table_comment)
-          end
+          change_table_comment(table_name, comment) if comment.present?
 
           td.columns.each do |column|
             change_column_comment(table_name, column.name, column.comment) if column.comment.present?
@@ -378,9 +372,9 @@ module ActiveRecord
 
         t1_ref, t2_ref = [table_1, table_2].map { |t| t.to_s.singularize }
 
-        create_table(join_table_name, **options.merge!(id: false)) do |td|
-          td.references t1_ref, **column_options
-          td.references t2_ref, **column_options
+        create_table(join_table_name, options.merge!(id: false)) do |td|
+          td.references t1_ref, column_options
+          td.references t2_ref, column_options
           yield td if block_given?
         end
       end
@@ -391,7 +385,7 @@ module ActiveRecord
       # Although this command ignores the block if one is given, it can be helpful
       # to provide one in a migration's +change+ method so it can be reverted.
       # In that case, the block will be used by #create_join_table.
-      def drop_join_table(table_1, table_2, **options)
+      def drop_join_table(table_1, table_2, options = {})
         join_table_name = find_join_table_name(table_1, table_2, options)
         drop_table(join_table_name)
       end
@@ -468,7 +462,7 @@ module ActiveRecord
       #  end
       #
       # See also Table for details on all of the various column transformations.
-      def change_table(table_name, **options)
+      def change_table(table_name, options = {})
         if supports_bulk_alter? && options[:bulk]
           recorder = ActiveRecord::Migration::CommandRecorder.new(self)
           yield update_table_definition(table_name, recorder)
@@ -498,7 +492,7 @@ module ActiveRecord
       # Although this command ignores most +options+ and the block if one is given,
       # it can be helpful to provide these in a migration's +change+ method so it can be reverted.
       # In that case, +options+ and the block will be used by #create_table.
-      def drop_table(table_name, **options)
+      def drop_table(table_name, options = {})
         execute "DROP TABLE#{' IF EXISTS' if options[:if_exists]} #{quote_table_name(table_name)}"
       end
 
@@ -518,20 +512,16 @@ module ActiveRecord
       # Available options are (none of these exists by default):
       # * <tt>:limit</tt> -
       #   Requests a maximum column length. This is the number of characters for a <tt>:string</tt> column
-      #   and number of bytes for <tt>:text</tt>, <tt>:binary</tt>, and <tt>:integer</tt> columns.
+      #   and number of bytes for <tt>:text</tt>, <tt>:binary</tt> and <tt>:integer</tt> columns.
       #   This option is ignored by some backends.
       # * <tt>:default</tt> -
       #   The column's default value. Use +nil+ for +NULL+.
       # * <tt>:null</tt> -
       #   Allows or disallows +NULL+ values in the column.
       # * <tt>:precision</tt> -
-      #   Specifies the precision for the <tt>:decimal</tt>, <tt>:numeric</tt>,
-      #   <tt>:datetime</tt>, and <tt>:time</tt> columns.
+      #   Specifies the precision for the <tt>:decimal</tt> and <tt>:numeric</tt> columns.
       # * <tt>:scale</tt> -
       #   Specifies the scale for the <tt>:decimal</tt> and <tt>:numeric</tt> columns.
-      # * <tt>:collation</tt> -
-      #   Specifies the collation for a <tt>:string</tt> or <tt>:text</tt> column. If not specified, the
-      #   column will have the same collation as the table.
       # * <tt>:comment</tt> -
       #   Specifies the comment for the column. This option is ignored by some backends.
       #
@@ -585,9 +575,9 @@ module ActiveRecord
       #  # Defines a column with a database-specific type.
       #  add_column(:shapes, :triangle, 'polygon')
       #  # ALTER TABLE "shapes" ADD "triangle" polygon
-      def add_column(table_name, column_name, type, **options)
+      def add_column(table_name, column_name, type, options = {})
         at = create_alter_table table_name
-        at.add_column(column_name, type, **options)
+        at.add_column(column_name, type, options)
         execute schema_creation.accept at
       end
 
@@ -609,9 +599,8 @@ module ActiveRecord
       # The +type+ and +options+ parameters will be ignored if present. It can be helpful
       # to provide these in a migration's +change+ method so it can be reverted.
       # In that case, +type+ and +options+ will be used by #add_column.
-      # Indexes on the column are automatically removed.
-      def remove_column(table_name, column_name, type = nil, **options)
-        execute "ALTER TABLE #{quote_table_name(table_name)} #{remove_column_for_alter(table_name, column_name, type, **options)}"
+      def remove_column(table_name, column_name, type = nil, options = {})
+        execute "ALTER TABLE #{quote_table_name(table_name)} #{remove_column_for_alter(table_name, column_name, type, options)}"
       end
 
       # Changes the column's definition according to the new options.
@@ -771,19 +760,8 @@ module ActiveRecord
       #   CREATE FULLTEXT INDEX index_developers_on_name ON developers (name) -- MySQL
       #
       # Note: only supported by MySQL.
-      #
-      # ====== Creating an index with a specific algorithm
-      #
-      #  add_index(:developers, :name, algorithm: :concurrently)
-      #  # CREATE INDEX CONCURRENTLY developers_on_name on developers (name)
-      #
-      # Note: only supported by PostgreSQL.
-      #
-      # Concurrently adding an index is not supported in a transaction.
-      #
-      # For more information see the {"Transactional Migrations" section}[rdoc-ref:Migration].
       def add_index(table_name, column_name, options = {})
-        index_name, index_type, index_columns, index_options = add_index_options(table_name, column_name, **options)
+        index_name, index_type, index_columns, index_options = add_index_options(table_name, column_name, options)
         execute "CREATE #{index_type} INDEX #{quote_column_name(index_name)} ON #{quote_table_name(table_name)} (#{index_columns})#{index_options}"
       end
 
@@ -805,15 +783,6 @@ module ActiveRecord
       #
       #   remove_index :accounts, name: :by_branch_party
       #
-      # Removes the index named +by_branch_party+ in the +accounts+ table +concurrently+.
-      #
-      #   remove_index :accounts, name: :by_branch_party, algorithm: :concurrently
-      #
-      # Note: only supported by PostgreSQL.
-      #
-      # Concurrently removing an index is not supported in a transaction.
-      #
-      # For more information see the {"Transactional Migrations" section}[rdoc-ref:Migration].
       def remove_index(table_name, options = {})
         index_name = index_name_for_remove(table_name, options)
         execute "DROP INDEX #{quote_column_name(index_name)} ON #{quote_table_name(table_name)}"
@@ -873,17 +842,17 @@ module ActiveRecord
       # [<tt>:null</tt>]
       #   Whether the column allows nulls. Defaults to true.
       #
-      # ====== Create a user_id bigint column without an index
+      # ====== Create a user_id bigint column
       #
-      #   add_reference(:products, :user, index: false)
+      #   add_reference(:products, :user)
       #
       # ====== Create a user_id string column
       #
       #   add_reference(:products, :user, type: :string)
       #
-      # ====== Create supplier_id, supplier_type columns
+      # ====== Create supplier_id, supplier_type columns and appropriate index
       #
-      #   add_reference(:products, :supplier, polymorphic: true)
+      #   add_reference(:products, :supplier, polymorphic: true, index: true)
       #
       # ====== Create a supplier_id column with a unique index
       #
@@ -902,7 +871,7 @@ module ActiveRecord
       #   add_reference(:products, :supplier, foreign_key: {to_table: :firms})
       #
       def add_reference(table_name, ref_name, **options)
-        ReferenceDefinition.new(ref_name, **options).add_to(update_table_definition(table_name, self))
+        ReferenceDefinition.new(ref_name, options).add_to(update_table_definition(table_name, self))
       end
       alias :add_belongs_to :add_reference
 
@@ -911,7 +880,7 @@ module ActiveRecord
       #
       # ====== Remove the reference
       #
-      #   remove_reference(:products, :user, index: false)
+      #   remove_reference(:products, :user, index: true)
       #
       # ====== Remove polymorphic reference
       #
@@ -919,7 +888,7 @@ module ActiveRecord
       #
       # ====== Remove the reference with a foreign key
       #
-      #   remove_reference(:products, :user, foreign_key: true)
+      #   remove_reference(:products, :user, index: true, foreign_key: true)
       #
       def remove_reference(table_name, ref_name, foreign_key: false, polymorphic: false, **options)
         if foreign_key
@@ -930,7 +899,7 @@ module ActiveRecord
             foreign_key_options = { to_table: reference_name }
           end
           foreign_key_options[:column] ||= "#{ref_name}_id"
-          remove_foreign_key(table_name, **foreign_key_options)
+          remove_foreign_key(table_name, foreign_key_options)
         end
 
         remove_column(table_name, "#{ref_name}_id")
@@ -987,8 +956,8 @@ module ActiveRecord
       # [<tt>:on_update</tt>]
       #   Action that happens <tt>ON UPDATE</tt>. Valid values are +:nullify+, +:cascade+ and +:restrict+
       # [<tt>:validate</tt>]
-      #   (PostgreSQL only) Specify whether or not the constraint should be validated. Defaults to +true+.
-      def add_foreign_key(from_table, to_table, **options)
+      #   (Postgres only) Specify whether or not the constraint should be validated. Defaults to +true+.
+      def add_foreign_key(from_table, to_table, options = {})
         return unless supports_foreign_keys?
 
         options = foreign_key_options(from_table, to_table, options)
@@ -1011,22 +980,15 @@ module ActiveRecord
       #
       #   remove_foreign_key :accounts, column: :owner_id
       #
-      # Removes the foreign key on +accounts.owner_id+.
-      #
-      #   remove_foreign_key :accounts, to_table: :owners
-      #
       # Removes the foreign key named +special_fk_name+ on the +accounts+ table.
       #
       #   remove_foreign_key :accounts, name: :special_fk_name
       #
-      # The +options+ hash accepts the same keys as SchemaStatements#add_foreign_key
-      # with an addition of
-      # [<tt>:to_table</tt>]
-      #   The name of the table that contains the referenced primary key.
-      def remove_foreign_key(from_table, to_table = nil, **options)
+      # The +options+ hash accepts the same keys as SchemaStatements#add_foreign_key.
+      def remove_foreign_key(from_table, options_or_to_table = {})
         return unless supports_foreign_keys?
 
-        fk_name_to_delete = foreign_key_for!(from_table, to_table: to_table, **options).name
+        fk_name_to_delete = foreign_key_for!(from_table, options_or_to_table).name
 
         at = create_alter_table from_table
         at.drop_foreign_key fk_name_to_delete
@@ -1045,12 +1007,14 @@ module ActiveRecord
       #   # Checks to see if a foreign key with a custom name exists.
       #   foreign_key_exists?(:accounts, name: "special_fk_name")
       #
-      def foreign_key_exists?(from_table, to_table = nil, **options)
-        foreign_key_for(from_table, to_table: to_table, **options).present?
+      def foreign_key_exists?(from_table, options_or_to_table = {})
+        foreign_key_for(from_table, options_or_to_table).present?
       end
 
       def foreign_key_column_for(table_name) # :nodoc:
-        name = strip_table_name_prefix_and_suffix(table_name)
+        prefix = Base.table_name_prefix
+        suffix = Base.table_name_suffix
+        name = table_name.to_s =~ /#{prefix}(.+)#{suffix}/ ? $1 : table_name.to_s
         "#{name.singularize}_id"
       end
 
@@ -1061,8 +1025,8 @@ module ActiveRecord
         options
       end
 
-      def dump_schema_information # :nodoc:
-        versions = schema_migration.all_versions
+      def dump_schema_information #:nodoc:
+        versions = ActiveRecord::SchemaMigration.all_versions
         insert_versions_sql(versions) if versions.any?
       end
 
@@ -1070,18 +1034,15 @@ module ActiveRecord
         { primary_key: true }
       end
 
-      def assume_migrated_upto_version(version, migrations_paths = nil)
-        unless migrations_paths.nil?
-          ActiveSupport::Deprecation.warn(<<~MSG.squish)
-            Passing migrations_paths to #assume_migrated_upto_version is deprecated and will be removed in Rails 6.1.
-          MSG
-        end
-
+      def assume_migrated_upto_version(version, migrations_paths)
+        migrations_paths = Array(migrations_paths)
         version = version.to_i
-        sm_table = quote_table_name(schema_migration.table_name)
+        sm_table = quote_table_name(ActiveRecord::SchemaMigration.table_name)
 
-        migrated = migration_context.get_all_versions
-        versions = migration_context.migrations.map(&:version)
+        migrated = ActiveRecord::SchemaMigration.all_versions.map(&:to_i)
+        versions = migration_context.migration_files.map do |file|
+          migration_context.parse_migration_filename(file).first.to_i
+        end
 
         unless migrated.include?(version)
           execute "INSERT INTO #{sm_table} (version) VALUES (#{quote(version)})"
@@ -1092,7 +1053,13 @@ module ActiveRecord
           if (duplicate = inserting.detect { |v| inserting.count(v) > 1 })
             raise "Duplicate migration #{duplicate}. Please renumber your migrations to resolve the conflict."
           end
-          execute insert_versions_sql(inserting)
+          if supports_multi_insert?
+            execute insert_versions_sql(inserting)
+          else
+            inserting.each do |v|
+              execute insert_versions_sql(v)
+            end
+          end
         end
       end
 
@@ -1118,7 +1085,7 @@ module ActiveRecord
             if (0..6) === precision
               column_type_sql << "(#{precision})"
             else
-              raise ArgumentError, "No #{native[:name]} type has precision of #{precision}. The allowed range of precision is from 0 to 6"
+              raise(ActiveRecordError, "No #{native[:name]} type has precision of #{precision}. The allowed range of precision is from 0 to 6")
             end
           elsif (type != :primary_key) && (limit ||= native.is_a?(Hash) && native[:limit])
             column_type_sql << "(#{limit})"
@@ -1145,22 +1112,18 @@ module ActiveRecord
       #
       #   add_timestamps(:suppliers, null: true)
       #
-      def add_timestamps(table_name, **options)
+      def add_timestamps(table_name, options = {})
         options[:null] = false if options[:null].nil?
 
-        if !options.key?(:precision) && supports_datetime_with_precision?
-          options[:precision] = 6
-        end
-
-        add_column table_name, :created_at, :datetime, **options
-        add_column table_name, :updated_at, :datetime, **options
+        add_column table_name, :created_at, :datetime, options
+        add_column table_name, :updated_at, :datetime, options
       end
 
       # Removes the timestamp columns (+created_at+ and +updated_at+) from the table definition.
       #
       #  remove_timestamps(:suppliers)
       #
-      def remove_timestamps(table_name, **options)
+      def remove_timestamps(table_name, options = {})
         remove_column table_name, :updated_at
         remove_column table_name, :created_at
       end
@@ -1196,7 +1159,7 @@ module ActiveRecord
         if data_source_exists?(table_name) && index_name_exists?(table_name, index_name)
           raise ArgumentError, "Index name '#{index_name}' on table '#{table_name}' already exists"
         end
-        index_columns = quoted_columns_for_index(column_names, **options).join(", ")
+        index_columns = quoted_columns_for_index(column_names, options).join(", ")
 
         [index_name, index_type, index_columns, index_options, algorithm, using, comment]
       end
@@ -1206,22 +1169,12 @@ module ActiveRecord
       end
 
       # Changes the comment for a table or removes it if +nil+.
-      #
-      # Passing a hash containing +:from+ and +:to+ will make this change
-      # reversible in migration:
-      #
-      #   change_table_comment(:posts, from: "old_comment", to: "new_comment")
-      def change_table_comment(table_name, comment_or_changes)
+      def change_table_comment(table_name, comment)
         raise NotImplementedError, "#{self.class} does not support changing table comments"
       end
 
       # Changes the comment for a column or removes it if +nil+.
-      #
-      # Passing a hash containing +:from+ and +:to+ will make this change
-      # reversible in migration:
-      #
-      #   change_column_comment(:posts, :state, from: "old_comment", to: "new_comment")
-      def change_column_comment(table_name, column_name, comment_or_changes)
+      def change_column_comment(table_name, column_name, comment)
         raise NotImplementedError, "#{self.class} does not support changing column comments"
       end
 
@@ -1253,7 +1206,7 @@ module ActiveRecord
         # the PostgreSQL adapter for supporting operator classes.
         def add_options_for_index_columns(quoted_columns, **options)
           if supports_index_sort_order?
-            quoted_columns = add_index_sort_order(quoted_columns, **options)
+            quoted_columns = add_index_sort_order(quoted_columns, options)
           end
 
           quoted_columns
@@ -1263,7 +1216,7 @@ module ActiveRecord
           return [column_names] if column_names.is_a?(String)
 
           quoted_columns = Hash[column_names.map { |name| [name.to_sym, quote_column_name(name).dup] }]
-          add_options_for_index_columns(quoted_columns, **options).values
+          add_options_for_index_columns(quoted_columns, options).values
         end
 
         def index_name_for_remove(table_name, options = {})
@@ -1322,8 +1275,8 @@ module ActiveRecord
           SchemaCreation.new(self)
         end
 
-        def create_table_definition(*args, **options)
-          TableDefinition.new(self, *args, **options)
+        def create_table_definition(*args)
+          TableDefinition.new(*args)
         end
 
         def create_alter_table(name)
@@ -1357,12 +1310,6 @@ module ActiveRecord
           { column: column_names }
         end
 
-        def strip_table_name_prefix_and_suffix(table_name)
-          prefix = Base.table_name_prefix
-          suffix = Base.table_name_suffix
-          table_name.to_s =~ /#{prefix}(.+)#{suffix}/ ? $1 : table_name.to_s
-        end
-
         def foreign_key_name(table_name, options)
           options.fetch(:name) do
             identifier = "#{table_name}_#{options.fetch(:column)}_fk"
@@ -1372,14 +1319,14 @@ module ActiveRecord
           end
         end
 
-        def foreign_key_for(from_table, **options)
+        def foreign_key_for(from_table, options_or_to_table = {})
           return unless supports_foreign_keys?
-          foreign_keys(from_table).detect { |fk| fk.defined_for?(**options) }
+          foreign_keys(from_table).detect { |fk| fk.defined_for? options_or_to_table }
         end
 
-        def foreign_key_for!(from_table, to_table: nil, **options)
-          foreign_key_for(from_table, to_table: to_table, **options) ||
-            raise(ArgumentError, "Table '#{from_table}' has no foreign key for #{to_table || options}")
+        def foreign_key_for!(from_table, options_or_to_table = {})
+          foreign_key_for(from_table, options_or_to_table) || \
+            raise(ArgumentError, "Table '#{from_table}' has no foreign key for #{options_or_to_table}")
         end
 
         def extract_foreign_key_action(specifier)
@@ -1405,73 +1352,30 @@ module ActiveRecord
             default_or_changes
           end
         end
-        alias :extract_new_comment_value :extract_new_default_value
 
         def can_remove_index_by_name?(options)
           options.is_a?(Hash) && options.key?(:name) && options.except(:name, :algorithm).empty?
         end
 
-        def bulk_change_table(table_name, operations)
-          sql_fragments = []
-          non_combinable_operations = []
-
-          operations.each do |command, args|
-            table, arguments = args.shift, args
-            method = :"#{command}_for_alter"
-
-            if respond_to?(method, true)
-              sqls, procs = Array(send(method, table, *arguments)).partition { |v| v.is_a?(String) }
-              sql_fragments << sqls
-              non_combinable_operations.concat(procs)
-            else
-              execute "ALTER TABLE #{quote_table_name(table_name)} #{sql_fragments.join(", ")}" unless sql_fragments.empty?
-              non_combinable_operations.each(&:call)
-              sql_fragments = []
-              non_combinable_operations = []
-              send(command, table, *arguments)
-            end
-          end
-
-          execute "ALTER TABLE #{quote_table_name(table_name)} #{sql_fragments.join(", ")}" unless sql_fragments.empty?
-          non_combinable_operations.each(&:call)
-        end
-
-        def add_column_for_alter(table_name, column_name, type, **options)
+        def add_column_for_alter(table_name, column_name, type, options = {})
           td = create_table_definition(table_name)
-          cd = td.new_column_definition(column_name, type, **options)
+          cd = td.new_column_definition(column_name, type, options)
           schema_creation.accept(AddColumnDefinition.new(cd))
         end
 
-        def remove_column_for_alter(table_name, column_name, type = nil, **options)
+        def remove_column_for_alter(table_name, column_name, type = nil, options = {})
           "DROP COLUMN #{quote_column_name(column_name)}"
         end
 
-        def remove_columns_for_alter(table_name, *column_names, **options)
+        def remove_columns_for_alter(table_name, *column_names)
           column_names.map { |column_name| remove_column_for_alter(table_name, column_name) }
         end
 
-        def add_timestamps_for_alter(table_name, **options)
-          options[:null] = false if options[:null].nil?
-
-          if !options.key?(:precision) && supports_datetime_with_precision?
-            options[:precision] = 6
-          end
-
-          [
-            add_column_for_alter(table_name, :created_at, :datetime, **options),
-            add_column_for_alter(table_name, :updated_at, :datetime, **options)
-          ]
-        end
-
-        def remove_timestamps_for_alter(table_name, **options)
-          remove_columns_for_alter(table_name, :updated_at, :created_at)
-        end
-
         def insert_versions_sql(versions)
-          sm_table = quote_table_name(schema_migration.table_name)
+          sm_table = quote_table_name(ActiveRecord::SchemaMigration.table_name)
 
           if versions.is_a?(Array)
-            sql = +"INSERT INTO #{sm_table} (version) VALUES\n"
+            sql = "INSERT INTO #{sm_table} (version) VALUES\n".dup
             sql << versions.map { |v| "(#{quote(v)})" }.join(",\n")
             sql << ";\n\n"
             sql

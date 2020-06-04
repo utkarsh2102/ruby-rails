@@ -150,6 +150,7 @@ module ActiveModel
     end
 
     private
+
       # Hook method defining how an attribute value should be retrieved for
       # serialization. By default this is assumed to be an instance named after
       # the attribute. Override this method in subclasses should you need to

@@ -105,6 +105,9 @@ module ActionView
   #
   #   <%= render(partial: "ad", collection: @advertisements) || "There's no ad to be displayed" %>
   #
+  # NOTE: Due to backwards compatibility concerns, the collection can't be one of hashes. Normally you'd also
+  # just keep domain objects, like Active Records, in there.
+  #
   # == \Rendering shared partials
   #
   # Two controllers can share a set of partials and render them like this:
@@ -292,59 +295,43 @@ module ActionView
     end
 
     def render(context, options, block)
-      as = as_variable(options)
-      setup(context, options, as, block)
+      setup(context, options, block)
+      @template = find_partial
 
-      if @path
-        if @has_object || @collection
-          @variable, @variable_counter, @variable_iteration = retrieve_variable(@path, as)
-          @template_keys = retrieve_template_keys(@variable)
+      @lookup_context.rendered_format ||= begin
+        if @template && @template.formats.present?
+          @template.formats.first
         else
-          @template_keys = @locals.keys
+          formats.first
         end
-        template = find_partial(@path, @template_keys)
-        @variable ||= template.variable
-      else
-        if options[:cached]
-          raise NotImplementedError, "render caching requires a template. Please specify a partial when rendering"
-        end
-        template = nil
       end
 
       if @collection
-        render_collection(context, template)
+        render_collection
       else
-        render_partial(context, template)
+        render_partial
       end
     end
 
     private
-      def render_collection(view, template)
-        identifier = (template && template.identifier) || @path
-        instrument(:collection, identifier: identifier, count: @collection.size) do |payload|
-          return RenderedCollection.empty(@lookup_context.formats.first) if @collection.blank?
 
-          spacer = if @options.key?(:spacer_template)
-            spacer_template = find_template(@options[:spacer_template], @locals.keys)
-            build_rendered_template(spacer_template.render(view, @locals), spacer_template)
-          else
-            RenderedTemplate::EMPTY_SPACER
+      def render_collection
+        instrument(:collection, count: @collection.size) do |payload|
+          return nil if @collection.blank?
+
+          if @options.key?(:spacer_template)
+            spacer = find_template(@options[:spacer_template], @locals.keys).render(@view, @locals)
           end
 
-          collection_body = if template
-            cache_collection_render(payload, view, template) do
-              collection_with_template(view, template)
-            end
-          else
-            collection_without_template(view)
-          end
-          build_rendered_collection(collection_body, spacer)
+          cache_collection_render(payload) do
+            @template ? collection_with_template : collection_without_template
+          end.join(spacer).html_safe
         end
       end
 
-      def render_partial(view, template)
-        instrument(:partial, identifier: template.identifier) do |payload|
-          locals, block = @locals, @block
+      def render_partial
+        instrument(:partial) do |payload|
+          view, locals, block = @view, @locals, @block
           object, as = @object, @variable
 
           if !block && (layout = @options[:layout])
@@ -354,13 +341,13 @@ module ActionView
           object = locals[as] if object.nil? # Respect object when object is false
           locals[as] = object if @has_object
 
-          content = template.render(view, locals) do |*name|
+          content = @template.render(view, locals) do |*name|
             view._layout_for(*name, &block)
           end
 
           content = layout.render(view, locals) { content } if layout
-          payload[:cache_hit] = view.view_renderer.cache_hits[template.virtual_path]
-          build_rendered_template(content, template, layout)
+          payload[:cache_hit] = view.view_renderer.cache_hits[@template.virtual_path]
+          content
         end
       end
 
@@ -371,12 +358,15 @@ module ActionView
       # If +options[:partial]+ is a string, then the <tt>@path</tt> instance variable is
       # set to that string. Otherwise, the +options[:partial]+ object must
       # respond to +to_partial_path+ in order to setup the path.
-      def setup(context, options, as, block)
+      def setup(context, options, block)
+        @view = context
         @options = options
         @block   = block
 
         @locals  = options[:locals] || {}
         @details = extract_details(options)
+
+        prepend_formats(options[:formats])
 
         partial = options[:partial]
 
@@ -391,26 +381,26 @@ module ActionView
           @collection = collection_from_object || collection_from_options
 
           if @collection
-            paths = @collection_data = @collection.map { |o| partial_path(o, context) }
-            if paths.uniq.length == 1
-              @path = paths.first
-            else
-              paths.map! { |path| retrieve_variable(path, as).unshift(path) }
-              @path = nil
-            end
+            paths = @collection_data = @collection.map { |o| partial_path(o) }
+            @path = paths.uniq.one? ? paths.first : nil
           else
-            @path = partial_path(@object, context)
+            @path = partial_path
           end
         end
 
-        self
-      end
-
-      def as_variable(options)
         if as = options[:as]
           raise_invalid_option_as(as) unless /\A[a-z_]\w*\z/.match?(as.to_s)
-          as.to_sym
+          as = as.to_sym
         end
+
+        if @path
+          @variable, @variable_counter, @variable_iteration = retrieve_variable(@path, as)
+          @template_keys = retrieve_template_keys
+        else
+          paths.map! { |path| retrieve_variable(path, as).unshift(path) }
+        end
+
+        self
       end
 
       def collection_from_options
@@ -424,8 +414,8 @@ module ActionView
         @object.to_ary if @object.respond_to?(:to_ary)
       end
 
-      def find_partial(path, template_keys)
-        find_template(path, template_keys)
+      def find_partial
+        find_template(@path, @template_keys) if @path
       end
 
       def find_template(path, locals)
@@ -433,8 +423,8 @@ module ActionView
         @lookup_context.find_template(path, prefixes, true, locals, @details)
       end
 
-      def collection_with_template(view, template)
-        locals = @locals
+      def collection_with_template
+        view, locals, template = @view, @locals, @template
         as, counter, iteration = @variable, @variable_counter, @variable_iteration
 
         if layout = @options[:layout]
@@ -451,12 +441,12 @@ module ActionView
           content = template.render(view, locals)
           content = layout.render(view, locals) { content } if layout
           partial_iteration.iterate!
-          build_rendered_template(content, template, layout)
+          content
         end
       end
 
-      def collection_without_template(view)
-        locals, collection_data = @locals, @collection_data
+      def collection_without_template
+        view, locals, collection_data = @view, @locals, @collection_data
         cache = {}
         keys  = @locals.keys
 
@@ -473,7 +463,7 @@ module ActionView
           template = (cache[path] ||= find_template(path, keys + [as, counter, iteration]))
           content = template.render(view, locals)
           partial_iteration.iterate!
-          build_rendered_template(content, template)
+          content
         end
       end
 
@@ -484,7 +474,7 @@ module ActionView
       #
       # If +prefix_partial_path_with_controller_namespace+ is true, then this
       # method will prefix the partial paths with a namespace.
-      def partial_path(object, view)
+      def partial_path(object = @object)
         object = object.to_model if object.respond_to?(:to_model)
 
         path = if object.respond_to?(:to_partial_path)
@@ -493,7 +483,7 @@ module ActionView
           raise ArgumentError.new("'#{object.inspect}' is not an ActiveModel-compatible object. It must implement :to_partial_path.")
         end
 
-        if view.prefix_partial_path_with_controller_namespace
+        if @view.prefix_partial_path_with_controller_namespace
           prefixed_partial_names[path] ||= merge_prefix_into_object_path(@context_prefix, path.dup)
         else
           path
@@ -521,9 +511,9 @@ module ActionView
         end
       end
 
-      def retrieve_template_keys(variable)
+      def retrieve_template_keys
         keys = @locals.keys
-        keys << variable
+        keys << @variable if @has_object || @collection
         if @collection
           keys << @variable_counter
           keys << @variable_iteration
@@ -533,7 +523,7 @@ module ActionView
 
       def retrieve_variable(path, as)
         variable = as || begin
-          base = path[-1] == "/" ? "" : File.basename(path)
+          base = path[-1] == "/".freeze ? "".freeze : File.basename(path)
           raise_invalid_identifier(path) unless base =~ /\A_?(.*?)(?:\.\w+)*\z/
           $1.to_sym
         end

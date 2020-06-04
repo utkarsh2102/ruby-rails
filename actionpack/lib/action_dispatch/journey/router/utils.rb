@@ -17,11 +17,11 @@ module ActionDispatch
         def self.normalize_path(path)
           path ||= ""
           encoding = path.encoding
-          path = +"/#{path}"
-          path.squeeze!("/")
-          path.sub!(%r{/+\Z}, "")
+          path = "/#{path}".dup
+          path.squeeze!("/".freeze)
+          path.sub!(%r{/+\Z}, "".freeze)
           path.gsub!(/(%[a-f0-9]{2})/) { $1.upcase }
-          path = +"/" if path == ""
+          path = "/".dup if path == "".freeze
           path.force_encoding(encoding)
           path
         end
@@ -29,16 +29,16 @@ module ActionDispatch
         # URI path and fragment escaping
         # https://tools.ietf.org/html/rfc3986
         class UriEncoder # :nodoc:
-          ENCODE   = "%%%02X"
+          ENCODE   = "%%%02X".freeze
           US_ASCII = Encoding::US_ASCII
           UTF_8    = Encoding::UTF_8
-          EMPTY    = (+"").force_encoding(US_ASCII).freeze
+          EMPTY    = "".dup.force_encoding(US_ASCII).freeze
           DEC2HEX  = (0..255).to_a.map { |i| ENCODE % i }.map { |s| s.force_encoding(US_ASCII) }
 
-          ALPHA = "a-zA-Z"
-          DIGIT = "0-9"
-          UNRESERVED = "#{ALPHA}#{DIGIT}\\-\\._~"
-          SUB_DELIMS = "!\\$&'\\(\\)\\*\\+,;="
+          ALPHA = "a-zA-Z".freeze
+          DIGIT = "0-9".freeze
+          UNRESERVED = "#{ALPHA}#{DIGIT}\\-\\._~".freeze
+          SUB_DELIMS = "!\\$&'\\(\\)\\*\\+,;=".freeze
 
           ESCAPED  = /%[a-zA-Z0-9]{2}/.freeze
 

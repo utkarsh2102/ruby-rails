@@ -56,9 +56,8 @@ module ActionController
     # In your integration tests, you can do something like this:
     #
     #   def test_access_granted_from_xml
-    #     authorization = ActionController::HttpAuthentication::Basic.encode_credentials(users(:dhh).name, users(:dhh).password)
-    #
-    #     get "/notes/1.xml", headers: { 'HTTP_AUTHORIZATION' => authorization }
+    #     @request.env['HTTP_AUTHORIZATION'] = ActionController::HttpAuthentication::Basic.encode_credentials(users(:dhh).name, users(:dhh).password)
+    #     get "/notes/1.xml"
     #
     #     assert_equal 200, status
     #   end
@@ -69,20 +68,21 @@ module ActionController
         extend ActiveSupport::Concern
 
         module ClassMethods
-          def http_basic_authenticate_with(name:, password:, realm: nil, **options)
-            before_action(options) { http_basic_authenticate_or_request_with name: name, password: password, realm: realm }
+          def http_basic_authenticate_with(options = {})
+            before_action(options.except(:name, :password, :realm)) do
+              authenticate_or_request_with_http_basic(options[:realm] || "Application") do |name, password|
+                # This comparison uses & so that it doesn't short circuit and
+                # uses `secure_compare` so that length information
+                # isn't leaked.
+                ActiveSupport::SecurityUtils.secure_compare(name, options[:name]) &
+                  ActiveSupport::SecurityUtils.secure_compare(password, options[:password])
+              end
+            end
           end
         end
 
-        def http_basic_authenticate_or_request_with(name:, password:, realm: nil, message: nil)
-          authenticate_or_request_with_http_basic(realm, message) do |given_name, given_password|
-            ActiveSupport::SecurityUtils.secure_compare(given_name, name) &
-              ActiveSupport::SecurityUtils.secure_compare(given_password, password)
-          end
-        end
-
-        def authenticate_or_request_with_http_basic(realm = nil, message = nil, &login_procedure)
-          authenticate_with_http_basic(&login_procedure) || request_http_basic_authentication(realm || "Application", message)
+        def authenticate_or_request_with_http_basic(realm = "Application", message = nil, &login_procedure)
+          authenticate_with_http_basic(&login_procedure) || request_http_basic_authentication(realm, message)
         end
 
         def authenticate_with_http_basic(&login_procedure)
@@ -126,7 +126,7 @@ module ActionController
 
       def authentication_request(controller, realm, message)
         message ||= "HTTP Basic: Access denied.\n"
-        controller.headers["WWW-Authenticate"] = %(Basic realm="#{realm.tr('"', "")}")
+        controller.headers["WWW-Authenticate"] = %(Basic realm="#{realm.tr('"'.freeze, "".freeze)}")
         controller.status = 401
         controller.response_body = message
       end
@@ -389,9 +389,10 @@ module ActionController
     # In your integration tests, you can do something like this:
     #
     #   def test_access_granted_from_xml
-    #     authorization = ActionController::HttpAuthentication::Token.encode_credentials(users(:dhh).token)
-    #
-    #     get "/notes/1.xml", headers: { 'HTTP_AUTHORIZATION' => authorization }
+    #     get(
+    #       "/notes/1.xml", nil,
+    #       'HTTP_AUTHORIZATION' => ActionController::HttpAuthentication::Token.encode_credentials(users(:dhh).token)
+    #     )
     #
     #     assert_equal 200, status
     #   end
@@ -473,7 +474,7 @@ module ActionController
 
       # This removes the <tt>"</tt> characters wrapping the value.
       def rewrite_param_values(array_params)
-        array_params.each { |param| (param[1] || +"").gsub! %r/^"|"$/, "" }
+        array_params.each { |param| (param[1] || "".dup).gsub! %r/^"|"$/, "" }
       end
 
       # This method takes an authorization body and splits up the key-value
@@ -510,7 +511,7 @@ module ActionController
       # Returns nothing.
       def authentication_request(controller, realm, message = nil)
         message ||= "HTTP Token: Access denied.\n"
-        controller.headers["WWW-Authenticate"] = %(Token realm="#{realm.tr('"', "")}")
+        controller.headers["WWW-Authenticate"] = %(Token realm="#{realm.tr('"'.freeze, "".freeze)}")
         controller.__send__ :render, plain: message, status: :unauthorized
       end
     end

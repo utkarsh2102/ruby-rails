@@ -25,6 +25,7 @@ module ActiveRecord
         end
 
         private
+
           def convert_time_to_time_zone(value)
             return if value.nil?
 
@@ -63,6 +64,7 @@ module ActiveRecord
 
       module ClassMethods # :nodoc:
         private
+
           def inherited(subclass)
             super
             # We need to apply this decorator here, rather than on module inclusion. The closure
@@ -71,7 +73,7 @@ module ActiveRecord
             # `skip_time_zone_conversion_for_attributes` would not be picked up.
             subclass.class_eval do
               matcher = ->(name, type) { create_time_zone_conversion_attribute?(name, type) }
-              decorate_matching_attribute_types(matcher, "_time_zone_conversion") do |type|
+              decorate_matching_attribute_types(matcher, :_time_zone_conversion) do |type|
                 TimeZoneConverter.new(type)
               end
             end

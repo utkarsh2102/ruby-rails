@@ -64,7 +64,7 @@ class XMLMiniEngineTest < ActiveSupport::TestCase
           <member>
             &a;
           </member>
-        eoxml
+      eoxml
       end
     end
 
@@ -78,7 +78,7 @@ class XMLMiniEngineTest < ActiveSupport::TestCase
     end
 
     def test_parse_from_frozen_string
-      xml_string = "<root/>"
+      xml_string = "<root/>".freeze
       assert_equal({ "root" => {} }, ActiveSupport::XmlMini.parse(xml_string))
     end
 

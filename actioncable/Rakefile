@@ -8,7 +8,7 @@ require "action_cable"
 
 task default: :test
 
-task :package
+task package: %w( assets:compile assets:verify )
 
 Rake::TestTask.new do |t|
   t.libs << "test"
@@ -26,19 +26,56 @@ namespace :test do
   end
 
   task :integration do
-    system(Hash[*Base64.decode64(ENV.fetch("ENCODED", "")).split(/[ =]/)], "yarn", "test")
-    exit($?.exitstatus) unless $?.success?
+    Base64.decode64(ENV.fetch("ENCODED", "")).split(/[ =]/).each_slice(2) do |k, v|
+      ENV[k] = v
+    end
+
+    require "blade"
+    if ENV["CI"]
+      Blade.start(interface: :ci)
+    else
+      Blade.start(interface: :runner)
+    end
   end
 end
 
 namespace :assets do
-  desc "Generate ActionCable::INTERNAL JS module"
-  task :codegen do
-    require "json"
-    require "action_cable"
+  desc "Compile Action Cable assets"
+  task :compile do
+    require "blade"
+    require "sprockets"
+    require "sprockets/export"
+    Blade.build
+  end
 
-    File.open(File.join(__dir__, "app/javascript/action_cable/internal.js").to_s, "w+") do |file|
-      file.write("export default #{JSON.pretty_generate(ActionCable::INTERNAL)}\n")
+  desc "Verify compiled Action Cable assets"
+  task :verify do
+    file = "lib/assets/compiled/action_cable.js"
+    pathname = Pathname.new("#{__dir__}/#{file}")
+
+    print "[verify] #{file} exists "
+    if pathname.exist?
+      puts "[OK]"
+    else
+      $stderr.puts "[FAIL]"
+      fail
+    end
+
+    print "[verify] #{file} is a UMD module "
+    if pathname.read =~ /module\.exports.*define\.amd/m
+      puts "[OK]"
+    else
+      $stderr.puts "[FAIL]"
+      fail
+    end
+
+    print "[verify] #{__dir__} can be required as a module "
+    _, stderr, status = Open3.capture3("node", "--print", "window = {}; require('#{__dir__}');")
+    if status.success?
+      puts "[OK]"
+    else
+      $stderr.puts "[FAIL]\n#{stderr}"
+      fail
     end
   end
 end

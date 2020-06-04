@@ -32,6 +32,7 @@ class HttpBasicAuthenticationTest < ActionController::TestCase
     end
 
     private
+
       def authenticate
         authenticate_or_request_with_http_basic do |username, password|
           username == "lifo" && password == "world"
@@ -171,6 +172,7 @@ class HttpBasicAuthenticationTest < ActionController::TestCase
   end
 
   private
+
     def encode_credentials(username, password)
       "Basic #{::Base64.encode64("#{username}:#{password}")}"
     end

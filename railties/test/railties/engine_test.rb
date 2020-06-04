@@ -34,7 +34,7 @@ module RailtiesTest
 
     def migrations
       migration_root = File.expand_path(ActiveRecord::Migrator.migrations_paths.first, app_path)
-      ActiveRecord::MigrationContext.new(migration_root, ActiveRecord::SchemaMigration).migrations
+      ActiveRecord::MigrationContext.new(migration_root).migrations
     end
 
     test "serving sprocket's assets" do
@@ -87,10 +87,11 @@ module RailtiesTest
         end
       RUBY
 
-      restrict_frameworks
       boot_rails
 
       Dir.chdir(app_path) do
+        # Install Active Storage migration file first so as not to affect test.
+        `bundle exec rake active_storage:install`
         output = `bundle exec rake bukkits:install:migrations`
 
         ["CreateUsers", "AddLastNameToUsers", "CreateSessions"].each do |migration_name|
@@ -173,10 +174,11 @@ module RailtiesTest
         class CreateKeys < ActiveRecord::Migration::Current; end
       RUBY
 
-      restrict_frameworks
       boot_rails
 
       Dir.chdir(app_path) do
+        # Install Active Storage migration file first so as not to affect test.
+        `bundle exec rake active_storage:install`
         output = `bundle exec rake railties:install:migrations`.split("\n")
 
         assert_match(/Copied migration \d+_create_users\.core_engine\.rb from core_engine/, output.first)
@@ -224,7 +226,7 @@ module RailtiesTest
       require "rdoc/task"
       require "rake/testtask"
       Rails.application.load_tasks
-      assert_not Rake::Task.task_defined?("bukkits:install:migrations")
+      assert !Rake::Task.task_defined?("bukkits:install:migrations")
     end
 
     test "puts its lib directory on load path" do
@@ -398,18 +400,18 @@ module RailtiesTest
       app_file "app/locales/en.yml", <<-YAML
 en:
   bar: "1"
-      YAML
+YAML
 
       app_file "config/locales/en.yml", <<-YAML
 en:
   foo: "2"
   bar: "2"
-      YAML
+YAML
 
       @plugin.write "config/locales/en.yml", <<-YAML
 en:
   foo: "3"
-      YAML
+YAML
 
       boot_rails
 
@@ -568,6 +570,7 @@ en:
 
       get("/arunagw")
       assert_equal "arunagw", last_response.body
+
     end
 
     test "it provides routes as default endpoint" do
@@ -704,27 +707,25 @@ en:
       RUBY
 
       @plugin.write "app/controllers/bukkits/foo_controller.rb", <<-RUBY
-        module Bukkits
-          class FooController < ActionController::Base
-            def index
-              render inline: "<%= help_the_engine %>"
-            end
+        class Bukkits::FooController < ActionController::Base
+          def index
+            render inline: "<%= help_the_engine %>"
+          end
 
-            def show
-              render plain: foo_path
-            end
+          def show
+            render plain: foo_path
+          end
 
-            def from_app
-              render inline: "<%= (self.respond_to?(:bar_path) || self.respond_to?(:something)) %>"
-            end
+          def from_app
+            render inline: "<%= (self.respond_to?(:bar_path) || self.respond_to?(:something)) %>"
+          end
 
-            def routes_helpers_in_view
-              render inline: "<%= foo_path %>, <%= main_app.bar_path %>"
-            end
+          def routes_helpers_in_view
+            render inline: "<%= foo_path %>, <%= main_app.bar_path %>"
+          end
 
-            def polymorphic_path_without_namespace
-              render plain: polymorphic_path(Post.new)
-            end
+          def polymorphic_path_without_namespace
+            render plain: polymorphic_path(Post.new)
           end
         end
       RUBY
@@ -744,7 +745,7 @@ en:
       assert_equal "bukkits", Bukkits::Engine.engine_name
       assert_equal Bukkits.railtie_namespace, Bukkits::Engine
       assert ::Bukkits::MyMailer.method_defined?(:foo_url)
-      assert_not ::Bukkits::MyMailer.method_defined?(:bar_url)
+      assert !::Bukkits::MyMailer.method_defined?(:bar_url)
 
       get("/bukkits/from_app")
       assert_equal "false", last_response.body
@@ -1551,26 +1552,6 @@ en:
 
     def undefine_config_option(name)
       Rails.application.config.class.class_variable_get(:@@options).delete(name)
-    end
-
-    # Restrict frameworks to load in order to avoid engine frameworks affect tests.
-    def restrict_frameworks
-      remove_from_config("require 'rails/all'")
-      remove_from_config("require_relative 'boot'")
-      remove_from_env_config("development", "config.active_storage.*")
-      frameworks = <<~RUBY
-        require "rails"
-        require "active_model/railtie"
-        require "active_job/railtie"
-        require "active_record/railtie"
-        require "action_controller/railtie"
-        require "action_mailer/railtie"
-        require "action_view/railtie"
-        require "sprockets/railtie"
-        require "rails/test_unit/railtie"
-      RUBY
-      environment = File.read("#{app_path}/config/application.rb")
-      File.open("#{app_path}/config/application.rb", "w") { |f| f.puts frameworks + "\n" + environment }
     end
   end
 end

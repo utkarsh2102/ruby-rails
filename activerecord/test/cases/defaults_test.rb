@@ -9,7 +9,7 @@ class DefaultTest < ActiveRecord::TestCase
   def test_nil_defaults_for_not_null_columns
     %w(id name course_id).each do |name|
       column = Entrant.columns_hash[name]
-      assert_not column.null, "#{name} column should be NOT NULL"
+      assert !column.null, "#{name} column should be NOT NULL"
       assert_not column.default, "#{name} column should be DEFAULT 'nil'"
     end
   end
@@ -89,7 +89,7 @@ if current_adapter?(:PostgreSQLAdapter)
 
     test "schema dump includes default expression" do
       output = dump_table_schema("defaults")
-      if ActiveRecord::Base.connection.database_version >= 100000
+      if ActiveRecord::Base.connection.postgresql_version >= 100000
         assert_match %r/t\.date\s+"modified_date",\s+default: -> { "CURRENT_DATE" }/, output
         assert_match %r/t\.datetime\s+"modified_time",\s+default: -> { "CURRENT_TIMESTAMP" }/, output
       else
@@ -105,13 +105,6 @@ end
 if current_adapter?(:Mysql2Adapter)
   class MysqlDefaultExpressionTest < ActiveRecord::TestCase
     include SchemaDumpingHelper
-
-    if supports_default_expression?
-      test "schema dump includes default expression" do
-        output = dump_table_schema("defaults")
-        assert_match %r/t\.binary\s+"uuid",\s+limit: 36,\s+default: -> { "\(uuid\(\)\)" }/i, output
-      end
-    end
 
     if subsecond_precision_supported?
       test "schema dump datetime includes default expression" do

@@ -26,26 +26,21 @@ class ModelWithAttributes2
 
   attr_accessor :attributes
 
-  attribute_method_suffix "_test", "_kw"
+  attribute_method_suffix "_test"
 
 private
   def attribute(name)
     attributes[name.to_s]
   end
 
-  def attribute_test(name, attrs = {})
-    attrs[name] = attribute(name)
-  end
-
-  def attribute_kw(name, kw: 1)
-    attribute(name)
-  end
+  alias attribute_test attribute
 
   def private_method
     "<3 <3"
   end
 
 protected
+
   def protected_method
     "O_o O_o"
   end
@@ -111,12 +106,14 @@ class AttributeMethodsTest < ActiveModel::TestCase
   end
 
   test "#define_attribute_method generates attribute method" do
-    ModelWithAttributes.define_attribute_method(:foo)
+    begin
+      ModelWithAttributes.define_attribute_method(:foo)
 
-    assert_respond_to ModelWithAttributes.new, :foo
-    assert_equal "value of foo", ModelWithAttributes.new.foo
-  ensure
-    ModelWithAttributes.undefine_attribute_methods
+      assert_respond_to ModelWithAttributes.new, :foo
+      assert_equal "value of foo", ModelWithAttributes.new.foo
+    ensure
+      ModelWithAttributes.undefine_attribute_methods
+    end
   end
 
   test "#define_attribute_method does not generate attribute method if already defined in attribute module" do
@@ -143,30 +140,36 @@ class AttributeMethodsTest < ActiveModel::TestCase
   end
 
   test "#define_attribute_method generates attribute method with invalid identifier characters" do
-    ModelWithWeirdNamesAttributes.define_attribute_method(:'a?b')
+    begin
+      ModelWithWeirdNamesAttributes.define_attribute_method(:'a?b')
 
-    assert_respond_to ModelWithWeirdNamesAttributes.new, :'a?b'
-    assert_equal "value of a?b", ModelWithWeirdNamesAttributes.new.send("a?b")
-  ensure
-    ModelWithWeirdNamesAttributes.undefine_attribute_methods
+      assert_respond_to ModelWithWeirdNamesAttributes.new, :'a?b'
+      assert_equal "value of a?b", ModelWithWeirdNamesAttributes.new.send("a?b")
+    ensure
+      ModelWithWeirdNamesAttributes.undefine_attribute_methods
+    end
   end
 
   test "#define_attribute_methods works passing multiple arguments" do
-    ModelWithAttributes.define_attribute_methods(:foo, :baz)
+    begin
+      ModelWithAttributes.define_attribute_methods(:foo, :baz)
 
-    assert_equal "value of foo", ModelWithAttributes.new.foo
-    assert_equal "value of baz", ModelWithAttributes.new.baz
-  ensure
-    ModelWithAttributes.undefine_attribute_methods
+      assert_equal "value of foo", ModelWithAttributes.new.foo
+      assert_equal "value of baz", ModelWithAttributes.new.baz
+    ensure
+      ModelWithAttributes.undefine_attribute_methods
+    end
   end
 
   test "#define_attribute_methods generates attribute methods" do
-    ModelWithAttributes.define_attribute_methods(:foo)
+    begin
+      ModelWithAttributes.define_attribute_methods(:foo)
 
-    assert_respond_to ModelWithAttributes.new, :foo
-    assert_equal "value of foo", ModelWithAttributes.new.foo
-  ensure
-    ModelWithAttributes.undefine_attribute_methods
+      assert_respond_to ModelWithAttributes.new, :foo
+      assert_equal "value of foo", ModelWithAttributes.new.foo
+    ensure
+      ModelWithAttributes.undefine_attribute_methods
+    end
   end
 
   test "#alias_attribute generates attribute_aliases lookup hash" do
@@ -179,32 +182,38 @@ class AttributeMethodsTest < ActiveModel::TestCase
   end
 
   test "#define_attribute_methods generates attribute methods with spaces in their names" do
-    ModelWithAttributesWithSpaces.define_attribute_methods(:'foo bar')
+    begin
+      ModelWithAttributesWithSpaces.define_attribute_methods(:'foo bar')
 
-    assert_respond_to ModelWithAttributesWithSpaces.new, :'foo bar'
-    assert_equal "value of foo bar", ModelWithAttributesWithSpaces.new.send(:'foo bar')
-  ensure
-    ModelWithAttributesWithSpaces.undefine_attribute_methods
+      assert_respond_to ModelWithAttributesWithSpaces.new, :'foo bar'
+      assert_equal "value of foo bar", ModelWithAttributesWithSpaces.new.send(:'foo bar')
+    ensure
+      ModelWithAttributesWithSpaces.undefine_attribute_methods
+    end
   end
 
   test "#alias_attribute works with attributes with spaces in their names" do
-    ModelWithAttributesWithSpaces.define_attribute_methods(:'foo bar')
-    ModelWithAttributesWithSpaces.alias_attribute(:'foo_bar', :'foo bar')
+    begin
+      ModelWithAttributesWithSpaces.define_attribute_methods(:'foo bar')
+      ModelWithAttributesWithSpaces.alias_attribute(:'foo_bar', :'foo bar')
 
-    assert_equal "value of foo bar", ModelWithAttributesWithSpaces.new.foo_bar
-  ensure
-    ModelWithAttributesWithSpaces.undefine_attribute_methods
+      assert_equal "value of foo bar", ModelWithAttributesWithSpaces.new.foo_bar
+    ensure
+      ModelWithAttributesWithSpaces.undefine_attribute_methods
+    end
   end
 
   test "#alias_attribute works with attributes named as a ruby keyword" do
-    ModelWithRubyKeywordNamedAttributes.define_attribute_methods([:begin, :end])
-    ModelWithRubyKeywordNamedAttributes.alias_attribute(:from, :begin)
-    ModelWithRubyKeywordNamedAttributes.alias_attribute(:to, :end)
+    begin
+      ModelWithRubyKeywordNamedAttributes.define_attribute_methods([:begin, :end])
+      ModelWithRubyKeywordNamedAttributes.alias_attribute(:from, :begin)
+      ModelWithRubyKeywordNamedAttributes.alias_attribute(:to, :end)
 
-    assert_equal "value of begin", ModelWithRubyKeywordNamedAttributes.new.from
-    assert_equal "value of end", ModelWithRubyKeywordNamedAttributes.new.to
-  ensure
-    ModelWithRubyKeywordNamedAttributes.undefine_attribute_methods
+      assert_equal "value of begin", ModelWithRubyKeywordNamedAttributes.new.from
+      assert_equal "value of end", ModelWithRubyKeywordNamedAttributes.new.to
+    ensure
+      ModelWithRubyKeywordNamedAttributes.undefine_attribute_methods
+    end
   end
 
   test "#undefine_attribute_methods removes attribute methods" do
@@ -218,27 +227,9 @@ class AttributeMethodsTest < ActiveModel::TestCase
   test "accessing a suffixed attribute" do
     m = ModelWithAttributes2.new
     m.attributes = { "foo" => "bar" }
-    attrs = {}
 
     assert_equal "bar", m.foo
-    assert_equal "bar", m.foo_kw(kw: 2)
-    assert_equal "bar", m.foo_test(attrs)
-    assert_equal "bar", attrs["foo"]
-  end
-
-  test "defined attribute doesn't expand positional hash argument" do
-    ModelWithAttributes2.define_attribute_methods(:foo)
-
-    m = ModelWithAttributes2.new
-    m.attributes = { "foo" => "bar" }
-    attrs = {}
-
-    assert_equal "bar", m.foo
-    assert_equal "bar", m.foo_kw(kw: 2)
-    assert_equal "bar", m.foo_test(attrs)
-    assert_equal "bar", attrs["foo"]
-  ensure
-    ModelWithAttributes2.undefine_attribute_methods
+    assert_equal "bar", m.foo_test
   end
 
   test "should not interfere with method_missing if the attr has a private/protected method" do
@@ -287,5 +278,6 @@ class AttributeMethodsTest < ActiveModel::TestCase
 
     assert_equal "foo",            match.attr_name
     assert_equal "attribute_test", match.target
+    assert_equal "foo_test",       match.method_name
   end
 end

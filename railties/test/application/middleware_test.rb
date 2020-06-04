@@ -25,8 +25,6 @@ module ApplicationTests
       boot!
 
       assert_equal [
-        "Webpacker::DevServerProxy",
-        "ActionDispatch::HostAuthorization",
         "Rack::Sendfile",
         "ActionDispatch::Static",
         "ActionDispatch::Executor",
@@ -38,7 +36,6 @@ module ApplicationTests
         "Rails::Rack::Logger",
         "ActionDispatch::ShowExceptions",
         "ActionDispatch::DebugExceptions",
-        "ActionDispatch::ActionableExceptions",
         "ActionDispatch::Reloader",
         "ActionDispatch::Callbacks",
         "ActiveRecord::Migration::CheckPending",
@@ -59,8 +56,6 @@ module ApplicationTests
       boot!
 
       assert_equal [
-        "Webpacker::DevServerProxy",
-        "ActionDispatch::HostAuthorization",
         "Rack::Sendfile",
         "ActionDispatch::Static",
         "ActionDispatch::Executor",
@@ -71,7 +66,6 @@ module ApplicationTests
         "Rails::Rack::Logger",
         "ActionDispatch::ShowExceptions",
         "ActionDispatch::DebugExceptions",
-        "ActionDispatch::ActionableExceptions",
         "ActionDispatch::Reloader",
         "ActionDispatch::Callbacks",
         "Rack::Head",
@@ -144,7 +138,7 @@ module ApplicationTests
       add_to_config "config.ssl_options = { redirect: { host: 'example.com' } }"
       boot!
 
-      assert_equal [{ redirect: { host: "example.com" } }], Rails.application.middleware[2].args
+      assert_equal [{ redirect: { host: "example.com" } }], Rails.application.middleware.first.args
     end
 
     test "removing Active Record omits its middleware" do
@@ -228,37 +222,35 @@ module ApplicationTests
     test "insert middleware after" do
       add_to_config "config.middleware.insert_after Rack::Sendfile, Rack::Config"
       boot!
-      assert_equal "Rack::Config", middleware.fourth
+      assert_equal "Rack::Config", middleware.second
     end
 
     test "unshift middleware" do
       add_to_config "config.middleware.unshift Rack::Config"
       boot!
-      assert_equal "Rack::Config", middleware.second
+      assert_equal "Rack::Config", middleware.first
     end
 
     test "Rails.cache does not respond to middleware" do
-      add_to_config "config.cache_store = :memory_store, { timeout: 10 }"
+      add_to_config "config.cache_store = :memory_store"
       boot!
-      assert_equal "Rack::Runtime", middleware[5]
-      assert_instance_of ActiveSupport::Cache::MemoryStore, Rails.cache
+      assert_equal "Rack::Runtime", middleware.fourth
     end
 
     test "Rails.cache does respond to middleware" do
       boot!
-      assert_equal "ActiveSupport::Cache::Strategy::LocalCache", middleware[5]
-      assert_equal "Rack::Runtime", middleware[6]
+      assert_equal "Rack::Runtime", middleware.fifth
     end
 
     test "insert middleware before" do
       add_to_config "config.middleware.insert_before Rack::Sendfile, Rack::Config"
       boot!
-      assert_equal "Rack::Config", middleware.third
+      assert_equal "Rack::Config", middleware.first
     end
 
     test "can't change middleware after it's built" do
       boot!
-      assert_raise FrozenError do
+      assert_raise frozen_error_class do
         app.config.middleware.use Rack::Config
       end
     end
@@ -310,6 +302,7 @@ module ApplicationTests
     end
 
     private
+
       def boot!
         require "#{app_path}/config/environment"
       end

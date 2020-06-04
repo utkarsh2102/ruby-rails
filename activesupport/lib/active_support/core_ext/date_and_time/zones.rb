@@ -29,6 +29,7 @@ module DateAndTime
     end
 
     private
+
       def time_with_zone(time, zone)
         if time
           ActiveSupport::TimeWithZone.new(time.utc? ? time : time.getutc, zone)

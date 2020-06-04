@@ -4,6 +4,7 @@ module ActiveSupport
   module Testing
     module Stream #:nodoc:
       private
+
         def silence_stream(stream)
           old_stream = stream.dup
           stream.reopen(IO::NULL)
@@ -32,7 +33,7 @@ module ActiveSupport
           yield
 
           stream_io.rewind
-          captured_stream.read
+          return captured_stream.read
         ensure
           captured_stream.close
           captured_stream.unlink

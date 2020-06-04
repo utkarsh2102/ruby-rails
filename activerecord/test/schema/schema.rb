@@ -8,18 +8,10 @@ ActiveRecord::Schema.define do
   #                                                                     #
   # ------------------------------------------------------------------- #
 
-  case_sensitive_options =
-    if current_adapter?(:Mysql2Adapter)
-      { collation: "utf8mb4_bin" }
-    else
-      {}
-    end
-
   create_table :accounts, force: true do |t|
     t.references :firm, index: false
     t.string  :firm_name
     t.integer :credit_limit
-    t.integer "a" * max_identifier_length
   end
 
   create_table :admin_accounts, force: true do |t|
@@ -29,9 +21,6 @@ ActiveRecord::Schema.define do
   create_table :admin_users, force: true do |t|
     t.string :name
     t.string :settings, null: true, limit: 1024
-    t.string :parent, null: true, limit: 1024
-    t.string :spouse, null: true, limit: 1024
-    t.string :configs, null: true, limit: 1024
     # MySQL does not allow default values for blobs. Fake it out with a
     # big varchar below.
     t.string :preferences, null: true, default: "", limit: 1024
@@ -102,23 +91,18 @@ ActiveRecord::Schema.define do
   end
 
   create_table :books, id: :integer, force: true do |t|
-    default_zero = { default: 0 }
     t.references :author
     t.string :format
     t.column :name, :string
-    t.column :status, :integer, **default_zero
-    t.column :read_status, :integer, **default_zero
+    t.column :status, :integer, default: 0
+    t.column :read_status, :integer, default: 0
     t.column :nullable_status, :integer
-    t.column :language, :integer, **default_zero
-    t.column :author_visibility, :integer, **default_zero
-    t.column :illustrator_visibility, :integer, **default_zero
-    t.column :font_size, :integer, **default_zero
-    t.column :difficulty, :integer, **default_zero
+    t.column :language, :integer, default: 0
+    t.column :author_visibility, :integer, default: 0
+    t.column :illustrator_visibility, :integer, default: 0
+    t.column :font_size, :integer, default: 0
+    t.column :difficulty, :integer, default: 0
     t.column :cover, :string, default: "hard"
-    t.string :isbn, **case_sensitive_options
-    t.datetime :published_on
-    t.index [:author_id, :name], unique: true
-    t.index :isbn, where: "published_on IS NOT NULL", unique: true
   end
 
   create_table :booleans, force: true do |t|
@@ -229,7 +213,7 @@ ActiveRecord::Schema.define do
     t.index [:firm_id, :type, :rating], name: "company_index", length: { type: 10 }, order: { rating: :desc }
     t.index [:firm_id, :type], name: "company_partial_index", where: "(rating > 10)"
     t.index :name, name: "company_name_index", using: :btree
-    t.index "(CASE WHEN rating > 0 THEN lower(name) END) DESC", name: "company_expression_index" if supports_expression_index?
+    t.index "(CASE WHEN rating > 0 THEN lower(name) END)", name: "company_expression_index" if supports_expression_index?
   end
 
   create_table :content, force: true do |t|
@@ -279,7 +263,7 @@ ActiveRecord::Schema.define do
   end
 
   create_table :dashboards, force: true, id: false do |t|
-    t.string :dashboard_id, **case_sensitive_options
+    t.string :dashboard_id
     t.string :name
   end
 
@@ -343,7 +327,7 @@ ActiveRecord::Schema.define do
   end
 
   create_table :essays, force: true do |t|
-    t.string :name, **case_sensitive_options
+    t.string :name
     t.string :writer_id
     t.string :writer_type
     t.string :category_id
@@ -351,7 +335,7 @@ ActiveRecord::Schema.define do
   end
 
   create_table :events, force: true do |t|
-    t.string :title, limit: 5, **case_sensitive_options
+    t.string :title, limit: 5
   end
 
   create_table :eyes, force: true do |t|
@@ -393,7 +377,7 @@ ActiveRecord::Schema.define do
   end
 
   create_table :guids, force: true do |t|
-    t.column :key, :string, **case_sensitive_options
+    t.column :key, :string
   end
 
   create_table :guitars, force: true do |t|
@@ -401,8 +385,8 @@ ActiveRecord::Schema.define do
   end
 
   create_table :inept_wizards, force: true do |t|
-    t.column :name, :string, null: false, **case_sensitive_options
-    t.column :city, :string, null: false, **case_sensitive_options
+    t.column :name, :string, null: false
+    t.column :city, :string, null: false
     t.column :type, :string
   end
 
@@ -525,8 +509,6 @@ ActiveRecord::Schema.define do
     t.integer :club_id, :member_id
     t.boolean :favourite, default: false
     t.integer :type
-    t.datetime :created_at
-    t.datetime :updated_at
   end
 
   create_table :member_types, force: true do |t|
@@ -579,7 +561,7 @@ ActiveRecord::Schema.define do
   create_table :numeric_data, force: true do |t|
     t.decimal :bank_balance, precision: 10, scale: 2
     t.decimal :big_bank_balance, precision: 15, scale: 2
-    t.decimal :world_population, precision: 20, scale: 0
+    t.decimal :world_population, precision: 10, scale: 0
     t.decimal :my_house_population, precision: 2, scale: 0
     t.decimal :decimal_number_with_default, precision: 3, scale: 2, default: 2.78
     t.float   :temperature
@@ -703,7 +685,11 @@ ActiveRecord::Schema.define do
   create_table :pets, primary_key: :pet_id, force: true do |t|
     t.string :name
     t.integer :owner_id, :integer
-    t.timestamps
+    if subsecond_precision_supported?
+      t.timestamps null: false, precision: 6
+    else
+      t.timestamps null: false
+    end
   end
 
   create_table :pets_treasures, force: true do |t|
@@ -746,7 +732,6 @@ ActiveRecord::Schema.define do
     t.string :estimate_of_type
     t.integer :estimate_of_id
     t.integer :price
-    t.string :currency
   end
 
   create_table :products, force: true do |t|
@@ -918,8 +903,8 @@ ActiveRecord::Schema.define do
   end
 
   create_table :topics, force: true do |t|
-    t.string   :title, limit: 250, **case_sensitive_options
-    t.string   :author_name, **case_sensitive_options
+    t.string   :title, limit: 250
+    t.string   :author_name
     t.string   :author_email_address
     if subsecond_precision_supported?
       t.datetime :written_on, precision: 6
@@ -931,10 +916,10 @@ ActiveRecord::Schema.define do
     # use VARCHAR2(4000) instead of CLOB datatype as CLOB data type has many limitations in
     # Oracle SELECT WHERE clause which causes many unit test failures
     if current_adapter?(:OracleAdapter)
-      t.string   :content, limit: 4000, **case_sensitive_options
+      t.string   :content, limit: 4000
       t.string   :important, limit: 4000
     else
-      t.text     :content, **case_sensitive_options
+      t.text     :content
       t.text     :important
     end
     t.boolean  :approved, default: true
@@ -944,7 +929,11 @@ ActiveRecord::Schema.define do
     t.string   :parent_title
     t.string   :type
     t.string   :group
-    t.timestamps null: true
+    if subsecond_precision_supported?
+      t.timestamps null: true, precision: 6
+    else
+      t.timestamps null: true
+    end
   end
 
   create_table :toys, primary_key: :toy_id, force: true do |t|
@@ -984,7 +973,7 @@ ActiveRecord::Schema.define do
   end
 
   [:circles, :squares, :triangles, :non_poly_ones, :non_poly_twos].each do |t|
-    create_table(t, force: true) { }
+    create_table(t, force: true) {}
   end
 
   create_table :men, force: true do |t|
@@ -1020,16 +1009,14 @@ ActiveRecord::Schema.define do
     t.references :wheelable, polymorphic: true
   end
 
-  create_table :countries, force: true, id: false do |t|
-    t.string :country_id, primary_key: true
+  create_table :countries, force: true, id: false, primary_key: "country_id" do |t|
+    t.string :country_id
     t.string :name
   end
-
-  create_table :treaties, force: true, id: false do |t|
-    t.string :treaty_id, primary_key: true
+  create_table :treaties, force: true, id: false, primary_key: "treaty_id" do |t|
+    t.string :treaty_id
     t.string :name
   end
-
   create_table :countries_treaties, force: true, primary_key: [:country_id, :treaty_id] do |t|
     t.string :country_id, null: false
     t.string :treaty_id, null: false

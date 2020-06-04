@@ -30,6 +30,7 @@ module ActionController
     end
 
     private
+
       def instrument_payload(key)
         {
           controller: controller_name,
@@ -39,7 +40,7 @@ module ActionController
       end
 
       def instrument_name
-        "action_controller"
+        "action_controller".freeze
       end
   end
 end

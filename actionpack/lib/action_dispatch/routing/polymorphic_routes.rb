@@ -120,7 +120,8 @@ module ActionDispatch
                                                opts
       end
 
-      # Returns the path component of a URL for the given record.
+      # Returns the path component of a URL for the given record. It uses
+      # <tt>polymorphic_url</tt> with <tt>routing_type: :path</tt>.
       def polymorphic_path(record_or_hash_or_array, options = {})
         if Hash === record_or_hash_or_array
           options = record_or_hash_or_array.merge(options)
@@ -156,6 +157,7 @@ module ActionDispatch
       end
 
       private
+
         def polymorphic_url_for_action(action, record_or_hash, options)
           polymorphic_url(record_or_hash, options.merge(action: action))
         end
@@ -180,8 +182,8 @@ module ActionDispatch
             CACHE[type].fetch(action) { build action, type }
           end
 
-          def self.url;  CACHE["url"][nil]; end
-          def self.path; CACHE["path"][nil]; end
+          def self.url;  CACHE["url".freeze][nil]; end
+          def self.path; CACHE["path".freeze][nil]; end
 
           def self.build(action, type)
             prefix = action ? "#{action}_" : ""
@@ -322,6 +324,7 @@ module ActionDispatch
           end
 
           private
+
             def polymorphic_mapping(target, record)
               if record.respond_to?(:to_model)
                 target._routes.polymorphic_mappings[record.to_model.model_name.name]

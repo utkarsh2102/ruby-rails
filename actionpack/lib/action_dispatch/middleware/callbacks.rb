@@ -24,8 +24,10 @@ module ActionDispatch
     def call(env)
       error = nil
       result = run_callbacks :call do
-        @app.call(env)
-      rescue => error
+        begin
+          @app.call(env)
+        rescue => error
+        end
       end
       raise error if error
       result

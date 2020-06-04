@@ -56,16 +56,19 @@ module ActionCable
 
       def invoke(receiver, method, *args, connection:, &block)
         work(connection) do
-          receiver.send method, *args, &block
-        rescue Exception => e
-          logger.error "There was an exception - #{e.class}(#{e.message})"
-          logger.error e.backtrace.join("\n")
+          begin
+            receiver.send method, *args, &block
+          rescue Exception => e
+            logger.error "There was an exception - #{e.class}(#{e.message})"
+            logger.error e.backtrace.join("\n")
 
-          receiver.handle_exception if receiver.respond_to?(:handle_exception)
+            receiver.handle_exception if receiver.respond_to?(:handle_exception)
+          end
         end
       end
 
       private
+
         def logger
           ActionCable.server.logger
         end

@@ -9,34 +9,30 @@ class Minitest::RailsPluginTest < ActiveSupport::TestCase
   end
 
   test "default reporters are replaced" do
-    with_reporter Minitest::CompositeReporter.new do |reporter|
-      reporter << Minitest::SummaryReporter.new(@output, @options)
-      reporter << Minitest::ProgressReporter.new(@output, @options)
-      reporter << Minitest::Reporter.new(@output, @options)
+    reporter = Minitest::CompositeReporter.new
+    reporter << Minitest::SummaryReporter.new(@output, @options)
+    reporter << Minitest::ProgressReporter.new(@output, @options)
+    reporter << Minitest::Reporter.new(@output, @options)
 
-      Minitest.plugin_rails_init({})
+    Minitest.plugin_rails_replace_reporters(reporter, {})
 
-      assert_equal 3, reporter.reporters.count
-      assert reporter.reporters.any? { |candidate| candidate.kind_of?(Minitest::SuppressedSummaryReporter) }
-      assert reporter.reporters.any? { |candidate| candidate.kind_of?(::Rails::TestUnitReporter) }
-      assert reporter.reporters.any? { |candidate| candidate.kind_of?(Minitest::Reporter) }
-    end
+    assert_equal 3, reporter.reporters.count
+    assert reporter.reporters.any? { |candidate| candidate.kind_of?(Minitest::SuppressedSummaryReporter) }
+    assert reporter.reporters.any? { |candidate| candidate.kind_of?(::Rails::TestUnitReporter) }
+    assert reporter.reporters.any? { |candidate| candidate.kind_of?(Minitest::Reporter) }
   end
 
   test "no custom reporters are added if nothing to replace" do
-    with_reporter Minitest::CompositeReporter.new do |reporter|
-      Minitest.plugin_rails_init({})
+    reporter = Minitest::CompositeReporter.new
 
-      assert_empty reporter.reporters
-    end
+    Minitest.plugin_rails_replace_reporters(reporter, {})
+
+    assert_equal 0, reporter.reporters.count
   end
 
-  private
-    def with_reporter(reporter)
-      old_reporter, Minitest.reporter = Minitest.reporter, reporter
+  test "handle the case when reporter is not CompositeReporter" do
+    reporter = Minitest::Reporter.new
 
-      yield reporter
-    ensure
-      Minitest.reporter = old_reporter
-    end
+    Minitest.plugin_rails_replace_reporters(reporter, {})
+  end
 end

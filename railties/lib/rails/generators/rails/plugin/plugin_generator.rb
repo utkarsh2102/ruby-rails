@@ -88,7 +88,7 @@ task default: :test
 
     PASSTHROUGH_OPTIONS = [
       :skip_active_record, :skip_active_storage, :skip_action_mailer, :skip_javascript, :skip_action_cable, :skip_sprockets, :database,
-      :api, :quiet, :pretend, :skip
+      :javascript, :skip_yarn, :api, :quiet, :pretend, :skip
     ]
 
     def generate_test_dummy(force = false)
@@ -98,7 +98,6 @@ task default: :test
       opts[:skip_listen] = true
       opts[:skip_git] = true
       opts[:skip_turbolinks] = true
-      opts[:skip_webpack_install] = true
       opts[:dummy_app] = true
 
       invoke Rails::Generators::AppGenerator,
@@ -114,7 +113,7 @@ task default: :test
     end
 
     def test_dummy_assets
-      template "rails/javascripts.js",    "#{dummy_path}/app/javascript/packs/application.js", force: true
+      template "rails/javascripts.js",    "#{dummy_path}/app/assets/javascripts/application.js", force: true
       template "rails/stylesheets.css",   "#{dummy_path}/app/assets/stylesheets/application.css", force: true
       template "rails/dummy_manifest.js", "#{dummy_path}/app/assets/config/manifest.js", force: true
     end
@@ -141,6 +140,17 @@ task default: :test
                   "app/assets/stylesheets/#{namespaced_name}/application.css"
       elsif full?
         empty_directory_with_keep_file "app/assets/stylesheets/#{namespaced_name}"
+      end
+    end
+
+    def javascripts
+      return if options.skip_javascript?
+
+      if mountable?
+        template "rails/javascripts.js",
+                 "app/assets/javascripts/#{namespaced_name}/application.js"
+      elsif full?
+        empty_directory_with_keep_file "app/assets/javascripts/#{namespaced_name}"
       end
     end
 
@@ -225,6 +235,10 @@ task default: :test
         build(:stylesheets) unless api?
       end
 
+      def create_javascript_files
+        build(:javascripts) unless api?
+      end
+
       def create_bin_files
         build(:bin)
       end
@@ -248,6 +262,16 @@ task default: :test
 
       public_task :apply_rails_template
 
+      def run_after_bundle_callbacks
+        unless @after_bundle_callbacks.empty?
+          ActiveSupport::Deprecation.warn("`after_bundle` is deprecated and will be removed in the next version of Rails. ")
+        end
+
+        @after_bundle_callbacks.each do |callback|
+          callback.call
+        end
+      end
+
       def name
         @name ||= begin
           # same as ActiveSupport::Inflector#underscore except not replacing '-'
@@ -269,6 +293,7 @@ task default: :test
       end
 
     private
+
       def create_dummy_app(path = nil)
         dummy_path(path) if path
 
@@ -323,9 +348,9 @@ task default: :test
       def wrap_in_modules(unwrapped_code)
         unwrapped_code = "#{unwrapped_code}".strip.gsub(/\s$\n/, "")
         modules.reverse.inject(unwrapped_code) do |content, mod|
-          str = +"module #{mod}\n"
-          str << content.lines.map { |line| "  #{line}" }.join
-          str << (content.present? ? "\nend" : "end")
+          str = "module #{mod}\n"
+          str += content.lines.map { |line| "  #{line}" }.join
+          str += content.present? ? "\nend" : "end"
         end
       end
 
@@ -360,11 +385,11 @@ task default: :test
       end
 
       def valid_const?
-        if /-\d/.match?(original_name)
+        if original_name =~ /-\d/
           raise Error, "Invalid plugin name #{original_name}. Please give a name which does not contain a namespace starting with numeric characters."
-        elsif /[^\w-]+/.match?(original_name)
+        elsif original_name =~ /[^\w-]+/
           raise Error, "Invalid plugin name #{original_name}. Please give a name which uses only alphabetic, numeric, \"_\" or \"-\" characters."
-        elsif /^\d/.match?(camelized)
+        elsif camelized =~ /^\d/
           raise Error, "Invalid plugin name #{original_name}. Please give a name which does not start with numbers."
         elsif RESERVED_NAMES.include?(name)
           raise Error, "Invalid plugin name #{original_name}. Please give a " \

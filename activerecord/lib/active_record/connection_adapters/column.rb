@@ -5,7 +5,7 @@ module ActiveRecord
   module ConnectionAdapters
     # An abstract definition of a column in a table.
     class Column
-      attr_reader :name, :default, :sql_type_metadata, :null, :default_function, :collation, :comment
+      attr_reader :name, :default, :sql_type_metadata, :null, :table_name, :default_function, :collation, :comment
 
       delegate :precision, :scale, :limit, :type, :sql_type, to: :sql_type_metadata, allow_nil: true
 
@@ -15,8 +15,9 @@ module ActiveRecord
       # +default+ is the type-casted default value, such as +new+ in <tt>sales_stage varchar(20) default 'new'</tt>.
       # +sql_type_metadata+ is various information about the type of the column
       # +null+ determines if this column allows +NULL+ values.
-      def initialize(name, default, sql_type_metadata = nil, null = true, default_function = nil, collation: nil, comment: nil, **)
+      def initialize(name, default, sql_type_metadata = nil, null = true, table_name = nil, default_function = nil, collation = nil, comment: nil, **)
         @name = name.freeze
+        @table_name = table_name
         @sql_type_metadata = sql_type_metadata
         @null = null
         @default = default
@@ -43,6 +44,7 @@ module ActiveRecord
 
       def init_with(coder)
         @name = coder["name"]
+        @table_name = coder["table_name"]
         @sql_type_metadata = coder["sql_type_metadata"]
         @null = coder["null"]
         @default = coder["default"]
@@ -53,6 +55,7 @@ module ActiveRecord
 
       def encode_with(coder)
         coder["name"] = @name
+        coder["table_name"] = @table_name
         coder["sql_type_metadata"] = @sql_type_metadata
         coder["null"] = @null
         coder["default"] = @default
@@ -63,26 +66,19 @@ module ActiveRecord
 
       def ==(other)
         other.is_a?(Column) &&
-          name == other.name &&
-          default == other.default &&
-          sql_type_metadata == other.sql_type_metadata &&
-          null == other.null &&
-          default_function == other.default_function &&
-          collation == other.collation &&
-          comment == other.comment
+          attributes_for_hash == other.attributes_for_hash
       end
       alias :eql? :==
 
       def hash
-        Column.hash ^
-          name.hash ^
-          default.hash ^
-          sql_type_metadata.hash ^
-          null.hash ^
-          default_function.hash ^
-          collation.hash ^
-          comment.hash
+        attributes_for_hash.hash
       end
+
+      protected
+
+        def attributes_for_hash
+          [self.class, name, default, sql_type_metadata, null, table_name, default_function, collation]
+        end
     end
 
     class NullColumn < Column

@@ -98,6 +98,7 @@ module ActiveSupport
     end
 
     private
+
       def watched
         @watched || begin
           all = @files.select { |f| File.exist?(f) }

@@ -41,13 +41,15 @@ module ActiveRecord
     def count(column_name = nil)
       if block_given?
         unless column_name.nil?
-          raise ArgumentError, "Column name argument is not supported when a block is passed."
+          ActiveSupport::Deprecation.warn \
+            "When `count' is called with a block, it ignores other arguments. " \
+            "This behavior is now deprecated and will result in an ArgumentError in Rails 6.0."
         end
 
-        super()
-      else
-        calculate(:count, column_name)
+        return super()
       end
+
+      calculate(:count, column_name)
     end
 
     # Calculates the average value on a given column. Returns +nil+ if there's
@@ -84,13 +86,15 @@ module ActiveRecord
     def sum(column_name = nil)
       if block_given?
         unless column_name.nil?
-          raise ArgumentError, "Column name argument is not supported when a block is passed."
+          ActiveSupport::Deprecation.warn \
+            "When `sum' is called with a block, it ignores other arguments. " \
+            "This behavior is now deprecated and will result in an ArgumentError in Rails 6.0."
         end
 
-        super()
-      else
-        calculate(:sum, column_name)
+        return super()
       end
+
+      calculate(:sum, column_name)
     end
 
     # This calculates aggregate values in the given column. Methods for #count, #sum, #average,
@@ -172,7 +176,7 @@ module ActiveRecord
     #   # SELECT people.id FROM people WHERE people.age = 21 LIMIT 5
     #   # => [2, 3]
     #
-    #   Person.pluck(Arel.sql('DATEDIFF(updated_at, created_at)'))
+    #   Person.pluck('DATEDIFF(updated_at, created_at)')
     #   # SELECT DATEDIFF(updated_at, created_at) FROM people
     #   # => ['0', '27761', '173']
     #
@@ -187,30 +191,12 @@ module ActiveRecord
         relation = apply_join_dependency
         relation.pluck(*column_names)
       else
-        klass.disallow_raw_sql!(column_names)
+        klass.enforce_raw_sql_whitelist(column_names)
         relation = spawn
         relation.select_values = column_names
         result = skip_query_cache_if_necessary { klass.connection.select_all(relation.arel, nil) }
         result.cast_values(klass.attribute_types)
       end
-    end
-
-    # Pick the value(s) from the named column(s) in the current relation.
-    # This is short-hand for <tt>relation.limit(1).pluck(*column_names).first</tt>, and is primarily useful
-    # when you have a relation that's already narrowed down to a single row.
-    #
-    # Just like #pluck, #pick will only load the actual value, not the entire record object, so it's also
-    # more efficient. The value is, again like with pluck, typecast by the column type.
-    #
-    #   Person.where(id: 1).pick(:name)
-    #   # SELECT people.name FROM people WHERE id = 1 LIMIT 1
-    #   # => 'David'
-    #
-    #   Person.where(id: 1).pick(:name, :email_address)
-    #   # SELECT people.name, people.email_address FROM people WHERE id = 1 LIMIT 1
-    #   # => [ 'David', 'david@loudthinking.com' ]
-    def pick(*column_names)
-      limit(1).pluck(*column_names).first
     end
 
     # Pluck all the ID's for the relation using the table's primary key
@@ -260,8 +246,10 @@ module ActiveRecord
       def aggregate_column(column_name)
         return column_name if Arel::Expressions === column_name
 
-        arel_column(column_name.to_s) do |name|
-          Arel.sql(column_name == :all ? "*" : name)
+        if @klass.has_attribute?(column_name) || @klass.attribute_alias?(column_name)
+          @klass.arel_attribute(column_name)
+        else
+          Arel.sql(column_name == :all ? "*" : column_name.to_s)
         end
       end
 
@@ -306,22 +294,25 @@ module ActiveRecord
       end
 
       def execute_grouped_calculation(operation, column_name, distinct) #:nodoc:
-        group_fields = group_values
+        group_attrs = group_values
 
-        if group_fields.size == 1 && group_fields.first.respond_to?(:to_sym)
-          association  = klass._reflect_on_association(group_fields.first)
-          associated   = association && association.belongs_to? # only count belongs_to associations
-          group_fields = Array(association.foreign_key) if associated
+        if group_attrs.first.respond_to?(:to_sym)
+          association  = @klass._reflect_on_association(group_attrs.first)
+          associated   = group_attrs.size == 1 && association && association.belongs_to? # only count belongs_to associations
+          group_fields = Array(associated ? association.foreign_key : group_attrs)
+        else
+          group_fields = group_attrs
         end
         group_fields = arel_columns(group_fields)
 
-        group_aliases = group_fields.map { |field|
-          field = connection.visitor.compile(field) if Arel.arel_node?(field)
-          column_alias_for(field.to_s.downcase)
-        }
+        group_aliases = group_fields.map { |field| column_alias_for(field) }
         group_columns = group_aliases.zip(group_fields)
 
-        aggregate_alias = column_alias_for("#{operation} #{column_name.to_s.downcase}")
+        if operation == "count" && column_name == :all
+          aggregate_alias = "count_all"
+        else
+          aggregate_alias = column_alias_for([operation, column_name].join(" "))
+        end
 
         select_values = [
           operation_over_aggregate_column(
@@ -366,21 +357,25 @@ module ActiveRecord
         end]
       end
 
-      # Converts the given field to the value that the database adapter returns as
+      # Converts the given keys to the value that the database adapter returns as
       # a usable column name:
       #
       #   column_alias_for("users.id")                 # => "users_id"
       #   column_alias_for("sum(id)")                  # => "sum_id"
       #   column_alias_for("count(distinct users.id)") # => "count_distinct_users_id"
       #   column_alias_for("count(*)")                 # => "count_all"
-      def column_alias_for(field)
-        column_alias = +field
-        column_alias.gsub!(/\*/, "all")
-        column_alias.gsub!(/\W+/, " ")
-        column_alias.strip!
-        column_alias.gsub!(/ +/, "_")
+      def column_alias_for(keys)
+        if keys.respond_to? :name
+          keys = "#{keys.relation.name}.#{keys.name}"
+        end
 
-        connection.table_alias_for(column_alias)
+        table_name = keys.to_s.downcase
+        table_name.gsub!(/\*/, "all")
+        table_name.gsub!(/\W+/, " ")
+        table_name.strip!
+        table_name.gsub!(/ +/, "_")
+
+        @klass.connection.table_alias_for(table_name)
       end
 
       def type_for(field, &block)
@@ -392,7 +387,7 @@ module ActiveRecord
         case operation
         when "count"   then value.to_i
         when "sum"     then type.deserialize(value || 0)
-        when "average" then value&.respond_to?(:to_d) ? value.to_d : value
+        when "average" then value && value.respond_to?(:to_d) ? value.to_d : value
         else type.deserialize(value)
         end
       end
@@ -408,17 +403,16 @@ module ActiveRecord
 
       def build_count_subquery(relation, column_name, distinct)
         if column_name == :all
-          column_alias = Arel.star
           relation.select_values = [ Arel.sql(FinderMethods::ONE_AS_ONE) ] unless distinct
         else
           column_alias = Arel.sql("count_column")
           relation.select_values = [ aggregate_column(column_name).as(column_alias) ]
         end
 
-        subquery_alias = Arel.sql("subquery_for_count")
-        select_value = operation_over_aggregate_column(column_alias, "count", false)
+        subquery = relation.arel.as(Arel.sql("subquery_for_count"))
+        select_value = operation_over_aggregate_column(column_alias || Arel.star, "count", false)
 
-        relation.build_subquery(subquery_alias, select_value)
+        Arel::SelectManager.new(subquery).project(select_value)
       end
   end
 end

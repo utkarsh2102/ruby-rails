@@ -94,6 +94,7 @@ module ActionDispatch
         end
 
         private
+
           def inverted
             return @inverted if @inverted
 

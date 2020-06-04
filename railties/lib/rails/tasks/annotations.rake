@@ -2,21 +2,21 @@
 
 require "rails/source_annotation_extractor"
 
-task notes: :environment do
-  Rails::SourceAnnotationExtractor::Annotation.notes_task_deprecation_warning
-  Rails::Command.invoke :notes
+desc "Enumerate all annotations (use notes:optimize, :fixme, :todo for focus)"
+task :notes do
+  SourceAnnotationExtractor.enumerate "OPTIMIZE|FIXME|TODO", tag: true
 end
 
 namespace :notes do
   ["OPTIMIZE", "FIXME", "TODO"].each do |annotation|
-    task annotation.downcase.intern => :environment do
-      Rails::SourceAnnotationExtractor::Annotation.notes_task_deprecation_warning
-      Rails::Command.invoke :notes, ["--annotations", annotation]
+    # desc "Enumerate all #{annotation} annotations"
+    task annotation.downcase.intern do
+      SourceAnnotationExtractor.enumerate annotation
     end
   end
 
-  task custom: :environment do
-    Rails::SourceAnnotationExtractor::Annotation.notes_task_deprecation_warning
-    Rails::Command.invoke :notes, ["--annotations", ENV["ANNOTATION"]]
+  desc "Enumerate a custom annotation, specify with ANNOTATION=CUSTOM"
+  task :custom do
+    SourceAnnotationExtractor.enumerate ENV["ANNOTATION"]
   end
 end

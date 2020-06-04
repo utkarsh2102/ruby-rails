@@ -17,8 +17,8 @@ class FakeTemplate
   end
 end
 
-Neckbeard = lambda { |template, source| source }
-Bowtie = lambda { |template, source| source }
+Neckbeard = lambda { |template| template.source }
+Bowtie = lambda { |template| template.source }
 
 class DependencyTrackerTest < ActionView::TestCase
   def tracker

@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-require "active_support/number_helper/number_converter"
-
 module ActiveSupport
   module NumberHelper
     class NumberToRoundedConverter < NumberConverter # :nodoc:
@@ -22,9 +20,9 @@ module ActiveSupport
           formatted_string =
             if BigDecimal === rounded_number && rounded_number.finite?
               s = rounded_number.to_s("F")
-              s << "0" * precision
-              a, b = s.split(".", 2)
-              a << "."
+              s << "0".freeze * precision
+              a, b = s.split(".".freeze, 2)
+              a << ".".freeze
               a << b[0, precision]
             else
               "%00.#{precision}f" % rounded_number
@@ -38,6 +36,7 @@ module ActiveSupport
       end
 
       private
+
         def strip_insignificant_zeros
           options[:strip_insignificant_zeros]
         end

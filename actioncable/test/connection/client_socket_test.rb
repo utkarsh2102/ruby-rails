@@ -40,11 +40,10 @@ class ActionCable::Connection::ClientSocketTest < ActionCable::TestCase
 
       # Internal hax = :(
       client = connection.websocket.send(:websocket)
-      client.instance_variable_get("@stream").stub(:write, proc { raise "foo" }) do
-        assert_not_called(client, :client_gone) do
-          client.write("boo")
-        end
-      end
+      client.instance_variable_get("@stream").expects(:write).raises("foo")
+      client.expects(:client_gone).never
+
+      client.write("boo")
       assert_equal %w[ foo ], connection.errors
     end
   end
@@ -58,7 +57,7 @@ class ActionCable::Connection::ClientSocketTest < ActionCable::TestCase
       client.instance_variable_get("@stream")
         .instance_variable_get("@rack_hijack_io")
         .define_singleton_method(:close) { event.set }
-      connection.close(reason: "testing")
+      connection.close
       event.wait
     end
   end

@@ -17,7 +17,6 @@ module ActiveJob
       def perform_now(*args)
         job_or_instantiate(*args).perform_now
       end
-      ruby2_keywords(:perform_now) if respond_to?(:ruby2_keywords, true)
 
       def execute(job_data) #:nodoc:
         ActiveJob::Callbacks.run_callbacks(:execute) do
@@ -27,7 +26,7 @@ module ActiveJob
       end
     end
 
-    # Performs the job immediately. The job is not sent to the queuing adapter
+    # Performs the job immediately. The job is not sent to the queueing adapter
     # but directly executed by blocking the execution of others until it's finished.
     #
     #   MyJob.new(*args).perform_now

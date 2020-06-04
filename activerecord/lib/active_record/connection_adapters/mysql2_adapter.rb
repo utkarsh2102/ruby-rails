@@ -3,20 +3,18 @@
 require "active_record/connection_adapters/abstract_mysql_adapter"
 require "active_record/connection_adapters/mysql/database_statements"
 
-gem "mysql2", ">= 0.4.4"
+gem "mysql2", ">= 0.4.4", "< 0.6.0"
 require "mysql2"
 
 module ActiveRecord
   module ConnectionHandling # :nodoc:
-    ER_BAD_DB_ERROR = 1049
-
     # Establishes a connection to the database that's used by all Active Record objects.
     def mysql2_connection(config)
       config = config.symbolize_keys
       config[:flags] ||= 0
 
       if config[:flags].kind_of? Array
-        config[:flags].push "FOUND_ROWS"
+        config[:flags].push "FOUND_ROWS".freeze
       else
         config[:flags] |= Mysql2::Client::FOUND_ROWS
       end
@@ -24,7 +22,7 @@ module ActiveRecord
       client = Mysql2::Client.new(config)
       ConnectionAdapters::Mysql2Adapter.new(client, logger, nil, config)
     rescue Mysql2::Error => error
-      if error.error_number == ER_BAD_DB_ERROR
+      if error.message.include?("Unknown database")
         raise ActiveRecord::NoDatabaseError
       else
         raise
@@ -34,24 +32,18 @@ module ActiveRecord
 
   module ConnectionAdapters
     class Mysql2Adapter < AbstractMysqlAdapter
-      ADAPTER_NAME = "Mysql2"
+      ADAPTER_NAME = "Mysql2".freeze
 
       include MySQL::DatabaseStatements
 
       def initialize(connection, logger, connection_options, config)
-        superclass_config = config.reverse_merge(prepared_statements: false)
-        super(connection, logger, connection_options, superclass_config)
+        super
+        @prepared_statements = false unless config.key?(:prepared_statements)
         configure_connection
       end
 
-      def self.database_exists?(config)
-        !!ActiveRecord::Base.mysql2_connection(config)
-      rescue ActiveRecord::NoDatabaseError
-        false
-      end
-
       def supports_json?
-        !mariadb? && database_version >= "5.7.8"
+        !mariadb? && version >= "5.7.8"
       end
 
       def supports_comments?
@@ -63,10 +55,6 @@ module ActiveRecord
       end
 
       def supports_savepoints?
-        true
-      end
-
-      def supports_lazy_transactions?
         true
       end
 
@@ -117,28 +105,24 @@ module ActiveRecord
       end
 
       def discard! # :nodoc:
-        super
         @connection.automatic_close = false
         @connection = nil
       end
 
       private
+
         def connect
           @connection = Mysql2::Client.new(@config)
           configure_connection
         end
 
         def configure_connection
-          @connection.query_options[:as] = :array
+          @connection.query_options.merge!(as: :array)
           super
         end
 
         def full_version
-          schema_cache.database_version.full_version_string
-        end
-
-        def get_full_version
-          @connection.server_info[:version]
+          @full_version ||= @connection.server_info[:version]
         end
     end
   end

@@ -15,6 +15,7 @@ module Rails
       hook_for :test_framework
 
       private
+
         def generator_dir
           if options[:namespace]
             File.join("lib", "generators", regular_class_path, file_name)

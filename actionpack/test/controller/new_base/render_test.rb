@@ -37,6 +37,7 @@ module Render
     end
 
     private
+
       def secretz
         render plain: "FAIL WHALE!"
       end

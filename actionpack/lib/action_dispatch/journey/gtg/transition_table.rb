@@ -141,6 +141,7 @@ module ActionDispatch
         end
 
         private
+
           def states_hash_for(sym)
             case sym
             when String

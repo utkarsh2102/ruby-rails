@@ -23,6 +23,7 @@ class DatabaseStatementsTest < ActiveRecord::TestCase
   end
 
   private
+
     def return_the_inserted_id(method:)
       # Oracle adapter uses prefetched primary key values from sequence and passes them to connection adapter insert method
       if current_adapter?(:OracleAdapter)

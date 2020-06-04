@@ -4,7 +4,7 @@ require "test_helper"
 require "stubs/test_server"
 require "active_support/core_ext/hash/indifferent_access"
 
-class BaseTest < ActionCable::TestCase
+class BaseTest < ActiveSupport::TestCase
   def setup
     @server = ActionCable::Server::Base.new
     @server.config.cable = { adapter: "async" }.with_indifferent_access
@@ -19,20 +19,17 @@ class BaseTest < ActionCable::TestCase
     conn = FakeConnection.new
     @server.add_connection(conn)
 
-    assert_called(conn, :close) do
-      @server.restart
-    end
+    conn.expects(:close)
+    @server.restart
   end
 
   test "#restart shuts down worker pool" do
-    assert_called(@server.worker_pool, :halt) do
-      @server.restart
-    end
+    @server.worker_pool.expects(:halt)
+    @server.restart
   end
 
   test "#restart shuts down pub/sub adapter" do
-    assert_called(@server.pubsub, :shutdown) do
-      @server.restart
-    end
+    @server.pubsub.expects(:shutdown)
+    @server.restart
   end
 end

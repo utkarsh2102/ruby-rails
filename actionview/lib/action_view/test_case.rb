@@ -75,9 +75,8 @@ module ActionView
           methods.flatten.each do |method|
             _helpers.module_eval <<-end_eval, __FILE__, __LINE__ + 1
               def #{method}(*args, &block)                    # def current_user(*args, &block)
-                _test_case.send(:'#{method}', *args, &block)  #   _test_case.send(:'current_user', *args, &block)
+                _test_case.send(%(#{method}), *args, &block)  #   _test_case.send(%(current_user), *args, &block)
               end                                             # end
-              ruby2_keywords(:'#{method}') if respond_to?(:ruby2_keywords, true)
             end_eval
           end
         end
@@ -94,6 +93,7 @@ module ActionView
         end
 
       private
+
         def include_helper_modules!
           helper(helper_class) if helper_class
           include _helpers
@@ -107,7 +107,7 @@ module ActionView
         # empty string ensures buffer has UTF-8 encoding as
         # new without arguments returns ASCII-8BIT encoded buffer like String#new
         @output_buffer = ActiveSupport::SafeBuffer.new ""
-        @rendered = +""
+        @rendered = "".dup
 
         make_test_case_available_to_view!
         say_no_to_protect_against_forgery!
@@ -163,6 +163,7 @@ module ActionView
       end
 
     private
+
       # Need to experiment if this priority is the best one: rendered => output_buffer
       def document_root_element
         Nokogiri::HTML::Document.parse(@rendered.blank? ? @output_buffer : @rendered).root
