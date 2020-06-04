@@ -1,3 +1,21 @@
+rails (2:5.2.4.3+dfsg-1) unstable; urgency=medium
+
+  * New upstream version 5.2.4.3+dfsg
+    - Circumvention of file size limits in ActiveStorage
+      (Fixes: CVE-2020-8162)
+    - Possible Strong Parameters Bypass in ActionPack
+      (Fixes: CVE-2020-8164)
+    - Potentially unintended unmarshalling of user-provided objects
+      in MemCacheStore and RedisCacheStore (Fixes: CVE-2020-8165)
+    - Ability to forge per-form CSRF tokens given a global CSRF token
+      (Fixes: CVE-2020-8166)
+    - CSRF Vulnerability in rails-ujs (Fixes: CVE-2020-8167)
+  * Set debian-branch as 5.2.3+dfsg-1
+  * Drop patches as they're merged upstream
+  * Refresh d/patches
+
+ -- Utkarsh Gupta <utkarsh@debian.org>  Thu, 04 Jun 2020 11:41:38 +0530
+
 rails (2:5.2.4.1+dfsg-2) unstable; urgency=medium
 
   * Add patch to fix possible XSS vector in JS escape helper.
