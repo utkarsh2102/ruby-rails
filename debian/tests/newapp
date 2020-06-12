@@ -7,10 +7,10 @@ exec 2>&1
 ruby -v
 gem list
 
-if [ -z "$ADTTMP" ]; then
-  ADTTMP=$(mktemp -d)
+if [ -z "$AUTOPKGTEST_TMP" ]; then
+  AUTOPKGTEST_TMP=$(mktemp -d)
 fi
-cd $ADTTMP
+cd $AUTOPKGTEST_TMP
 
 rails new foo
 cd foo
