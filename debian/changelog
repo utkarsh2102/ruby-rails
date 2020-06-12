@@ -1,3 +1,11 @@
+rails (2:5.2.4.3+dfsg-2) unstable; urgency=medium
+
+  * Add patch to switch to node-babel7 for activestorage
+    javascript bundle generation
+  * Use AUTOPKGTEST_TMP in tests as ADTTMP is deprecated
+
+ -- Utkarsh Gupta <utkarsh@debian.org>  Sat, 13 Jun 2020 02:39:43 +0530
+
 rails (2:5.2.4.3+dfsg-1) unstable; urgency=medium
 
   * New upstream version 5.2.4.3+dfsg
