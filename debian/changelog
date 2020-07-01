@@ -1,3 +1,12 @@
+rails (2:6.0.3.2+dfsg-1) experimental; urgency=medium
+
+  * New upstream version 6.0.3.2+dfsg
+    - Fixes CVE-2020-8185: Untrusted users able to run pending
+      migrations in production (Closes: 964081)
+  * Refresh d/patches
+
+ -- Utkarsh Gupta <utkarsh@debian.org>  Wed, 01 Jul 2020 17:12:45 +0530
+
 rails (2:6.0.3.1+dfsg-1) experimental; urgency=medium
 
   * New upstream version 6.0.3.1+dfsg
