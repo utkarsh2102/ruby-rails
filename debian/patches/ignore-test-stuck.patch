@@ -3,9 +3,9 @@ Description: Ignore test which goes stuck
 Author: Jongmin Kim <jmkim@pukyong.ac.kr>
 Forwarded: not-needed
 Last-Update: 2019-06-21
---- rails-6.0.0~rc1+dfsg.orig/railties/test/generators/app_generator_test.rb
-+++ rails-6.0.0~rc1+dfsg/railties/test/generators/app_generator_test.rb
-@@ -472,6 +472,7 @@ class AppGeneratorTest < Rails::Generato
+--- a/railties/test/generators/app_generator_test.rb
++++ b/railties/test/generators/app_generator_test.rb
+@@ -472,6 +472,7 @@
      assert_file "#{application_path}/config/application.rb", /#\s+require\s+["']action_text\/engine["']/
    end
  
@@ -13,7 +13,7 @@ Last-Update: 2019-06-21
    def test_app_update_does_not_change_config_target_version
      app_root = File.join(destination_root, "myapp")
      run_generator [app_root, "--skip-spring"]
-@@ -485,6 +486,7 @@ class AppGeneratorTest < Rails::Generato
+@@ -485,6 +486,7 @@
  
      assert_file "#{app_root}/config/application.rb", /\s+config\.load_defaults 5\.1/
    end

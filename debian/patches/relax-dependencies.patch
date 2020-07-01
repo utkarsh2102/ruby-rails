@@ -20,7 +20,7 @@ Forwarded: not-needed
 Last-Update: 2019-06-03
 --- a/Gemfile
 +++ b/Gemfile
-@@ -93,7 +93,7 @@
+@@ -95,7 +95,7 @@
  
  group :ujs do
    gem "qunit-selenium"
@@ -29,7 +29,7 @@ Last-Update: 2019-06-03
  end
  
  # Add your own local bundler stuff.
-@@ -101,8 +101,6 @@
+@@ -103,8 +103,6 @@
  instance_eval File.read local_gemfile if File.exist? local_gemfile
  
  group :test do

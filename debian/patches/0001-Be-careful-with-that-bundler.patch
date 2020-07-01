@@ -8,7 +8,7 @@ Subject: Be careful with that bundler
 
 --- a/railties/lib/rails/generators/app_base.rb
 +++ b/railties/lib/rails/generators/app_base.rb
-@@ -359,7 +359,6 @@
+@@ -358,7 +358,6 @@
          # things in the same process is a recipe for a night with paracetamol.
          #
          # Thanks to James Tucker for the Gem tricks involved in this call.
@@ -16,7 +16,7 @@ Subject: Be careful with that bundler
  
          require "bundler"
          Bundler.with_original_env do
-@@ -368,7 +367,7 @@
+@@ -367,7 +366,7 @@
        end
  
        def exec_bundle_command(bundle_command, command, env)
@@ -25,7 +25,7 @@ Subject: Be careful with that bundler
          if options[:quiet]
            system(env, full_command, out: File::NULL)
          else
-@@ -405,7 +404,7 @@
+@@ -404,7 +403,7 @@
        end
  
        def run_bundle
@@ -36,7 +36,7 @@ Subject: Be careful with that bundler
        def run_webpack
 --- a/railties/test/generators/app_generator_test.rb
 +++ b/railties/test/generators/app_generator_test.rb
-@@ -1053,7 +1053,7 @@
+@@ -1054,7 +1054,7 @@
        template
      end
  

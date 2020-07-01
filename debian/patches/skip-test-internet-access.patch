@@ -3,9 +3,9 @@ Description: Skip the tests which need Internet access
 Author: Jongmin Kim <jmkim@pukyong.ac.kr>
 Forwarded: not-needed
 Last-Update: 2019-07-17
---- rails-6.0.0~rc1+dfsg.orig/activesupport/Rakefile
-+++ rails-6.0.0~rc1+dfsg/activesupport/Rakefile
-@@ -8,7 +8,7 @@ task :package
+--- a/activesupport/Rakefile
++++ b/activesupport/Rakefile
+@@ -8,7 +8,7 @@
  
  Rake::TestTask.new do |t|
    t.libs << "test"
