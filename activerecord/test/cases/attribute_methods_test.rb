@@ -56,6 +56,13 @@ class AttributeMethodsTest < ActiveRecord::TestCase
     assert_equal "[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]", t.attribute_for_inspect(:content)
   end
 
+  test "attribute_for_inspect with a non-primary key id attribute" do
+    t = topics(:first).becomes(TitlePrimaryKeyTopic)
+    t.title = "The First Topic Now Has A Title With\nNewlines And More Than 50 Characters"
+
+    assert_equal "1", t.attribute_for_inspect(:id)
+  end
+
   test "attribute_present" do
     t = Topic.new
     t.title = "hello there!"
@@ -63,8 +70,8 @@ class AttributeMethodsTest < ActiveRecord::TestCase
     t.author_name = ""
     assert t.attribute_present?("title")
     assert t.attribute_present?("written_on")
-    assert !t.attribute_present?("content")
-    assert !t.attribute_present?("author_name")
+    assert_not t.attribute_present?("content")
+    assert_not t.attribute_present?("author_name")
   end
 
   test "attribute_present with booleans" do
@@ -77,7 +84,7 @@ class AttributeMethodsTest < ActiveRecord::TestCase
     assert b2.attribute_present?(:value)
 
     b3 = Boolean.new
-    assert !b3.attribute_present?(:value)
+    assert_not b3.attribute_present?(:value)
 
     b4 = Boolean.new
     b4.value = false
@@ -161,19 +168,6 @@ class AttributeMethodsTest < ActiveRecord::TestCase
     assert_nil keyboard.read_attribute_before_type_cast("id")
     assert_equal "10", keyboard.read_attribute_before_type_cast("key_number")
     assert_equal "10", keyboard.read_attribute_before_type_cast(:key_number)
-  end
-
-  # Syck calls respond_to? before actually calling initialize.
-  test "respond_to? with an allocated object" do
-    klass = Class.new(ActiveRecord::Base) do
-      self.table_name = "topics"
-    end
-
-    topic = klass.allocate
-    assert_not_respond_to topic, "nothingness"
-    assert_not_respond_to topic, :nothingness
-    assert_respond_to topic, "title"
-    assert_respond_to topic, :title
   end
 
   # IRB inspects the return value of MyModel.allocate.
@@ -366,9 +360,9 @@ class AttributeMethodsTest < ActiveRecord::TestCase
   test "read_attribute when false" do
     topic = topics(:first)
     topic.approved = false
-    assert !topic.approved?, "approved should be false"
+    assert_not topic.approved?, "approved should be false"
     topic.approved = "false"
-    assert !topic.approved?, "approved should be false"
+    assert_not topic.approved?, "approved should be false"
   end
 
   test "read_attribute when true" do
@@ -382,10 +376,10 @@ class AttributeMethodsTest < ActiveRecord::TestCase
   test "boolean attributes writing and reading" do
     topic = Topic.new
     topic.approved = "false"
-    assert !topic.approved?, "approved should be false"
+    assert_not topic.approved?, "approved should be false"
 
     topic.approved = "false"
-    assert !topic.approved?, "approved should be false"
+    assert_not topic.approved?, "approved should be false"
 
     topic.approved = "true"
     assert topic.approved?, "approved should be true"
@@ -439,6 +433,10 @@ class AttributeMethodsTest < ActiveRecord::TestCase
     end
 
     assert_equal true, Topic.new(author_name: "Name").author_name?
+
+    ActiveModel::Type::Boolean::FALSE_VALUES.each do |value|
+      assert_predicate Topic.new(author_name: value), :author_name?
+    end
   end
 
   test "number attribute predicate" do
@@ -460,8 +458,71 @@ class AttributeMethodsTest < ActiveRecord::TestCase
     end
   end
 
+  test "user-defined text attribute predicate" do
+    klass = Class.new(ActiveRecord::Base) do
+      self.table_name = Topic.table_name
+
+      attribute :user_defined_text, :text
+    end
+
+    topic = klass.new(user_defined_text: "text")
+    assert_predicate topic, :user_defined_text?
+
+    ActiveModel::Type::Boolean::FALSE_VALUES.each do |value|
+      topic = klass.new(user_defined_text: value)
+      assert_predicate topic, :user_defined_text?
+    end
+  end
+
+  test "user-defined date attribute predicate" do
+    klass = Class.new(ActiveRecord::Base) do
+      self.table_name = Topic.table_name
+
+      attribute :user_defined_date, :date
+    end
+
+    topic = klass.new(user_defined_date: Date.current)
+    assert_predicate topic, :user_defined_date?
+  end
+
+  test "user-defined datetime attribute predicate" do
+    klass = Class.new(ActiveRecord::Base) do
+      self.table_name = Topic.table_name
+
+      attribute :user_defined_datetime, :datetime
+    end
+
+    topic = klass.new(user_defined_datetime: Time.current)
+    assert_predicate topic, :user_defined_datetime?
+  end
+
+  test "user-defined time attribute predicate" do
+    klass = Class.new(ActiveRecord::Base) do
+      self.table_name = Topic.table_name
+
+      attribute :user_defined_time, :time
+    end
+
+    topic = klass.new(user_defined_time: Time.current)
+    assert_predicate topic, :user_defined_time?
+  end
+
+  test "user-defined json attribute predicate" do
+    klass = Class.new(ActiveRecord::Base) do
+      self.table_name = Topic.table_name
+
+      attribute :user_defined_json, :json
+    end
+
+    topic = klass.new(user_defined_json: { key: "value" })
+    assert_predicate topic, :user_defined_json?
+
+    topic = klass.new(user_defined_json: {})
+    assert_not_predicate topic, :user_defined_json?
+  end
+
   test "custom field attribute predicate" do
-    object = Company.find_by_sql(<<-SQL).first
+    object = Company.find_by_sql(<<~SQL).first
       SELECT c1.*, c2.type as string_value, c2.rating as int_value
         FROM companies c1, companies c2
        WHERE c1.firm_id = c2.id
@@ -717,6 +778,10 @@ class AttributeMethodsTest < ActiveRecord::TestCase
       record.written_on = "Jan 01 00:00:00 2014"
       assert_equal record, YAML.load(YAML.dump(record))
     end
+  ensure
+    # NOTE: Reset column info because global topics
+    # don't have tz-aware attributes by default.
+    Topic.reset_column_information
   end
 
   test "setting a time zone-aware time in the current time zone" do
@@ -849,7 +914,7 @@ class AttributeMethodsTest < ActiveRecord::TestCase
       self.table_name = "computers"
     end
 
-    assert !klass.instance_method_already_implemented?(:system)
+    assert_not klass.instance_method_already_implemented?(:system)
     computer = klass.new
     assert_nil computer.system
   end
@@ -863,8 +928,8 @@ class AttributeMethodsTest < ActiveRecord::TestCase
       self.table_name = "computers"
     end
 
-    assert !klass.instance_method_already_implemented?(:system)
-    assert !subklass.instance_method_already_implemented?(:system)
+    assert_not klass.instance_method_already_implemented?(:system)
+    assert_not subklass.instance_method_already_implemented?(:system)
     computer = subklass.new
     assert_nil computer.system
   end
@@ -1016,13 +1081,12 @@ class AttributeMethodsTest < ActiveRecord::TestCase
     assert_equal ["title"], model.accessed_fields
   end
 
-  test "generated attribute methods ancestors have correct class" do
+  test "generated attribute methods ancestors have correct module" do
     mod = Topic.send(:generated_attribute_methods)
-    assert_match %r(GeneratedAttributeMethods), mod.inspect
+    assert_equal "Topic::GeneratedAttributeMethods", mod.inspect
   end
 
   private
-
     def new_topic_like_ar_class(&block)
       klass = Class.new(ActiveRecord::Base) do
         self.table_name = "topics"

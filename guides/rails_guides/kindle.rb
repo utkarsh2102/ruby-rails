@@ -35,8 +35,8 @@ module Kindle
   def generate_front_matter(html_pages)
     frontmatter = []
     html_pages.delete_if { |x|
-      if x =~ /(toc|welcome|credits|copyright).html/
-        frontmatter << x unless x =~ /toc/
+      if /(toc|welcome|copyright).html/.match?(x)
+        frontmatter << x unless /toc/.match?(x)
         true
       end
     }

@@ -2,7 +2,6 @@
 
 require "abstract_unit"
 require "action_controller/metal/strong_parameters"
-require "active_support/core_ext/hash/transform_values"
 
 class ParametersAccessorsTest < ActiveSupport::TestCase
   setup do
@@ -26,6 +25,10 @@ class ParametersAccessorsTest < ActiveSupport::TestCase
 
   test "each_pair returns self" do
     assert_same @params, @params.each_pair { |_| _ }
+  end
+
+  test "each_value returns self" do
+    assert_same @params, @params.each_value { |_| _ }
   end
 
   test "[] retains permitted status" do
@@ -82,6 +85,28 @@ class ParametersAccessorsTest < ActiveSupport::TestCase
       assert_equal "person", arg[0]
       assert_kind_of ActionController::Parameters, arg[1]
     end
+  end
+
+  test "each_value carries permitted status" do
+    @params.permit!
+    @params.each_value do |value|
+      assert_predicate(value, :permitted?)
+    end
+  end
+
+  test "each_value carries unpermitted status" do
+    @params.each_value do |value|
+      assert_not_predicate(value, :permitted?)
+    end
+  end
+
+  test "each_key converts to hash for permitted" do
+    @params.permit!
+    @params.each_key { |key| assert_kind_of(String, key) if key == "person" }
+  end
+
+  test "each_key converts to hash for unpermitted" do
+    @params.each_key { |key| assert_kind_of(String, key) if key == "person" }
   end
 
   test "empty? returns true when params contains no key/value pairs" do
@@ -190,6 +215,16 @@ class ParametersAccessorsTest < ActiveSupport::TestCase
     assert_not_predicate @params.transform_keys { |k| k }, :permitted?
   end
 
+  test "transform_keys without a block returns an enumerator" do
+    assert_kind_of Enumerator, @params.transform_keys
+    assert_kind_of ActionController::Parameters, @params.transform_keys.each { |k| k }
+  end
+
+  test "transform_keys! without a block returns an enumerator" do
+    assert_kind_of Enumerator, @params.transform_keys!
+    assert_kind_of ActionController::Parameters, @params.transform_keys!.each { |k| k }
+  end
+
   test "transform_values retains permitted status" do
     @params.permit!
     assert_predicate @params.transform_values { |v| v }, :permitted?
@@ -206,8 +241,9 @@ class ParametersAccessorsTest < ActiveSupport::TestCase
     end
   end
 
-  test "transform_values without block yieds an enumerator" do
+  test "transform_values without a block returns an enumerator" do
     assert_kind_of Enumerator, @params.transform_values
+    assert_kind_of ActionController::Parameters, @params.transform_values.each { |v| v }
   end
 
   test "transform_values! converts hashes to parameters" do
@@ -216,8 +252,9 @@ class ParametersAccessorsTest < ActiveSupport::TestCase
     end
   end
 
-  test "transform_values! without block yields an enumerator" do
+  test "transform_values! without a block returns an enumerator" do
     assert_kind_of Enumerator, @params.transform_values!
+    assert_kind_of ActionController::Parameters, @params.transform_values!.each { |v| v }
   end
 
   test "value? returns true if the given value is present in the params" do
@@ -302,31 +339,24 @@ class ParametersAccessorsTest < ActiveSupport::TestCase
     assert_match(/permitted: true/, @params.inspect)
   end
 
-  if Hash.method_defined?(:dig)
-    test "#dig delegates the dig method to its values" do
-      assert_equal "David", @params.dig(:person, :name, :first)
-      assert_equal "Chicago", @params.dig(:person, :addresses, 0, :city)
-    end
+  test "#dig delegates the dig method to its values" do
+    assert_equal "David", @params.dig(:person, :name, :first)
+    assert_equal "Chicago", @params.dig(:person, :addresses, 0, :city)
+  end
 
-    test "#dig converts hashes to parameters" do
-      assert_kind_of ActionController::Parameters, @params.dig(:person)
-      assert_kind_of ActionController::Parameters, @params.dig(:person, :addresses, 0)
-      assert @params.dig(:person, :addresses).all? do |value|
-        value.is_a?(ActionController::Parameters)
-      end
+  test "#dig converts hashes to parameters" do
+    assert_kind_of ActionController::Parameters, @params.dig(:person)
+    assert_kind_of ActionController::Parameters, @params.dig(:person, :addresses, 0)
+    assert @params.dig(:person, :addresses).all? do |value|
+      value.is_a?(ActionController::Parameters)
     end
+  end
 
-    test "mutating #dig return value mutates underlying parameters" do
-      @params.dig(:person, :name)[:first] = "Bill"
-      assert_equal "Bill", @params.dig(:person, :name, :first)
+  test "mutating #dig return value mutates underlying parameters" do
+    @params.dig(:person, :name)[:first] = "Bill"
+    assert_equal "Bill", @params.dig(:person, :name, :first)
 
-      @params.dig(:person, :addresses)[0] = { city: "Boston", state: "Massachusetts" }
-      assert_equal "Boston", @params.dig(:person, :addresses, 0, :city)
-    end
-  else
-    test "ActionController::Parameters does not respond to #dig on Ruby 2.2" do
-      assert_not ActionController::Parameters.method_defined?(:dig)
-      assert_not_respond_to @params, :dig
-    end
+    @params.dig(:person, :addresses)[0] = { city: "Boston", state: "Massachusetts" }
+    assert_equal "Boston", @params.dig(:person, :addresses, 0, :city)
   end
 end

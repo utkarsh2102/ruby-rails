@@ -10,26 +10,22 @@ module ActiveModel
 
       def register(type_name, klass = nil, **options, &block)
         block ||= proc { |_, *args| klass.new(*args) }
+        block.ruby2_keywords if block.respond_to?(:ruby2_keywords)
         registrations << registration_klass.new(type_name, block, **options)
       end
 
-      def lookup(symbol, *args)
-        registration = find_registration(symbol, *args)
+      def lookup(symbol, *args, **kwargs)
+        registration = find_registration(symbol, *args, **kwargs)
 
         if registration
-          registration.call(self, symbol, *args)
+          registration.call(self, symbol, *args, **kwargs)
         else
           raise ArgumentError, "Unknown type #{symbol.inspect}"
         end
       end
 
-      # TODO Change this to private once we've dropped Ruby 2.2 support.
-      # Workaround for Ruby 2.2 "private attribute?" warning.
-      protected
-
-        attr_reader :registrations
-
       private
+        attr_reader :registrations
 
         def registration_klass
           Registration
@@ -59,10 +55,7 @@ module ActiveModel
         type_name == name
       end
 
-      # TODO Change this to private once we've dropped Ruby 2.2 support.
-      # Workaround for Ruby 2.2 "private attribute?" warning.
-      protected
-
+      private
         attr_reader :name, :block
     end
   end

@@ -1,7 +1,6 @@
 # frozen_string_literal: true
 
 require "cases/helper"
-require "active_support/core_ext/string/strip"
 require "yaml"
 
 class ErrorsTest < ActiveModel::TestCase
@@ -210,23 +209,25 @@ class ErrorsTest < ActiveModel::TestCase
     person.errors.add(:name, "cannot be blank")
     person.errors.add(:name, "is invalid")
     assert person.errors.added?(:name, "cannot be blank")
+    assert person.errors.added?(:name, "is invalid")
+    assert_not person.errors.added?(:name, "incorrect")
   end
 
   test "added? returns false when no errors are present" do
     person = Person.new
-    assert !person.errors.added?(:name)
+    assert_not person.errors.added?(:name)
   end
 
   test "added? returns false when checking a nonexisting error and other errors are present for the given attribute" do
     person = Person.new
     person.errors.add(:name, "is invalid")
-    assert !person.errors.added?(:name, "cannot be blank")
+    assert_not person.errors.added?(:name, "cannot be blank")
   end
 
-  test "added? returns false when checking for an error, but not providing message arguments" do
+  test "added? returns false when checking for an error, but not providing message argument" do
     person = Person.new
     person.errors.add(:name, "cannot be blank")
-    assert !person.errors.added?(:name)
+    assert_not person.errors.added?(:name)
   end
 
   test "added? returns false when checking for an error with an incorrect or missing option" do
@@ -234,6 +235,7 @@ class ErrorsTest < ActiveModel::TestCase
     person.errors.add :name, :too_long, count: 25
 
     assert person.errors.added? :name, :too_long, count: 25
+    assert person.errors.added? :name, "is too long (maximum is 25 characters)"
     assert_not person.errors.added? :name, :too_long, count: 24
     assert_not person.errors.added? :name, :too_long
     assert_not person.errors.added? :name, "is too long"
@@ -243,7 +245,82 @@ class ErrorsTest < ActiveModel::TestCase
     I18n.backend.store_translations("en", errors: { attributes: { name: { wrong: "is wrong", used: "is wrong" } } })
     person = Person.new
     person.errors.add(:name, :wrong)
-    assert !person.errors.added?(:name, :used)
+    assert_not person.errors.added?(:name, :used)
+    assert person.errors.added?(:name, :wrong)
+  end
+
+  test "of_kind? returns false when checking for an error, but not providing message argument" do
+    person = Person.new
+    person.errors.add(:name, "cannot be blank")
+    assert_not person.errors.of_kind?(:name)
+  end
+
+  test "of_kind? returns false when checking a nonexisting error and other errors are present for the given attribute" do
+    person = Person.new
+    person.errors.add(:name, "is invalid")
+    assert_not person.errors.of_kind?(:name, "cannot be blank")
+  end
+
+  test "of_kind? returns false when no errors are present" do
+    person = Person.new
+    assert_not person.errors.of_kind?(:name)
+  end
+
+  test "of_kind? matches the given message when several errors are present for the same attribute" do
+    person = Person.new
+    person.errors.add(:name, "cannot be blank")
+    person.errors.add(:name, "is invalid")
+    assert person.errors.of_kind?(:name, "cannot be blank")
+    assert person.errors.of_kind?(:name, "is invalid")
+    assert_not person.errors.of_kind?(:name, "incorrect")
+  end
+
+  test "of_kind? defaults message to :invalid" do
+    person = Person.new
+    person.errors.add(:name)
+    assert person.errors.of_kind?(:name)
+  end
+
+  test "of_kind? handles proc messages" do
+    person = Person.new
+    message = Proc.new { "cannot be blank" }
+    person.errors.add(:name, message)
+    assert person.errors.of_kind?(:name, message)
+  end
+
+  test "of_kind? returns true when string attribute is used with a symbol message" do
+    person = Person.new
+    person.errors.add(:name, :blank)
+    assert person.errors.of_kind?("name", :blank)
+  end
+
+  test "of_kind? handles symbol message" do
+    person = Person.new
+    person.errors.add(:name, :blank)
+    assert person.errors.of_kind?(:name, :blank)
+  end
+
+  test "of_kind? detects indifferent if a specific error was added to the object" do
+    person = Person.new
+    person.errors.add(:name, "cannot be blank")
+    assert person.errors.of_kind?(:name, "cannot be blank")
+    assert person.errors.of_kind?("name", "cannot be blank")
+  end
+
+  test "of_kind? ignores options" do
+    person = Person.new
+    person.errors.add :name, :too_long, count: 25
+
+    assert person.errors.of_kind? :name, :too_long
+    assert person.errors.of_kind? :name, "is too long (maximum is 25 characters)"
+  end
+
+  test "of_kind? returns false when checking for an error by symbol and a different error with same message is present" do
+    I18n.backend.store_translations("en", errors: { attributes: { name: { wrong: "is wrong", used: "is wrong" } } })
+    person = Person.new
+    person.errors.add(:name, :wrong)
+    assert_not person.errors.of_kind?(:name, :used)
+    assert person.errors.of_kind?(:name, :wrong)
   end
 
   test "size calculates the number of error messages" do
@@ -412,6 +489,30 @@ class ErrorsTest < ActiveModel::TestCase
     assert_equal({ name: [{ error: :blank }, { error: :invalid }] }, person.errors.details)
   end
 
+  test "slice! removes all errors except the given keys" do
+    person = Person.new
+    person.errors.add(:name, "cannot be nil")
+    person.errors.add(:age, "cannot be nil")
+    person.errors.add(:gender, "cannot be nil")
+    person.errors.add(:city, "cannot be nil")
+
+    person.errors.slice!(:age, "gender")
+
+    assert_equal [:age, :gender], person.errors.keys
+  end
+
+  test "slice! returns the deleted errors" do
+    person = Person.new
+    person.errors.add(:name, "cannot be nil")
+    person.errors.add(:age, "cannot be nil")
+    person.errors.add(:gender, "cannot be nil")
+    person.errors.add(:city, "cannot be nil")
+
+    removed_errors = person.errors.slice!(:age, "gender")
+
+    assert_equal({ name: ["cannot be nil"], city: ["cannot be nil"] }, removed_errors)
+  end
+
   test "errors are marshalable" do
     errors = ActiveModel::Errors.new(Person.new)
     errors.add(:name, :invalid)
@@ -422,7 +523,7 @@ class ErrorsTest < ActiveModel::TestCase
   end
 
   test "errors are backward compatible with the Rails 4.2 format" do
-    yaml = <<-CODE.strip_heredoc
+    yaml = <<~CODE
     --- !ruby/object:ActiveModel::Errors
     base: &1 !ruby/object:ErrorsTest::Person
       errors: !ruby/object:ActiveModel::Errors

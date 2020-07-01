@@ -7,11 +7,15 @@ module ActiveRecord
     class ConnectionSpecification
       class ResolverTest < ActiveRecord::TestCase
         def resolve(spec, config = {})
-          Resolver.new(config).resolve(spec)
+          configs = ActiveRecord::DatabaseConfigurations.new(config)
+          resolver = ConnectionAdapters::ConnectionSpecification::Resolver.new(configs)
+          resolver.resolve(spec, spec)
         end
 
         def spec(spec, config = {})
-          Resolver.new(config).spec(spec)
+          configs = ActiveRecord::DatabaseConfigurations.new(config)
+          resolver = ConnectionAdapters::ConnectionSpecification::Resolver.new(configs)
+          resolver.spec(spec)
         end
 
         def test_url_invalid_adapter
@@ -20,6 +24,14 @@ module ActiveRecord
           end
 
           assert_match "Could not load the 'ridiculous' Active Record adapter. Ensure that the adapter is spelled correctly in config/database.yml and that you've added the necessary adapter gem to your Gemfile.", error.message
+        end
+
+        def test_error_if_no_adapter_method
+          error = assert_raises(AdapterNotFound) do
+            spec "abstract://foo?encoding=utf8"
+          end
+
+          assert_match "database configuration specifies nonexistent abstract adapter", error.message
         end
 
         # The abstract adapter is used simply to bypass the bit of code that
@@ -130,6 +142,12 @@ module ActiveRecord
         def test_spec_name_with_inline_config
           spec = spec("adapter" => "sqlite3")
           assert_equal "primary", spec.name, "should default to primary id"
+        end
+
+        def test_spec_with_invalid_type
+          assert_raises TypeError do
+            spec(Object.new)
+          end
         end
       end
     end

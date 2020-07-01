@@ -17,8 +17,8 @@ module ActionView
         "$"     => "\\$"
       }
 
-      JS_ESCAPE_MAP["\342\200\250".dup.force_encoding(Encoding::UTF_8).encode!] = "&#x2028;"
-      JS_ESCAPE_MAP["\342\200\251".dup.force_encoding(Encoding::UTF_8).encode!] = "&#x2029;"
+      JS_ESCAPE_MAP[(+"\342\200\250").force_encoding(Encoding::UTF_8).encode!] = "&#x2028;"
+      JS_ESCAPE_MAP[(+"\342\200\251").force_encoding(Encoding::UTF_8).encode!] = "&#x2029;"
 
       # Escapes carriage returns and single and double quotes for JavaScript segments.
       #
@@ -27,12 +27,13 @@ module ActionView
       #
       #   $('some_element').replaceWith('<%= j render 'some/element_template' %>');
       def escape_javascript(javascript)
-        if javascript
-          result = javascript.gsub(/(\\|<\/|\r\n|\342\200\250|\342\200\251|[\n\r"']|[`]|[$])/u) { |match| JS_ESCAPE_MAP[match] }
-          javascript.html_safe? ? result.html_safe : result
+        javascript = javascript.to_s
+        if javascript.empty?
+          result = ""
         else
-          ""
+          result = javascript.gsub(/(\\|<\/|\r\n|\342\200\250|\342\200\251|[\n\r"']|[`]|[$])/u, JS_ESCAPE_MAP)
         end
+        javascript.html_safe? ? result.html_safe : result
       end
 
       alias_method :j, :escape_javascript
@@ -67,7 +68,7 @@ module ActionView
       #   <% end -%>
       #
       # If you have a content security policy enabled then you can add an automatic
-      # nonce value by passing +nonce: true+ as part of +html_options+. Example:
+      # nonce value by passing <tt>nonce: true</tt> as part of +html_options+. Example:
       #
       #   <%= javascript_tag nonce: true do -%>
       #     alert('All is good')
@@ -85,7 +86,7 @@ module ActionView
           html_options[:nonce] = content_security_policy_nonce
         end
 
-        content_tag("script".freeze, javascript_cdata_section(content), html_options)
+        content_tag("script", javascript_cdata_section(content), html_options)
       end
 
       def javascript_cdata_section(content) #:nodoc:

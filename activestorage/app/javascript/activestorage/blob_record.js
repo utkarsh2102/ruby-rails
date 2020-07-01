@@ -6,7 +6,7 @@ export class BlobRecord {
 
     this.attributes = {
       filename: file.name,
-      content_type: file.type,
+      content_type: file.type || "application/octet-stream",
       byte_size: file.size,
       checksum: checksum
     }
@@ -17,7 +17,12 @@ export class BlobRecord {
     this.xhr.setRequestHeader("Content-Type", "application/json")
     this.xhr.setRequestHeader("Accept", "application/json")
     this.xhr.setRequestHeader("X-Requested-With", "XMLHttpRequest")
-    this.xhr.setRequestHeader("X-CSRF-Token", getMetaValue("csrf-token"))
+
+    const csrfToken = getMetaValue("csrf-token")
+    if (csrfToken != undefined) {
+      this.xhr.setRequestHeader("X-CSRF-Token", csrfToken)
+    }
+
     this.xhr.addEventListener("load", event => this.requestDidLoad(event))
     this.xhr.addEventListener("error", event => this.requestDidError(event))
   }
