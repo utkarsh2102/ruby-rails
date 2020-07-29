@@ -1,3 +1,11 @@
+rails (2:6.0.3.2+dfsg-2) experimental; urgency=medium
+
+  * Team Upload
+  * Drop myself from uploaders
+  * Update minimum version of ruby-sass-rails to 6.0~
+
+ -- Pirate Praveen <praveen@debian.org>  Wed, 29 Jul 2020 18:15:23 +0530
+
 rails (2:6.0.3.2+dfsg-1) experimental; urgency=medium
 
   * New upstream version 6.0.3.2+dfsg
