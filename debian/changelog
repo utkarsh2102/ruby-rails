@@ -2,6 +2,7 @@ rails (2:6.0.3.2+dfsg-3) unstable; urgency=medium
 
   * Team Upload
   * Reupload to unstable
+  * Add Breaks for packages that need a new version for rails 6 support
 
  -- Pirate Praveen <praveen@debian.org>  Sun, 02 Aug 2020 22:54:59 +0530
 
