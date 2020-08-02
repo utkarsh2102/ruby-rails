@@ -119,6 +119,8 @@ Depends: ruby (>= 1:2.5.0) | ruby-interpreter,
          ruby-zeitwerk (<< 3.0),
          ruby-zeitwerk (>= 2.1.4),
          ${misc:Depends}
+Breaks: gitaly (<= 1.78.0+dfsg-2~),
+ ruby-carrierwave (<< 2.0.2~)
 Description: collection of utility classes used by the Rails framework
  Active Support is a collection of utility classes and standard library
  extensions that were found useful for the Rails framework.
@@ -134,6 +136,10 @@ Depends: ruby (>= 1:2.5.0) | ruby-interpreter,
          ruby-activemodel (= ${source:Version}),
          ruby-activesupport (= ${source:Version}),
          ${misc:Depends}
+Breaks: ruby-activerecord-import (<< 1.0.5~),
+ ruby-acts-as-taggable-on (<< 6.5~),
+ ruby-carrierwave (<< 2.0.2~),
+ ruby-sidekiq (<< 6.0~)
 Description: object-relational mapper framework (part of Rails)
  Active Records is a framework to work with databases on Rails. Build
  a persistent domain model by mapping database tables to Ruby classes.
@@ -147,6 +153,8 @@ XB-Ruby-Versions: ${ruby:Versions}
 Depends: ruby (>= 1:2.5.0) | ruby-interpreter,
          ruby-activesupport (= ${source:Version}),
          ${misc:Depends}
+Breaks: ruby-carrierwave (<< 2.0.2~),
+ ruby-web-console (<< 4.0~)
 Description: toolkit for building modeling frameworks (part of Rails)
  Active Model is a toolkit for building modeling frameworks like
  Active Record and Active Resource. This includes a rich support for
@@ -182,6 +190,7 @@ Depends: ruby (>= 1:2.5.0) | ruby-interpreter,
          ruby-rails-html-sanitizer (<< 2.0),
          ruby-rails-html-sanitizer (>= 1.2~),
          ${misc:Depends}
+Breaks: ruby-web-console (<< 4.0~)
 Description: framework for handling view template lookup and rendering (part of Rails)
  Action View is a framework for handling view template lookup and
  rendering, and provides view helpers that assist when building HTML
@@ -240,6 +249,7 @@ Depends: ruby (>= 1:2.5.0) | ruby-interpreter,
 	 ruby-rails-dom-testing (<< 3.0),
          ruby-rails-dom-testing (>= 2.0),
 	 ${misc:Depends}
+Breaks: ruby-sidekiq (<< 6.0~)
 Description: email composition, delivery framework (part of Rails)
  Action Mailer is a framework for working with email on Rails.
  Compose, deliver, and test emails using the familiar controller/view
@@ -317,6 +327,12 @@ Depends: rake (>= 0.8.7),
          ruby-thor (>= 0.20.3),
          yarnpkg,
          ${misc:Depends}
+Breaks: ruby-coffee-rails (<< 5.0~),
+ ruby-rails-i18n (<< 6.0~),
+ ruby-roadie-rails (<< 2.1.1~),
+ ruby-web-console (<< 4.0~),
+ ruby-sidekiq (<< 6.0~),
+ ruby-browser (<< 4.2~)
 Description: tools for creating, working with, and running Rails applications
  This package contains the Rails internals, i.e. components that implement
  and/or control application bootup, plugins, generators, and rake tasks.
@@ -340,6 +356,9 @@ Depends: ruby-actioncable (= ${source:Version}),
          ruby-railties (= ${source:Version}),
          ruby-sprockets-rails (>= 2.3.2~),
          ${misc:Depends}
+Breaks: gitlab (<= 12.6.8-3~),
+ ruby-carrierwave (<< 2.0.2~),
+ ruby-roadie-rails (<< 2.1.1~)
 Description: MVC ruby based framework geared for web application development
  Rails is a full-stack, open-source web framework in Ruby for writing
  real-world applications.
