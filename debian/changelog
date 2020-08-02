@@ -1,3 +1,12 @@
+rails (2:6.0.3.2+dfsg-4) unstable; urgency=medium
+
+  * Team Upload
+  * Fail build when tests fails (Closes: #919478)
+  * Start redis server for activesupport tests (fixes test failures)
+  * Change assets:compile to assets:codegen in actioncable build
+
+ -- Pirate Praveen <praveen@debian.org>  Mon, 03 Aug 2020 03:00:27 +0530
+
 rails (2:6.0.3.2+dfsg-3) unstable; urgency=medium
 
   * Team Upload
