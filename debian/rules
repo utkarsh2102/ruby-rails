@@ -11,7 +11,7 @@ override_dh_auto_build:
 	cd activestorage; mkdir node_modules; \
 		ln -s rollup-plugin-commonjs node_modules; rollup -c; cd -
 	cd actionview; blade build; cd -
-	cd actioncable; rake -Ilib assets:compile; cd -
+	cd actioncable; rake -Ilib assets:codegen; cd -
 
 override_dh_clean:
 	dh_clean -X~ -X.bak
