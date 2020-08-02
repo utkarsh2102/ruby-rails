@@ -45,4 +45,5 @@ end
 failed_results = results.select { |key,value| !value }
 unless failed_results.empty?
   puts "Failed tests: #{failed_results.keys.join(': ')}"
+  exit 1
 end
