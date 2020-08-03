@@ -374,6 +374,7 @@ Description: MVC ruby based framework geared for web application development
 Package: rails
 Architecture: all
 Depends: ruby-rails (= ${source:Version}),
+         bundler,
          puma,
          qunit-selenium,
          racc (>= 1.4.6),
