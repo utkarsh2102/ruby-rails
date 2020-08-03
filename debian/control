@@ -18,7 +18,7 @@ Build-Depends: debhelper-compat (= 12),
 # Ruby packages - implicit dependencies
                ruby-byebug,
 # Ruby packages - from Gemfile
-               puma,
+               puma (>= 4.1~),
                qunit-selenium,
                racc (>= 1.4.6),
                rake (>= 11.1),
@@ -375,7 +375,7 @@ Package: rails
 Architecture: all
 Depends: ruby-rails (= ${source:Version}),
          bundler,
-         puma,
+         puma (>= 4.1~),
          qunit-selenium,
          racc (>= 1.4.6),
          rake (>= 11.1),
