@@ -1,3 +1,11 @@
+rails (2:6.0.3.2+dfsg-5) unstable; urgency=medium
+
+  * Remove more generated files in clean
+  * Fix bundler patch and add bundler as dependency (Closes: #966838)
+  * Bump minimum version of puma to 4.1
+
+ -- Pirate Praveen <praveen@debian.org>  Mon, 03 Aug 2020 14:57:03 +0530
+
 rails (2:6.0.3.2+dfsg-4) unstable; urgency=medium
 
   * Team Upload
