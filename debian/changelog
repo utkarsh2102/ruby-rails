@@ -1,3 +1,9 @@
+rails (2:6.0.3.2+dfsg-6) unstable; urgency=medium
+
+  * Add more dependencies for rails metapackage
+
+ -- Pirate Praveen <praveen@debian.org>  Tue, 04 Aug 2020 01:46:50 +0530
+
 rails (2:6.0.3.2+dfsg-5) unstable; urgency=medium
 
   * Remove more generated files in clean
