@@ -121,8 +121,7 @@ Depends: ruby (>= 1:2.5.0) | ruby-interpreter,
          ruby-zeitwerk (<< 3.0),
          ruby-zeitwerk (>= 2.1.4),
          ${misc:Depends}
-Breaks: gitaly (<= 1.78.0+dfsg-2~),
- ruby-carrierwave (<< 2.0.2~)
+Breaks: gitaly (<= 1.78.0+dfsg-2~)
 Description: collection of utility classes used by the Rails framework
  Active Support is a collection of utility classes and standard library
  extensions that were found useful for the Rails framework.
@@ -140,7 +139,6 @@ Depends: ruby (>= 1:2.5.0) | ruby-interpreter,
          ${misc:Depends}
 Breaks: ruby-activerecord-import (<< 1.0.5~),
  ruby-acts-as-taggable-on (<< 6.5~),
- ruby-carrierwave (<< 2.0.2~),
  ruby-sidekiq (<< 6.0~)
 Description: object-relational mapper framework (part of Rails)
  Active Records is a framework to work with databases on Rails. Build
@@ -155,8 +153,7 @@ XB-Ruby-Versions: ${ruby:Versions}
 Depends: ruby (>= 1:2.5.0) | ruby-interpreter,
          ruby-activesupport (= ${source:Version}),
          ${misc:Depends}
-Breaks: ruby-carrierwave (<< 2.0.2~),
- ruby-web-console (<< 4.0~)
+Breaks: ruby-web-console (<< 4.0~)
 Description: toolkit for building modeling frameworks (part of Rails)
  Active Model is a toolkit for building modeling frameworks like
  Active Record and Active Resource. This includes a rich support for
@@ -359,7 +356,6 @@ Depends: ruby-actioncable (= ${source:Version}),
          ruby-sprockets-rails (>= 2.3.2~),
          ${misc:Depends}
 Breaks: gitlab (<= 12.6.8-3~),
- ruby-carrierwave (<< 2.0.2~),
  ruby-roadie-rails (<< 2.1.1~)
 Description: MVC ruby based framework geared for web application development
  Rails is a full-stack, open-source web framework in Ruby for writing
