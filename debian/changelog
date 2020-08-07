@@ -1,3 +1,10 @@
+rails (2:6.0.3.2+dfsg-8) unstable; urgency=medium
+
+  * Team Upload
+  * Add ruby-webpacker as dependency to rails meta package
+
+ -- Pirate Praveen <praveen@debian.org>  Fri, 07 Aug 2020 23:24:21 +0530
+
 rails (2:6.0.3.2+dfsg-7) unstable; urgency=medium
 
   * Remove dependencies no longer required for rails metapackage
