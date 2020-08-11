@@ -1,0 +1,13 @@
+webdrivers can only go to contrib section
+
+--- a/railties/lib/rails/generators/rails/app/templates/Gemfile.tt
++++ b/railties/lib/rails/generators/rails/app/templates/Gemfile.tt
+@@ -69,8 +69,6 @@
+   # Adds support for Capybara system testing and selenium driver
+   gem 'capybara', '>= 2.15'
+   gem 'selenium-webdriver'
+-  # Easy installation and use of web drivers to run system tests with browsers
+-  gem 'webdrivers'
+ end
+ 
+ <%- end -%>

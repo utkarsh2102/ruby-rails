@@ -10,3 +10,4 @@ skip-test-unpackaged-dependencies.patch
 skip-test-railties-postgresql.patch
 ignore-test-stuck.patch
 adapt-to-babel7.patch
+replace-webdrivers.patch
