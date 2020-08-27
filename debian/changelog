@@ -1,3 +1,11 @@
+rails (2:6.0.3.2+dfsg-10) unstable; urgency=medium
+
+  * Team Upload
+  * Skip creating javascript and webpack installation in newapp autopkgtest
+   (This fixes autopkgtest regression in arm64)
+
+ -- Pirate Praveen <praveen@debian.org>  Thu, 27 Aug 2020 23:24:41 +0530
+
 rails (2:6.0.3.2+dfsg-9) unstable; urgency=medium
 
   * Team Upload
