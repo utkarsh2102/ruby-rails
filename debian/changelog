@@ -1,3 +1,11 @@
+rails (2:6.0.3.2+dfsg-11) unstable; urgency=medium
+
+  * Team Upload
+  * Move yarnpkg to recommends of rails meta package
+    (To help testing migration)
+
+ -- Pirate Praveen <praveen@debian.org>  Fri, 28 Aug 2020 14:49:09 +0530
+
 rails (2:6.0.3.2+dfsg-10) unstable; urgency=medium
 
   * Team Upload
