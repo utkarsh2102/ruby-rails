@@ -1,3 +1,17 @@
+rails (2:6.0.3.3+dfsg-1) unstable; urgency=medium
+
+  [ Cédric Boutillier ]
+  * [ci skip] Update team name
+  * [ci skip] Add .gitattributes to keep unwanted files out of the
+    source package
+
+  [ Utkarsh Gupta ]
+  * New upstream version 6.0.3.3+dfsg
+    - Ensure values directly from `options[:default]` are not marked
+      as `html_safe`. (Fixes: CVE-2020-15169) (Closes: #970040)
+
+ -- Utkarsh Gupta <utkarsh@debian.org>  Fri, 11 Sep 2020 09:32:28 +0530
+
 rails (2:6.0.3.2+dfsg-11) unstable; urgency=medium
 
   * Team Upload
