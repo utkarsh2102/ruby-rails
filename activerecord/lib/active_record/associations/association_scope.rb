@@ -26,7 +26,9 @@ module ActiveRecord
         chain = get_chain(reflection, association, scope.alias_tracker)
 
         scope.extending! reflection.extensions
-        add_constraints(scope, owner, chain)
+        scope = add_constraints(scope, owner, chain)
+        scope.limit!(1) unless reflection.collection?
+        scope
       end
 
       def self.get_bind_values(owner, chain)
@@ -46,13 +48,9 @@ module ActiveRecord
         binds
       end
 
-      # TODO Change this to private once we've dropped Ruby 2.2 support.
-      # Workaround for Ruby 2.2 "private attribute?" warning.
-      protected
-
+      private
         attr_reader :value_transformation
 
-      private
         def join(table, constraint)
           table.create_join(table, table.create_on(constraint))
         end

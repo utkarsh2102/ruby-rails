@@ -122,6 +122,10 @@ class RelationMergingTest < ActiveRecord::TestCase
     assert_not_empty relation.from_clause
   end
 
+  def test_merging_with_from_clause_on_different_class
+    assert Comment.joins(:post).merge(Post.from("posts")).first
+  end
+
   def test_merging_with_order_with_binds
     relation = Post.all.merge(Post.order([Arel.sql("title LIKE ?"), "%suffix"]))
     assert_equal ["title LIKE '%suffix'"], relation.order_values
@@ -130,6 +134,18 @@ class RelationMergingTest < ActiveRecord::TestCase
   def test_merging_with_order_without_binds
     relation = Post.all.merge(Post.order(Arel.sql("title LIKE '%?'")))
     assert_equal ["title LIKE '%?'"], relation.order_values
+  end
+
+  def test_merging_annotations_respects_merge_order
+    assert_sql(%r{/\* foo \*/ /\* bar \*/}) do
+      Post.annotate("foo").merge(Post.annotate("bar")).first
+    end
+    assert_sql(%r{/\* bar \*/ /\* foo \*/}) do
+      Post.annotate("bar").merge(Post.annotate("foo")).first
+    end
+    assert_sql(%r{/\* foo \*/ /\* bar \*/ /\* baz \*/ /\* qux \*/}) do
+      Post.annotate("foo").annotate("bar").merge(Post.annotate("baz").annotate("qux")).first
+    end
   end
 end
 

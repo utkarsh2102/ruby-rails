@@ -1,0 +1,39 @@
+Description: Skip the railties test which needs postgresql instance
+Author: Jongmin Kim <jmkim@pukyong.ac.kr>
+Forwarded: not-needed
+Last-Update: 2019-06-24
+--- a/railties/test/application/bin_setup_test.rb
++++ b/railties/test/application/bin_setup_test.rb
+@@ -27,6 +27,7 @@
+       end
+     end
+ 
++=begin
+     def test_bin_setup_output
+       Dir.chdir(app_path) do
+         # SQLite3 seems to auto-create the database on first checkout.
+@@ -58,5 +59,6 @@
+         OUTPUT
+       end
+     end
++=end
+   end
+ end
+--- a/railties/test/application/rake/dbs_test.rb
++++ b/railties/test/application/rake/dbs_test.rb
+@@ -218,6 +218,7 @@
+         end
+       end
+ 
++=begin
+       test "db:create works when schema cache exists and database does not exist" do
+         use_postgresql
+ 
+@@ -231,6 +232,7 @@
+           rails "db:drop" rescue nil
+         end
+       end
++=end
+ 
+       test "db:drop failure because database does not exist" do
+         output = rails("db:drop:_unsafe", "--trace")

@@ -53,7 +53,7 @@ module ActiveSupport
   #   crypt.encrypt_and_sign(parcel, expires_in: 1.month)
   #   crypt.encrypt_and_sign(doowad, expires_at: Time.now.end_of_year)
   #
-  # Then the messages can be verified and returned upto the expire time.
+  # Then the messages can be verified and returned up to the expire time.
   # Thereafter, verifying returns +nil+.
   #
   # === Rotating keys
@@ -172,7 +172,7 @@ module ActiveSupport
         iv = cipher.random_iv
         cipher.auth_data = "" if aead_mode?
 
-        encrypted_data = cipher.update(Messages::Metadata.wrap(@serializer.dump(value), metadata_options))
+        encrypted_data = cipher.update(Messages::Metadata.wrap(@serializer.dump(value), **metadata_options))
         encrypted_data << cipher.final
 
         blob = "#{::Base64.strict_encode64 encrypted_data}--#{::Base64.strict_encode64 iv}"
@@ -182,7 +182,7 @@ module ActiveSupport
 
       def _decrypt(encrypted_message, purpose)
         cipher = new_cipher
-        encrypted_data, iv, auth_tag = encrypted_message.split("--".freeze).map { |v| ::Base64.strict_decode64(v) }
+        encrypted_data, iv, auth_tag = encrypted_message.split("--").map { |v| ::Base64.strict_decode64(v) }
 
         # Currently the OpenSSL bindings do not raise an error if auth_tag is
         # truncated, which would allow an attacker to easily forge it. See
@@ -210,9 +210,7 @@ module ActiveSupport
         OpenSSL::Cipher.new(@cipher)
       end
 
-      def verifier
-        @verifier
-      end
+      attr_reader :verifier
 
       def aead_mode?
         @aead_mode ||= new_cipher.authenticated?

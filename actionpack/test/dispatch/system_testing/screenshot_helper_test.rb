@@ -3,13 +3,14 @@
 require "abstract_unit"
 require "action_dispatch/system_testing/test_helpers/screenshot_helper"
 require "capybara/dsl"
+require "selenium/webdriver"
 
 class ScreenshotHelperTest < ActiveSupport::TestCase
   test "image path is saved in tmp directory" do
     new_test = DrivenBySeleniumWithChrome.new("x")
 
     Rails.stub :root, Pathname.getwd do
-      assert_equal "tmp/screenshots/x.png", new_test.send(:image_path)
+      assert_equal Rails.root.join("tmp/screenshots/x.png").to_s, new_test.send(:image_path)
     end
   end
 
@@ -18,7 +19,7 @@ class ScreenshotHelperTest < ActiveSupport::TestCase
 
     Rails.stub :root, Pathname.getwd do
       new_test.stub :passed?, false do
-        assert_equal "tmp/screenshots/failures_x.png", new_test.send(:image_path)
+        assert_equal Rails.root.join("tmp/screenshots/failures_x.png").to_s, new_test.send(:image_path)
       end
     end
   end
@@ -29,9 +30,17 @@ class ScreenshotHelperTest < ActiveSupport::TestCase
     Rails.stub :root, Pathname.getwd do
       new_test.stub :passed?, false do
         new_test.stub :skipped?, true do
-          assert_equal "tmp/screenshots/x.png", new_test.send(:image_path)
+          assert_equal Rails.root.join("tmp/screenshots/x.png").to_s, new_test.send(:image_path)
         end
       end
+    end
+  end
+
+  test "image name truncates names over 225 characters" do
+    new_test = DrivenBySeleniumWithChrome.new("x" * 400)
+
+    Rails.stub :root, Pathname.getwd do
+      assert_equal Rails.root.join("tmp/screenshots/#{"x" * 225}.png").to_s, new_test.send(:image_path)
     end
   end
 
@@ -41,29 +50,27 @@ class ScreenshotHelperTest < ActiveSupport::TestCase
   end
 
   test "display_image return artifact format when specify RAILS_SYSTEM_TESTING_SCREENSHOT environment" do
-    begin
-      original_output_type = ENV["RAILS_SYSTEM_TESTING_SCREENSHOT"]
-      ENV["RAILS_SYSTEM_TESTING_SCREENSHOT"] = "artifact"
+    original_output_type = ENV["RAILS_SYSTEM_TESTING_SCREENSHOT"]
+    ENV["RAILS_SYSTEM_TESTING_SCREENSHOT"] = "artifact"
 
-      new_test = DrivenBySeleniumWithChrome.new("x")
+    new_test = DrivenBySeleniumWithChrome.new("x")
 
-      assert_equal "artifact", new_test.send(:output_type)
+    assert_equal "artifact", new_test.send(:output_type)
 
-      Rails.stub :root, Pathname.getwd do
-        new_test.stub :passed?, false do
-          assert_match %r|url=artifact://.+?tmp/screenshots/failures_x\.png|, new_test.send(:display_image)
-        end
+    Rails.stub :root, Pathname.getwd do
+      new_test.stub :passed?, false do
+        assert_match %r|url=artifact://.+?tmp/screenshots/failures_x\.png|, new_test.send(:display_image)
       end
-    ensure
-      ENV["RAILS_SYSTEM_TESTING_SCREENSHOT"] = original_output_type
     end
+  ensure
+    ENV["RAILS_SYSTEM_TESTING_SCREENSHOT"] = original_output_type
   end
 
-  test "image path returns the relative path from current directory" do
+  test "image path returns the absolute path from root" do
     new_test = DrivenBySeleniumWithChrome.new("x")
 
     Rails.stub :root, Pathname.getwd.join("..") do
-      assert_equal "../tmp/screenshots/x.png", new_test.send(:image_path)
+      assert_equal Rails.root.join("tmp/screenshots/x.png").to_s, new_test.send(:image_path)
     end
   end
 end

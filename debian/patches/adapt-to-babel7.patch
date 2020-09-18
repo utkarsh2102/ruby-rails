@@ -1,0 +1,22 @@
+--- a/activestorage/.babelrc
++++ /dev/null
+@@ -1,8 +0,0 @@
+-{
+-  "presets": [
+-    ["env", { "modules": false } ]
+-  ],
+-  "plugins": [
+-    "external-helpers"
+-  ]
+-}
+--- /dev/null
++++ b/activestorage/babel.config.json
+@@ -0,0 +1,8 @@
++{
++  "presets": [
++    "@babel/preset-env"
++  ],
++  "plugins": [
++    "@babel/plugin-external-helpers"
++  ]
++}

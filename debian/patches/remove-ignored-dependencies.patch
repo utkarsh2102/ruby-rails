@@ -1,0 +1,91 @@
+Description: Remove ignored dependencies
+Author: Jongmin Kim <jmkim@pukyong.ac.kr>
+Forwarded: not-needed
+Last-Update: 2019-06-21
+--- a/Gemfile
++++ b/Gemfile
+@@ -28,17 +28,6 @@
+ # Explicitly avoid 1.x that doesn't support Ruby 2.4+
+ gem "json", ">= 2.0.0"
+ 
+-gem "rubocop", ">= 0.47", require: false
+-gem "rubocop-performance", require: false
+-gem "rubocop-rails", require: false
+-
+-group :doc do
+-  gem "sdoc", "~> 1.1"
+-  gem "redcarpet", "~> 3.2.3", platforms: :ruby
+-  gem "w3c_validators"
+-  gem "kindlerb", "~> 1.2.0"
+-end
+-
+ # Active Support
+ gem "dalli"
+ gem "listen", "~> 3.2", require: false
+@@ -46,20 +35,10 @@
+ gem "connection_pool", require: false
+ gem "rexml", require: false
+ 
+-# for railties app_generator_test
+-gem "bootsnap", ">= 1.4.2", require: false
+-
+ # Active Job
+ group :job do
+-  gem "resque", require: false
+-  gem "resque-scheduler", require: false
+   gem "sidekiq", require: false
+-  gem "sucker_punch", require: false
+   gem "delayed_job", require: false
+-  gem "queue_classic", github: "QueueClassic/queue_classic", require: false, platforms: :ruby
+-  gem "sneakers", require: false
+-  gem "que", require: false
+-  gem "backburner", require: false
+   gem "delayed_job_active_record", require: false
+   gem "sequel", require: false
+ end
+@@ -73,8 +52,6 @@
+ 
+   gem "redis-namespace"
+ 
+-  gem "websocket-client-simple", github: "matthewd/websocket-client-simple", branch: "close-race", require: false
+-
+   gem "blade", require: false, platforms: [:ruby]
+   gem "blade-sauce_labs_plugin", require: false, platforms: [:ruby]
+   gem "sprockets-export", require: false
+@@ -82,15 +59,10 @@
+ 
+ # Active Storage
+ group :storage do
+-  gem "aws-sdk-s3", require: false
+-  gem "google-cloud-storage", "~> 1.11", require: false
+-  gem "azure-storage", require: false
+-
+   gem "image_processing", "~> 1.2"
+ end
+ 
+ # Action Mailbox
+-gem "aws-sdk-sns", require: false
+ gem "webmock"
+ 
+ group :ujs do
+@@ -106,11 +78,8 @@
+   gem "minitest-reporters"
+ 
+   platforms :mri do
+-    gem "stackprof"
+     gem "byebug"
+   end
+-
+-  gem "benchmark-ips"
+ end
+ 
+ platforms :ruby, :mswin, :mswin64, :mingw, :x64_mingw do
+--- a/rails.gemspec
++++ b/rails.gemspec
+@@ -41,6 +41,5 @@
+   s.add_dependency "actiontext",    version
+   s.add_dependency "railties",      version
+ 
+-  s.add_dependency "bundler",         ">= 1.3.0"
+   s.add_dependency "sprockets-rails", ">= 2.0.0"
+ end

@@ -1,0 +1,70 @@
+Description: Skip the test due to unpackaged dependencies
+  * websocket-client-simple
+    + actioncable/client_test.rb
+  * sneakers
+    + actionjob/Rakefile
+    + actionjob/test/cases/exceptions_test.rb
+  * que
+    + actionjob/Rakefile
+  * queue_classic
+    + actionjob/Rakefile
+  * resque
+    + actionjob/Rakefile
+  * sucker_punch
+    + actionjob/Rakefile
+  * backburner
+    + actionjob/Rakefile
+  * minitest-retry
+    + railties/test/isolation/abstract_unit.rb
+Author: Jongmin Kim <jmkim@pukyong.ac.kr>
+Forwarded: not-needed
+Last-Update: 2019-06-21
+--- a/actioncable/Rakefile
++++ b/actioncable/Rakefile
+@@ -12,7 +12,7 @@
+ 
+ Rake::TestTask.new do |t|
+   t.libs << "test"
+-  t.test_files = Dir.glob("#{__dir__}/test/**/*_test.rb")
++  t.test_files = Dir.glob("#{__dir__}/test/**/*_test.rb") - FileList["#{__dir__}/test/client_test.rb"]
+   t.warning = true
+   t.verbose = true
+   t.ruby_opts = ["--dev"] if defined?(JRUBY_VERSION)
+--- a/activejob/Rakefile
++++ b/activejob/Rakefile
+@@ -2,7 +2,7 @@
+ 
+ require "rake/testtask"
+ 
+-ACTIVEJOB_ADAPTERS = %w(async inline delayed_job que queue_classic resque sidekiq sneakers sucker_punch backburner test)
++ACTIVEJOB_ADAPTERS = %w(async inline delayed_job sidekiq test)
+ ACTIVEJOB_ADAPTERS.delete("queue_classic") if defined?(JRUBY_VERSION)
+ 
+ task default: :test
+--- a/activejob/test/cases/exceptions_test.rb
++++ b/activejob/test/cases/exceptions_test.rb
+@@ -208,8 +208,8 @@
+     def adapter_skips_scheduling?(queue_adapter)
+       [
+         ActiveJob::QueueAdapters::InlineAdapter,
+-        ActiveJob::QueueAdapters::AsyncAdapter,
+-        ActiveJob::QueueAdapters::SneakersAdapter
++        ActiveJob::QueueAdapters::AsyncAdapter
++#        ActiveJob::QueueAdapters::SneakersAdapter
+       ].include?(queue_adapter.class)
+     end
+ end
+--- a/railties/test/isolation/abstract_unit.rb
++++ b/railties/test/isolation/abstract_unit.rb
+@@ -16,11 +16,6 @@
+ require "active_support/testing/stream"
+ require "active_support/testing/method_call_assertions"
+ require "active_support/test_case"
+-require "minitest/retry"
+-
+-if ENV["BUILDKITE"]
+-  Minitest::Retry.use!(verbose: false, retry_count: 1)
+-end
+ 
+ RAILS_FRAMEWORK_ROOT = File.expand_path("../../..", __dir__)
+ 

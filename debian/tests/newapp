@@ -12,7 +12,7 @@ if [ -z "$ADTTMP" ]; then
 fi
 cd $ADTTMP
 
-rails new foo
+rails new --skip-javascript --skip-webpack-install foo
 cd foo
 
 # Does the empty app boots? This should catch dependency problems with gemspecs

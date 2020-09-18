@@ -30,6 +30,11 @@ module ActiveRecord
       assert_equal expected, Post.where("id = 1").or(Post.none).to_a
     end
 
+    def test_or_with_large_number
+      expected = Post.where("id = 1 or id = 9223372036854775808").to_a
+      assert_equal expected, Post.where(id: 1).or(Post.where(id: 9223372036854775808)).to_a
+    end
+
     def test_or_with_bind_params
       assert_equal Post.find([1, 2]).sort_by(&:id), Post.where(id: 1).or(Post.where(id: 2)).sort_by(&:id)
     end
@@ -131,6 +136,18 @@ module ActiveRecord
       author = Author.first
       assert_nothing_raised do
         author.top_posts.or(author.other_top_posts)
+      end
+    end
+
+    def test_structurally_incompatible_values
+      assert_nothing_raised do
+        Post.includes(:author).includes(:author).or(Post.includes(:author))
+        Post.eager_load(:author).eager_load(:author).or(Post.eager_load(:author))
+        Post.preload(:author).preload(:author).or(Post.preload(:author))
+        Post.group(:author_id).group(:author_id).or(Post.group(:author_id))
+        Post.joins(:author).joins(:author).or(Post.joins(:author))
+        Post.left_outer_joins(:author).left_outer_joins(:author).or(Post.left_outer_joins(:author))
+        Post.from("posts").or(Post.from("posts"))
       end
     end
   end

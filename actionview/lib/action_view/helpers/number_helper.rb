@@ -57,7 +57,7 @@ module ActionView
       #
       #   number_to_phone(75561234567, pattern: /(\d{1,4})(\d{4})(\d{4})$/, area_code: true)
       #   # => "(755) 6123-4567"
-      #   number_to_phone(13312345678, pattern: /(\d{3})(\d{4})(\d{4})$/))
+      #   number_to_phone(13312345678, pattern: /(\d{3})(\d{4})(\d{4})$/)
       #   # => "133-1234-5678"
       def number_to_phone(number, options = {})
         return unless number
@@ -100,6 +100,9 @@ module ActionView
       #   absolute value of the number.
       # * <tt>:raise</tt> - If true, raises +InvalidNumberError+ when
       #   the argument is invalid.
+      # * <tt>:strip_insignificant_zeros</tt> - If +true+ removes
+      #   insignificant zeros after the decimal separator (defaults to
+      #   +false+).
       #
       # ==== Examples
       #
@@ -111,12 +114,16 @@ module ActionView
       #
       #   number_to_currency("123a456", raise: true)           # => InvalidNumberError
       #
+      #   number_to_currency(-0.456789, precision: 0)
+      #   # => "$0"
       #   number_to_currency(-1234567890.50, negative_format: "(%u%n)")
       #   # => ($1,234,567,890.50)
       #   number_to_currency(1234567890.50, unit: "R$", separator: ",", delimiter: "")
       #   # => R$1234567890,50
       #   number_to_currency(1234567890.50, unit: "R$", separator: ",", delimiter: "", format: "%n %u")
       #   # => 1234567890,50 R$
+      #   number_to_currency(1234567890.50, strip_insignificant_zeros: true)
+      #   # => "$1,234,567,890.5"
       def number_to_currency(number, options = {})
         delegate_number_helper_method(:number_to_currency, number, options)
       end
@@ -398,7 +405,6 @@ module ActionView
       end
 
       private
-
         def delegate_number_helper_method(method, number, options)
           return unless number
           options = escape_unsafe_options(options.symbolize_keys)

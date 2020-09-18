@@ -112,7 +112,6 @@ class PrependProtectForgeryBaseController < ActionController::Base
   end
 
   private
-
     def add_called_callback(name)
       @called_callbacks ||= []
       @called_callbacks << name
@@ -521,6 +520,11 @@ module RequestForgeryProtectionTests
       get :negotiate_same_origin
     end
 
+    assert_cross_origin_blocked do
+      @request.accept = "application/javascript"
+      get :negotiate_same_origin
+    end
+
     assert_cross_origin_not_blocked { get :same_origin_js, xhr: true }
     assert_cross_origin_not_blocked { get :same_origin_js, xhr: true, format: "js" }
     assert_cross_origin_not_blocked do
@@ -585,6 +589,15 @@ module RequestForgeryProtectionTests
       @request.accept = "text/javascript"
       get :negotiate_cross_origin, xhr: true
     end
+  end
+
+  def test_should_not_trigger_content_type_deprecation
+    original = ActionDispatch::Response.return_only_media_type_on_content_type
+    ActionDispatch::Response.return_only_media_type_on_content_type = true
+
+    assert_not_deprecated { get :same_origin_js, xhr: true }
+  ensure
+    ActionDispatch::Response.return_only_media_type_on_content_type = original
   end
 
   def test_should_not_raise_error_if_token_is_not_a_string
@@ -903,6 +916,39 @@ class PerFormTokensControllerTest < ActionController::TestCase
     @request.env["PATH_INFO"] = "/per_form_tokens/post_one"
     assert_nothing_raised do
       post :post_one, params: { custom_authenticity_token: token }
+    end
+    assert_response :success
+  end
+
+  def test_does_not_return_old_csrf_token
+    get :index
+
+    token = @controller.send(:form_authenticity_token)
+
+    unmasked_token = @controller.send(:unmask_token, Base64.urlsafe_decode64(token))
+
+    assert_not_equal @controller.send(:real_csrf_token, session), unmasked_token
+  end
+
+  def test_returns_hmacd_token
+    get :index
+
+    token = @controller.send(:form_authenticity_token)
+
+    unmasked_token = @controller.send(:unmask_token, Base64.urlsafe_decode64(token))
+
+    assert_equal @controller.send(:global_csrf_token, session), unmasked_token
+  end
+
+  def test_accepts_old_csrf_token
+    get :index
+
+    non_hmac_token = @controller.send(:mask_token, @controller.send(:real_csrf_token, session))
+
+    # This is required because PATH_INFO isn't reset between requests.
+    @request.env["PATH_INFO"] = "/per_form_tokens/post_one"
+    assert_nothing_raised do
+      post :post_one, params: { custom_authenticity_token: non_hmac_token }
     end
     assert_response :success
   end

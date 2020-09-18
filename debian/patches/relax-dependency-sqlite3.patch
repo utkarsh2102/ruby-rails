@@ -1,0 +1,46 @@
+Description: Relax dependency version - ruby-sqlite3
+ From Rails 6, it started using `execute_batch2` function [1] which was
+ introduced in gem sqlite3 1.4.0. This new function was confirmed at [1]
+ that extremely faster than old `execute_batch` function. However, gem
+ sqlite3 1.4.0 was not packaged in Debian yet (ruby-sqlite3 is 1.3.13-1+b2
+ in Debian), so this function could not be used.
+ .
+ This patch will rollback the `execute_batch2` usages to `execute_batch`.
+ This patch should be removed after the ruby-sqlite3 upgraded to 1.4.0.
+ .
+ [1] https://github.com/rails/rails/commit/0908184e4c2dca5b941030bbd0d5eb2dfcfed120
+Author: Jongmin Kim <jmkim@pukyong.ac.kr>
+Forwarded: not-needed
+Last-Update: 2019-06-12
+--- a/Gemfile
++++ b/Gemfile
+@@ -120,7 +120,7 @@
+   gem "racc", ">=1.4.6", require: false
+ 
+   # Active Record.
+-  gem "sqlite3", "~> 1.4"
++  gem "sqlite3", ">= 1.3.6"
+ 
+   group :db do
+     gem "pg", ">= 0.18.0"
+--- a/activerecord/lib/active_record/connection_adapters/sqlite3/database_statements.rb
++++ b/activerecord/lib/active_record/connection_adapters/sqlite3/database_statements.rb
+@@ -94,7 +94,7 @@
+ 
+             log(sql, name) do
+               ActiveSupport::Dependencies.interlock.permit_concurrent_loads do
+-                @connection.execute_batch2(sql)
++                @connection.execute_batch(sql)
+               end
+             end
+           end
+--- a/activerecord/lib/active_record/connection_adapters/sqlite3_adapter.rb
++++ b/activerecord/lib/active_record/connection_adapters/sqlite3_adapter.rb
+@@ -10,7 +10,6 @@
+ require "active_record/connection_adapters/sqlite3/schema_dumper"
+ require "active_record/connection_adapters/sqlite3/schema_statements"
+ 
+-gem "sqlite3", "~> 1.4"
+ require "sqlite3"
+ 
+ module ActiveRecord

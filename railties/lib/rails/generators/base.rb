@@ -24,6 +24,10 @@ module Rails
       add_runtime_options!
       strict_args_position!
 
+      def self.exit_on_failure? # :nodoc:
+        false
+      end
+
       # Returns the source root for this generator using default_source_root as default.
       def self.source_root(path = nil)
         @_source_root = path if path
@@ -245,11 +249,11 @@ module Rails
       end
 
       private
-
         # Check whether the given class names are already taken by user
         # application or Ruby on Rails.
         def class_collisions(*class_names)
           return unless behavior == :invoke
+          return if options.force?
 
           class_names.flatten.each do |class_name|
             class_name = class_name.to_s
@@ -262,8 +266,8 @@ module Rails
 
             if last && last.const_defined?(last_name.camelize, false)
               raise Error, "The name '#{class_name}' is either already used in your application " \
-                           "or reserved by Ruby on Rails. Please choose an alternative and run "  \
-                           "this generator again."
+                           "or reserved by Ruby on Rails. Please choose an alternative or use "   \
+                           "--force to skip this check and run this generator again."
             end
           end
         end

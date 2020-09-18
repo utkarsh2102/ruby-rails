@@ -13,6 +13,8 @@ class Company < AbstractCompany
   has_many :contracts
   has_many :developers, through: :contracts
 
+  attribute :metadata, :json
+
   scope :of_first_firm, lambda {
     joins(account: :firm).
     where("firms.id" => 1)
@@ -23,7 +25,6 @@ class Company < AbstractCompany
   end
 
   private
-
     def private_method
       "I am Jack's innermost fears and aspirations"
     end
@@ -120,6 +121,12 @@ end
 class RestrictedWithErrorFirm < Company
   has_one :account, -> { order("id") }, foreign_key: "firm_id", dependent: :restrict_with_error
   has_many :companies, -> { order("id") }, foreign_key: "client_of", dependent: :restrict_with_error
+end
+
+class Agency < Firm
+  has_many :projects, foreign_key: :firm_id
+
+  accepts_nested_attributes_for :projects
 end
 
 class Client < Company

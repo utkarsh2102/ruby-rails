@@ -1,0 +1,16 @@
+Description: Use system webpacker
+Author: Jongmin Kim <jmkim@pukyong.ac.kr>
+Forwarded: not-needed
+Last-Update: 2019-06-23
+--- a/railties/test/isolation/assets/package.json
++++ b/railties/test/isolation/assets/package.json
+@@ -5,7 +5,7 @@
+     "@rails/actioncable": "file:../../../../actioncable",
+     "@rails/activestorage": "file:../../../../activestorage",
+     "@rails/ujs": "file:../../../../actionview",
+-    "@rails/webpacker": "https://github.com/rails/webpacker.git",
+-    "turbolinks": "^5.2.0"
++    "@rails/webpacker": "file:/usr/share/rubygems-integration/all/gems/webpacker-4.0.7",
++    "turbolinks": "file:/usr/share/rubygems-integration/all/gems/turbolinks-5.1.1"
+   }
+ }

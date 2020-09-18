@@ -2,3 +2,8 @@ activerecord/debug.log
 activerecord/test/config.yml
 activerecord/test/fixtures/fixture_database.sqlite3
 activerecord/test/fixtures/fixture_database_2.sqlite3
+actionview/tmp/
+actionview/lib/assets/compiled/rails-ujs.js
+activestorage/app/assets/
+activestorage/node_modules/rollup-plugin-commonjs
+actionpack/lib/action_dispatch/journey/parser.rb

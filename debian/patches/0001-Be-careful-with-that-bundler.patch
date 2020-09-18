@@ -8,25 +8,32 @@ Subject: Be careful with that bundler
 
 --- a/railties/lib/rails/generators/app_base.rb
 +++ b/railties/lib/rails/generators/app_base.rb
-@@ -411,11 +411,10 @@
-         # We unset temporary bundler variables to load proper bundler and Gemfile.
-         #
-         # Thanks to James Tucker for the Gem tricks involved in this call.
--        _bundle_command = Gem.bin_path("bundler", "bundle")
+@@ -367,7 +367,7 @@
+       end
  
-         require "bundler"
-         Bundler.with_clean_env do
--          full_command = %Q["#{Gem.ruby}" "#{_bundle_command}" #{command}]
-+          full_command = %Q["#{Gem.ruby}" "/usr/bin/bundle" #{command}]
-           if options[:quiet]
-             system(full_command, out: File::NULL)
-           else
-@@ -449,7 +448,7 @@
+       def exec_bundle_command(bundle_command, command, env)
+-        full_command = %Q["#{Gem.ruby}" "#{bundle_command}" #{command}]
++        full_command = %Q["#{Gem.ruby}" "#{bundle_command}" #{command}]
+         if options[:quiet]
+           system(env, full_command, out: File::NULL)
+         else
+@@ -404,7 +404,7 @@
        end
  
        def run_bundle
--        bundle_command("install") if bundle_install?
-+        bundle_command("install --local") if bundle_install?
+-        bundle_command("install", "BUNDLE_IGNORE_MESSAGES" => "1") if bundle_install?
++        bundle_command("install --local", "BUNDLE_IGNORE_MESSAGES" => "1") if bundle_install?
        end
  
        def run_webpack
+--- a/railties/test/generators/app_generator_test.rb
++++ b/railties/test/generators/app_generator_test.rb
+@@ -1054,7 +1054,7 @@
+       template
+     end
+ 
+-    sequence = ["git init", "install", "binstubs bundler", "exec spring binstub --all", "webpacker:install", "echo ran after_bundle"]
++    sequence = ["git init", "install --local", "binstubs bundler", "exec spring binstub --all", "webpacker:install", "echo ran after_bundle"]
+     @sequence_step ||= 0
+     ensure_bundler_first = -> command, options = nil do
+       assert_equal sequence[@sequence_step], command, "commands should be called in sequence #{sequence}"

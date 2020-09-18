@@ -55,7 +55,11 @@ module ActiveRecord
         if has_attribute?(inheritance_column)
           subclass = subclass_from_attributes(attributes)
 
-          if subclass.nil? && base_class == self
+          if subclass.nil? && scope_attributes = current_scope&.scope_for_create
+            subclass = subclass_from_attributes(scope_attributes)
+          end
+
+          if subclass.nil? && base_class?
             subclass = subclass_from_attributes(column_defaults)
           end
         end
@@ -102,6 +106,12 @@ module ActiveRecord
         else
           superclass.base_class
         end
+      end
+
+      # Returns whether the class is a base class.
+      # See #base_class for more information.
+      def base_class?
+        base_class == self
       end
 
       # Set this to +true+ if this is an abstract class (see
@@ -166,11 +176,10 @@ module ActiveRecord
       end
 
       protected
-
         # Returns the class type of the record using the current module as a prefix. So descendants of
         # MyApp::Business::Account would appear as MyApp::Business::AccountSubclass.
         def compute_type(type_name)
-          if type_name.start_with?("::".freeze)
+          if type_name.start_with?("::")
             # If the type is prefixed with a scope operator then we assume that
             # the type_name is an absolute reference.
             ActiveSupport::Dependencies.constantize(type_name)
@@ -198,7 +207,6 @@ module ActiveRecord
         end
 
       private
-
         # Called by +instantiate+ to decide which class to use for a new
         # record instance. For single-table inheritance, we check the record
         # for a +type+ column and return the corresponding class.
@@ -239,7 +247,7 @@ module ActiveRecord
           sti_column = arel_attribute(inheritance_column, table)
           sti_names  = ([self] + descendants).map(&:sti_name)
 
-          sti_column.in(sti_names)
+          predicate_builder.build(sti_column, sti_names)
         end
 
         # Detect the subclass from the inheritance column of attrs. If the inheritance column value
@@ -262,7 +270,6 @@ module ActiveRecord
     end
 
     private
-
       def initialize_internals_callback
         super
         ensure_proper_type

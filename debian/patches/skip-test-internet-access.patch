@@ -1,0 +1,16 @@
+Description: Skip the tests which need Internet access
+ .. due to Debian policy 4.9.
+Author: Jongmin Kim <jmkim@pukyong.ac.kr>
+Forwarded: not-needed
+Last-Update: 2019-07-17
+--- a/activesupport/Rakefile
++++ b/activesupport/Rakefile
+@@ -8,7 +8,7 @@
+ 
+ Rake::TestTask.new do |t|
+   t.libs << "test"
+-  t.pattern = "test/**/*_test.rb"
++  t.pattern = "test/**/*_test.rb - test/**/multibyte_*_test.rb"
+   t.warning = true
+   t.verbose = true
+   t.ruby_opts = ["--dev"] if defined?(JRUBY_VERSION)

@@ -11,14 +11,21 @@ override_dh_auto_build:
 	cd activestorage; mkdir node_modules; \
 		ln -s rollup-plugin-commonjs node_modules; rollup -c; cd -
 	cd actionview; blade build; cd -
-	cd actioncable; rake -Ilib assets:compile; cd -
+	cd actioncable; rake -Ilib assets:codegen; cd -
 
 override_dh_clean:
 	dh_clean -X~ -X.bak
 	$(RM) -r railties/guides/output
-
+	# kill redis server for tests, don't fail if not started
+	debian/stop-redis-server.sh || true
+	
 override_dh_auto_install:
-	dh_auto_install
+	# start redis server for tests
+	debian/start-redis-server.sh
+	# auto install
+	dh_auto_install -O--buildsystem=ruby
+	# kill redis server used for tests
+	debian/stop-redis-server.sh	
 	$(RM) debian/ruby-activesupport/usr/bin/generate_tables
 	$(RM) debian/*/usr/bin/test
 	rmdir debian/*/usr/bin || true
