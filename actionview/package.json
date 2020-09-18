@@ -31,6 +31,6 @@
   "homepage": "http://rubyonrails.org/",
   "devDependencies": {
     "coffeelint": "^2.1.0",
-    "eslint": "^2.13.1"
+    "eslint": "^7.9.0"
   }
 }
