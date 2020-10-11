@@ -1,3 +1,11 @@
+rails (2:6.0.3.4+dfsg-1) unstable; urgency=medium
+
+  * New upstream version 6.0.3.4+dfsg
+    - Fix a possible XSS vulnerability in Action Pack in
+      Development Mode. (Fixes: CVE-2020-8264) (Closes: #971988)
+
+ -- Utkarsh Gupta <utkarsh@debian.org>  Mon, 12 Oct 2020 00:28:24 +0530
+
 rails (2:6.0.3.3+dfsg-1) unstable; urgency=medium
 
   [ Cédric Boutillier ]
